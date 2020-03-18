@@ -1,0 +1,23 @@
+name: d4-stat - Run statistics on D4 file
+version: 0.1.0
+author: Hao Hou <haohou302@gmail.com>
+args:
+    - stat:
+        short: s
+        long: stat
+        value_name: stat_type
+        help: The type of statistics we want to perform, by default average
+    - region:
+        short: r
+        long: region
+        value_name: bed_file_path
+        help: A bed file that describes the region we want to run the stat
+    - threads:
+        short: t
+        long: threads
+        value_name: num_of_threads
+        help: Number of threads 
+    - input:
+        required: true
+        value_name: input_d4_file
+        

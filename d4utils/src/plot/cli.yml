@@ -1,0 +1,22 @@
+name: d4-plot - Plot the data in given range
+version: 0.1.0
+author: Hao Hou <haohou302@gmail.com>
+args:
+    - input-file:
+        required: true
+        help: Path to the input file 
+        index: 1
+    - output-file:
+        required: true
+        help: Path to the generated plot
+        index: 2
+    - resolution:
+        short: R
+        long: resolution
+        help: Specify the resolution of the output image
+    - region:
+        required: true
+        short: r
+        long: region
+        help: Regions to be plotted
+        value_name: chr[:start[-end]]

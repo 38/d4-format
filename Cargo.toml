@@ -1,0 +1,10 @@
+[workspace]
+members = [
+	"framefile",
+	"hts",
+	"d4",
+	"d4utils"
+]
+
+[profile.release]
+#debug = true
