@@ -1,9 +1,9 @@
 use clap::{load_yaml, App, ArgMatches};
 
-use d4::ptab::{UncompressedReader};
+use d4::ptab::UncompressedReader;
 use d4::stab::{RangeRecord, SimpleKeyValueReader};
+use d4::task::{Histogram, Mean, Task, TaskContext, TaskPartition};
 use d4::D4FileReader;
-use d4::task::{Histogram, Mean, TaskContext, Task, TaskPartition};
 
 use std::fs::File;
 use std::io::{BufRead, BufReader};
@@ -28,7 +28,10 @@ fn parse_bed_file<P: AsRef<Path>>(
     }))
 }
 
-fn run_task<T:Task>(matches: ArgMatches, param: <T::Partition as TaskPartition>::PartitionParam) -> Result<Vec<(String, u32, u32, T::Output)>, Box<dyn std::error::Error>> {
+fn run_task<T: Task>(
+    matches: ArgMatches,
+    param: <T::Partition as TaskPartition>::PartitionParam,
+) -> Result<Vec<(String, u32, u32, T::Output)>, Box<dyn std::error::Error>> {
     let d4_path = matches.value_of("input").unwrap();
 
     let mut input =
@@ -55,7 +58,7 @@ fn run_task<T:Task>(matches: ArgMatches, param: <T::Partition as TaskPartition>:
 fn percentile_stat(matches: ArgMatches, percentile: f64) -> Result<(), Box<dyn std::error::Error>> {
     let histograms = run_task::<Histogram>(matches, 0..1000)?;
     for (chr, begin, end, (below, hist, above)) in histograms {
-        let count:u32 = below + hist.iter().sum::<u32>() + above;
+        let count: u32 = below + hist.iter().sum::<u32>() + above;
         let below_count = (count as f64 * percentile.min(1.0).max(0.0)).round() as u32;
         let mut current = below;
         let mut idx = 0;
@@ -82,18 +85,16 @@ pub fn entry_point(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> 
             for result in run_task::<Mean>(matches, ())? {
                 println!("{}\t{}\t{}\t{}", result.0, result.1, result.2, result.3);
             }
-        }, 
+        }
         Some("median") => {
             percentile_stat(matches, 0.5)?;
-        },
+        }
         Some(whatever) if whatever.starts_with("percentile=") => {
             let prefix_len = "percentile=".len();
             let percentile: f64 = whatever[prefix_len..].parse()?;
             percentile_stat(matches, percentile / 100.0)?;
-        },
-        _ => {
-            panic!("Unsupported stat type")
         }
+        _ => panic!("Unsupported stat type"),
     }
     Ok(())
 }

@@ -44,7 +44,7 @@ impl<PT: PTableWriter, ST: STableWriter> D4FileWriter<PT, ST> {
 
 impl<PT: PTableWriter, ST: STableWriter> Drop for D4FileWriter<PT, ST> {
     fn drop(&mut self) {
-        std::mem::replace(&mut self.s_table, None);
+        drop(std::mem::replace(&mut self.s_table, None));
     }
 }
 

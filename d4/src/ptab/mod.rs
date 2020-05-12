@@ -59,3 +59,8 @@ pub trait Decoder {
 
 pub type UncompressedWriter = uncompressed::PrimaryTable<uncompressed::Writer>;
 pub type UncompressedReader = uncompressed::PrimaryTable<uncompressed::Reader>;
+pub type UncompressedPartWriter = uncompressed::PartialPrimaryTable<uncompressed::Writer>;
+pub type UncompressedPartReader = uncompressed::PartialPrimaryTable<uncompressed::Reader>;
+
+pub type UncompressedDecoder = uncompressed::PrimaryTableCodec<uncompressed::Reader>;
+pub type UncompressedEncoder = uncompressed::PrimaryTableCodec<uncompressed::Writer>;

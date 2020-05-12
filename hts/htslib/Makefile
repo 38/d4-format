@@ -225,9 +225,9 @@ BUILT_PLUGINS = $(PLUGIN_OBJS:.o=$(PLUGIN_EXT))
 plugins: $(BUILT_PLUGINS)
 
 
-libhts.a: $(LIBHTS_OBJS)
+libhts.a: $(LIBHTS_OBJS:.o=.pico)
 	@-rm -f $@
-	$(AR) -rc $@ $(LIBHTS_OBJS)
+	$(AR) -rc $@ $^
 	-$(RANLIB) $@
 
 print-config:

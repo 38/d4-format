@@ -14,7 +14,7 @@ pub struct Partition {
 impl TaskPartition for Partition {
     type PartitionParam = Range<i32>;
     type ResultType = (u32, Vec<u32>, u32);
-    fn new(left: u32, right: u32, param:Range<i32>) -> Self {
+    fn new(left: u32, right: u32, param: Range<i32>) -> Self {
         let base = param.start;
         let size = (param.end - param.start).max(0) as usize;
         Self {

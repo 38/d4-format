@@ -10,7 +10,7 @@ pub struct MeanPartition {
 impl TaskPartition for MeanPartition {
     type PartitionParam = ();
     type ResultType = (i64, usize);
-    fn new(left: u32, right: u32, _:()) -> Self {
+    fn new(left: u32, right: u32, _: ()) -> Self {
         Self {
             range: (left, right),
             sum: 0,
@@ -24,6 +24,12 @@ impl TaskPartition for MeanPartition {
         self.sum += value as i64;
         true
     }
+    #[inline(always)]
+    fn feed_range(&mut self, left: u32, right: u32, value: i32) -> bool {
+        self.sum += value as i64 * (right - left) as i64;
+        true
+    }
+
     fn into_result(self) -> (i64, usize) {
         (self.sum, (self.range.1 - self.range.0) as usize)
     }

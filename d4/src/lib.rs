@@ -7,7 +7,7 @@ pub mod stab;
 pub mod task;
 
 pub use chrom::Chrom;
-pub use d4file::{D4FileBuilder, D4FileReader};
+pub use d4file::{D4FileBuilder, D4FileReader, D4FileWriter};
 pub use dict::Dictionary;
 
 pub use header::Header;

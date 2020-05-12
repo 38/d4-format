@@ -1,10 +1,10 @@
 mod context;
-mod mean;
 mod histogram;
+mod mean;
 
 pub use context::TaskContext;
-pub use mean::Mean;
 pub use histogram::Histogram;
+pub use mean::Mean;
 
 /// An abstracted task
 pub trait Task {
@@ -32,6 +32,13 @@ pub trait TaskPartition: Send {
     fn scope(&self) -> (u32, u32);
     /// Feed one value to the task
     fn feed(&mut self, pos: u32, value: i32) -> bool;
+    /// Feed a range of position that has the same value
+    fn feed_range(&mut self, left: u32, right: u32, value: i32) -> bool {
+        for pos in left..right {
+            self.feed(pos, value);
+        }
+        true
+    }
     /// Convert the task into the result
     fn into_result(self) -> Self::ResultType;
 }

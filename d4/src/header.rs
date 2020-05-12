@@ -15,6 +15,9 @@ impl Header {
             dictionary: Dictionary::SimpleRange { low: 0, high: 64 },
         }
     }
+    pub fn dictionary(&self) -> &Dictionary {
+        &self.dictionary
+    }
     pub fn chrom_list(&self) -> &[Chrom] {
         self.chrom_list.as_ref()
     }

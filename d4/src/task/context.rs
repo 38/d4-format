@@ -3,8 +3,8 @@ use std::io::Result;
 
 use super::{Task, TaskPartition};
 use crate::d4file::D4FileReader;
-use crate::ptab::{PTablePartitionReader, PTableReader, Decoder, DecodeResult};
-use crate::stab::{STableReader, STablePartitionReader};
+use crate::ptab::{DecodeResult, Decoder, PTablePartitionReader, PTableReader};
+use crate::stab::{STablePartitionReader, STableReader};
 
 struct PartitionContext<P: PTableReader, S: STableReader, T: Task> {
     primary: P::Partition,
@@ -12,30 +12,52 @@ struct PartitionContext<P: PTableReader, S: STableReader, T: Task> {
     tasks: Vec<T::Partition>,
 }
 
-impl <P: PTableReader, S: STableReader, T: Task> PartitionContext<P, S, T> {
-    fn execute(&mut self) -> Result<Vec<(String, u32, u32, <T::Partition as TaskPartition>::ResultType)>> {
+impl<P: PTableReader, S: STableReader, T: Task> PartitionContext<P, S, T> {
+    fn execute(
+        &mut self,
+    ) -> Result<
+        Vec<(
+            String,
+            u32,
+            u32,
+            <T::Partition as TaskPartition>::ResultType,
+        )>,
+    > {
         let chr = self.primary.region().0.to_string();
+        let per_base = self.primary.bit_width() > 0;
         let mut decoder = self.primary.as_decoder();
         let mut result = vec![];
         for mut stat_part in std::mem::replace(&mut self.tasks, vec![]) {
             let (part_left, part_right) = stat_part.scope();
-            decoder.decode_block(
-                part_left as usize,
-                (part_right - part_left) as usize,
-                |pos, res| {
-                    let value = match res {
-                        DecodeResult::Definitely(value) => value,
-                        DecodeResult::Maybe(back) => {
-                            if let Some(value) = self.secondary.decode(pos as u32) {
-                                value
-                            } else {
-                                back
+            if per_base {
+                decoder.decode_block(
+                    part_left as usize,
+                    (part_right - part_left) as usize,
+                    |pos, res| {
+                        let value = match res {
+                            DecodeResult::Definitely(value) => value,
+                            DecodeResult::Maybe(back) => {
+                                if let Some(value) = self.secondary.decode(pos as u32) {
+                                    value
+                                } else {
+                                    back
+                                }
                             }
-                        }
-                    };
-                    stat_part.feed(pos as u32, value);
-                },
-            );
+                        };
+                        stat_part.feed(pos as u32, value);
+                    },
+                );
+            } else {
+                let iter = self.secondary.seek_iter(part_left);
+                for (mut left, mut right, value) in iter {
+                    left = left.max(part_left);
+                    right = right.min(part_right);
+                    stat_part.feed_range(left, right, value);
+                    if right == part_right {
+                        break;
+                    }
+                }
+            }
             result.push((chr.clone(), part_left, part_right, stat_part.into_result()));
         }
         Ok(result)
@@ -47,11 +69,11 @@ pub struct TaskContext<P: PTableReader, S: STableReader, T: Task> {
     partitions: Vec<PartitionContext<P, S, T>>,
 }
 
-impl<P: PTableReader, S: STableReader, T: Task> TaskContext<P, S, T> 
+impl<P: PTableReader, S: STableReader, T: Task> TaskContext<P, S, T>
 where
-    P::Partition : Send,
-    S::Partition : Send,
-    T::Partition : Send,
+    P::Partition: Send,
+    S::Partition: Send,
+    T::Partition: Send,
 {
     pub fn new<Name: AsRef<str>>(
         reader: &mut D4FileReader<P, S>,

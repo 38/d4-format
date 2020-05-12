@@ -212,6 +212,10 @@ impl<'a, M: AccessMode, T: 'a> Stream<'a, M, T> {
             .as_ref()
             .map(|frame| frame.current_frame_size)
     }
+
+    pub fn get_frame_capacity(&self) -> usize {
+        self.frame_size - std::mem::size_of::<FrameHeader>()
+    }
 }
 impl<M: CanWrite<T>, T: Write + Seek> Stream<'_, M, T> {
     pub fn flush(&mut self) -> Result<()> {
@@ -229,6 +233,17 @@ impl<M: CanWrite<T>, T: Write + Seek> Stream<'_, M, T> {
         self.pre_alloc = false;
     }
 
+    pub fn write_frame(&mut self, buffer: &[u8]) -> Result<()> {
+        self.flush()?;
+        if let Some(frame) = self.current_frame.as_mut() {
+            frame.data.extend_from_slice(buffer);
+            frame.current_frame_size = frame.data.len();
+        }
+        Ok(())
+    }
+
+    /// Append data to the given stream. Similar to write, but this allows to inject a callback function,
+    /// which you can modify the configuration of the stream before the stream actually synced to the file.
     pub fn write_with_alloc_callback<R: FnMut(&mut Self)>(
         &mut self,
         buffer: &[u8],

@@ -3,8 +3,9 @@ members = [
 	"framefile",
 	"hts",
 	"d4",
-	"d4utils"
+	"d4utils",
+	"d4binding",
 ]
 
 [profile.release]
-#debug = true
+debug = true

@@ -108,7 +108,7 @@ impl Dictionary {
         println!("{:?}", dict);
         Ok(Self::from_dict_list(dict)?)
     }
-    fn from_dict_list(mapping: Vec<i32>) -> Result<Self> {
+    pub fn from_dict_list(mapping: Vec<i32>) -> Result<Self> {
         if mapping.len() == 0 {
             return Err(
                 std::io::Error::new(
@@ -142,6 +142,7 @@ impl Dictionary {
         }
         Self::from_dict_list(mapping)
     }
+
     pub fn new_simple_range_dict(left: i32, right: i32) -> Result<Self> {
         let n_values = (right - left).max(0) as usize;
         if n_values == 0 {

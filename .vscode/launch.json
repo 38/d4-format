@@ -1,0 +1,138 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Par-Read-C",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/d4binding/example/bin/par-read",
+            "args": ["${workspaceFolder}/../data/hg002.d4"],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [
+                {
+                    "name": "LD_LIBRARY_PATH",
+                    "value": "${workspaceFolder}/target/debug"
+                }
+            ],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
+            "name": "decode-compression",
+            "type": "lldb",
+            "request": "launch",
+            "program":  "${workspaceRoot}/target/debug/d4utils",
+            "args": ["stat", "-t", "1", "/tmp/test.d4"],
+            "cwd": "${workspaceRoot}"
+        },
+        {
+            "name": "compression",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${workspaceRoot}/target/debug/d4utils",
+            "args": ["create", "-g", "sample_data/test.genome", "-R", "0-1", "sample_data/empty.bedgraph", "sample_data/empty.d4"],
+            "cwd": "${workspaceRoot}",
+        },
+        {
+            "name": "d4-plot",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${workspaceRoot}/target/debug/d4utils",
+            "args": ["plot" , "--region=1:100000000-150000000", "/home/haohou/base2/data/hg002.d4", "1"],
+            "cwd": "${workspaceRoot}",
+        },
+        {
+            "name": "d4-stat",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${workspaceRoot}/target/debug/d4utils",
+            "args": ["stat","-r/tmp/a.bed","/home/haohou/base2/data/hg002.d4"],
+            "cwd": "${workspaceRoot}",
+        },
+        {
+            "name": "d4-show",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${workspaceRoot}/target/debug/d4-show",
+            "args": ["/tmp/test.d4", "10:0-10000"],
+            "cwd": "${workspaceRoot}",
+        },
+        {
+            "name": "d4-create",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${workspaceRoot}/target/debug/d4utils",
+            "args": ["create", "-A", "/home/haohou/Downloads/HG00096.mapped.ILLUMINA.bwa.GBR.exome.20120522.bam.22.bam", "/tmp/test.d4"],
+            //"args": ["-A", "-f","^Y$","-r","/home/haohou/base2/data/hg19.fa.gz","/home/haohou/base2/data/hg002.cram","/tmp/test.d4"],
+            //"args": ["-R0-1", "-Srange-val" ,"-g/tmp/a.g" ,"/tmp/a.txt","/tmp/test.d4"],
+            //"args": ["-g/tmp/a.g", "/tmp/a.txt", "/tmp/test.d4"],
+            "cwd": "${workspaceRoot}",
+        },
+        {
+            "name": "d4utils",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${workspaceRoot}/target/debug/d4utils",
+            "args": [""],
+            "cwd": "${workspaceRoot}",
+        },
+        {
+            "name": "d4-framedump",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${workspaceRoot}/target/debug/d4-framedump",
+            //"args": ["/tmp/test.d4", ".stab/2:0-243199373"],
+            "args": ["/tmp/test.frame", "test1"],
+            "cwd": "${workspaceRoot}",
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in library 'framefile'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--lib",
+                    "--package=framefile"
+                ],
+                "filter": {
+                    "name": "framefile",
+                    "kind": "lib"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}/framefile"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in library 'hts'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--lib",
+                    "--package=hts"
+                ],
+                "filter": {
+                    "name": "hts",
+                    "kind": "lib"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        }
+    ]
+}

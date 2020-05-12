@@ -36,11 +36,14 @@ args:
         long: dict-file
         value_name: dict_spec_file
         help: Provide a file that defines the values of the dictionary
-    - secondary-encoding:
-        short: S
-        long: secondary-encoding
-        value_name: encoding_method_name
-        help: Specify the secondary encoding method, currently supports ["single-val"]
+    - deflate:
+        short: z
+        long: deflate
+        help: Enable the deflate compression
+    - deflate-level:
+        long: deflate-level
+        value_name: level
+        help: Configure the deflate algorithm, default 5
     - input-file:
         required: true
         help: Path to the input file 

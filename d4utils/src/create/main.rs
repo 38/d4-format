@@ -1,8 +1,6 @@
 use clap::{load_yaml, App, ArgMatches};
 use d4::ptab::{Encoder, PTablePartitionWriter, PTableWriter, UncompressedWriter};
-use d4::stab::{
-    RangeRecord, STablePartitionWriter, STableWriter, SimpleKeyValueWriter, SingleRecord,
-};
+use d4::stab::{RangeRecord, STablePartitionWriter, STableWriter, SimpleKeyValueWriter};
 use d4::Chrom;
 use d4::Dictionary;
 use hts::{BamFile, DepthIter};
@@ -124,10 +122,26 @@ fn main_impl<P: PTableWriter, S: STableWriter>(
 
     let reference = matches.value_of("ref");
 
+    let enable_compression = matches.is_present("deflate");
+    let compression_level: u32 = matches
+        .value_of("deflate-level")
+        .unwrap_or("5")
+        .parse()
+        .unwrap();
+
     match ext.to_str().unwrap() {
         "sam" | "bam" | "cram" => {
             d4_builder.load_chrom_info_from_bam(input_path)?;
             let mut d4_writer = d4_builder.create::<P, S>()?;
+
+            if enable_compression {
+                d4_writer
+                    .s_table
+                    .as_mut()
+                    .unwrap()
+                    .enable_deflate_encoding(compression_level);
+            }
+
             let partitions = d4_writer.parallel_parts(Some(10_000_000))?;
 
             info!("Total number of parallel tasks: {}", partitions.len());
@@ -160,6 +174,7 @@ fn main_impl<P: PTableWriter, S: STableWriter>(
                         }
                     }
                     s_table.flush().unwrap();
+                    s_table.finish().unwrap();
                     let time_end = std::time::SystemTime::now();
                     let duration = time_end.duration_since(time_begin).unwrap();
                     info!(
@@ -181,6 +196,13 @@ fn main_impl<P: PTableWriter, S: STableWriter>(
                 .into_iter(),
             );
             let mut d4_writer = d4_builder.create::<P, S>()?;
+            if enable_compression {
+                d4_writer
+                    .s_table
+                    .as_mut()
+                    .unwrap()
+                    .enable_deflate_encoding(compression_level);
+            }
             let mut partition = d4_writer.parallel_parts(None)?;
             let input = parse_text_file(input_path)?;
             let mut current = 0;
@@ -204,6 +226,9 @@ fn main_impl<P: PTableWriter, S: STableWriter>(
                 }
                 partition[current].1.flush()?;
             }
+            for (_, mut stab) in partition {
+                stab.finish()?;
+            }
         }
         _ => {
             panic!("Unsupported input file format");
@@ -217,14 +242,5 @@ pub fn entry_point(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> 
     let yaml = load_yaml!("cli.yml");
     let matches = App::from_yaml(yaml).get_matches_from(args);
 
-    let st_format = matches
-        .value_of("secondary-encoding")
-        .unwrap_or("range-val");
-    match st_format {
-        "single-val" => {
-            main_impl::<UncompressedWriter, SimpleKeyValueWriter<SingleRecord>>(matches)
-        }
-        "range-val" => main_impl::<UncompressedWriter, SimpleKeyValueWriter<RangeRecord>>(matches),
-        _ => panic!("Invalid format"),
-    }
+    main_impl::<UncompressedWriter, SimpleKeyValueWriter<RangeRecord>>(matches)
 }

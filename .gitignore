@@ -33,3 +33,7 @@ hts/htslib/**/lib*.dylib
 hts/htslib/**/*.lib
 
 sample_data/**
+
+perf.data*
+
+d4binding/example/bin/*
