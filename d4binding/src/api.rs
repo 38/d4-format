@@ -454,9 +454,7 @@ pub fn d4_file_run_task(handle: *mut d4_file_t, task: *const d4_task_desc_t) -> 
                 .build_global()
                 .map_err(set_last_error)
                 .is_err()
-            {
-                return -1;
-            }
+            {}
 
             let task_data: Vec<_> = task_parts
                 .iter_mut()
