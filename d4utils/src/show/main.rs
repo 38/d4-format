@@ -81,7 +81,7 @@ pub fn entry_point(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> 
         };
 
         let decoder = ptab.as_decoder();
-        for (from, mut to) in regions {
+        for (mut from, mut to) in regions {
             to = to.min(te);
             let mut last = None;
             from = from.max(ts);
