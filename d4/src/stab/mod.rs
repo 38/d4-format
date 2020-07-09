@@ -16,6 +16,7 @@ pub trait STableWriter: Sized {
 
 pub trait STablePartitionWriter: Send {
     fn encode(&mut self, pos: u32, value: i32) -> Result<()>;
+    fn encode_record(&mut self, left: u32, right: u32, value: i32) -> Result<()>;
     fn flush(&mut self) -> Result<()>;
     fn finish(&mut self) -> Result<()> {
         Ok(())
@@ -59,5 +60,5 @@ impl<'a, S: STablePartitionReader> Iterator for RecordIterator<'a, S> {
 
 pub use simple_kv::RangeRecord;
 pub use simple_kv::SimpleKeyValuePartialReader;
-pub use simple_kv::SimpleKeyValueReader;
 pub use simple_kv::SimpleKeyValuePartialWriter;
+pub use simple_kv::SimpleKeyValueReader;

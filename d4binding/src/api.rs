@@ -418,7 +418,7 @@ pub fn d4_file_write_values(handle: *mut d4_file_t, buf: *const i32, count: size
         let count = count as usize;
         let data_buf = unsafe { std::slice::from_raw_parts(buf, count) };
         let mut first = true;
-        let mut ret = 1;
+        let mut ret = 0;
         for data in data_buf {
             match sr.write_value(*data, !first) {
                 Ok(false) => {
@@ -435,6 +435,43 @@ pub fn d4_file_write_values(handle: *mut d4_file_t, buf: *const i32, count: size
         return ret;
     }
     return -1;
+}
+
+#[no_mangle]
+pub fn d4_file_write_intervals(
+    handle: *mut d4_file_t,
+    buf: *const d4_interval_t,
+    count: size_t,
+) -> ssize_t {
+    if null_mut() == handle {
+        return -1;
+    }
+    if null() == buf {
+        return -1;
+    }
+    let handle: &mut D4FileHandle = handle.into();
+
+    if let Some(sr) = handle.as_stream_writer_mut() {
+        let count = count as usize;
+        let data_buf = unsafe { std::slice::from_raw_parts(buf, count) };
+        let mut ret = 0;
+        for data in data_buf {
+            let data = &*data;
+            match sr.write_interval(data.left as u32, data.right as u32, data.value as i32) {
+                Ok(false) => {
+                    break;
+                }
+                Ok(true) => {
+                    ret += 1;
+                }
+                Err(_) => return -1,
+            }
+        }
+        sr.flush();
+        return ret;
+    }
+    
+    -1
 }
 
 #[no_mangle]
@@ -566,14 +603,14 @@ pub extern "C" fn d4_task_read_values(
     if null() == task {
         return set_einval(-1);
     }
-    let handle: &mut TaskHandle= unsafe { std::mem::transmute(task) };
-    let buffer = unsafe{std::slice::from_raw_parts_mut(buffer, count as usize)};
+    let handle: &mut TaskHandle = unsafe { std::mem::transmute(task) };
+    let buffer = unsafe { std::slice::from_raw_parts_mut(buffer, count as usize) };
     let (_, _, end) = handle.range();
     let mut ret = 0;
-    
+
     for pos in offset..(offset + count as u32).min(end) {
         if let Some(read_result) = handle.read(pos) {
-            buffer[ret] = read_result 
+            buffer[ret] = read_result
         } else {
             return -1;
         }

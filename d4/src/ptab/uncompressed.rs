@@ -247,6 +247,15 @@ impl PTablePartitionWriter for PartialPrimaryTable<Writer> {
     fn region(&self) -> (&str, u32, u32) {
         PartialPrimaryTable::region(self)
     }
+    fn can_encode(&self, value: i32) -> bool {
+        match self.dictionary.encode_value(value) {
+            EncodeResult::DictionaryIndex(_) => { true }, 
+            _ => { false },
+        }
+    }
+    fn bit_width(&self) -> usize {
+        self.dictionary.bit_width()
+    }
 }
 impl PTableWriter for PrimaryTable<Writer> {
     type Partition = PartialPrimaryTable<Writer>;

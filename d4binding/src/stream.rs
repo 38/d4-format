@@ -2,7 +2,7 @@ use d4::ptab::DecodeResult;
 use d4::ptab::PTablePartitionReader;
 use d4::ptab::{
     UncompressedDecoder, UncompressedEncoder, UncompressedPartReader, UncompressedPartWriter,
-    UncompressedReader, UncompressedWriter,
+    UncompressedReader, UncompressedWriter, PTablePartitionWriter,
 };
 use d4::stab::{
     RangeRecord, RecordIterator, STablePartitionReader, STablePartitionWriter,
@@ -82,6 +82,7 @@ impl StreamReader {
             self.current_chr = name.to_string();
             self.current_pos = pos;
             self.current_stab_iter_state = None;
+            self.current_primary_decoder = None;
             return true;
         }
         false
@@ -295,6 +296,56 @@ impl StreamWriter {
                 Ok(true)
             }
         }
+    }
+
+    pub fn write_interval(&mut self, left: u32, right: u32, value: i32) -> Result<bool> {
+        let (current_part, end) = loop {
+            if self.current_part_id >= self.parts.len() {
+                return Ok(false);
+            }
+            
+            let current_part = &mut self.parts[self.current_part_id];
+            let (chr, begin, end) = current_part.0.region();
+
+            if chr != self.current_chr {
+                return Ok(false);
+            }
+
+            if chr == self.current_chr && begin <= left && left < end {
+                break (current_part, end);
+            }
+            
+            self.current_part_id += 1;
+            self.current_primary_encoder = None;
+        };
+
+        let actual_right = end.min(right);
+
+        let should_iterate = current_part.0.bit_width() != 0;
+        
+        if self.current_primary_encoder.is_none() {
+            self.current_primary_encoder = Some(current_part.0.as_codec());
+        }
+        let stab = &mut current_part.1;
+
+        if should_iterate {
+            for pos in left..actual_right {
+                if !self.current_primary_encoder
+                .as_mut()
+                .unwrap()
+                .encode(pos as usize, value) {
+                    stab.encode(pos, value)?;
+                }
+            }
+            self.current_pos = actual_right;
+        } else {
+            stab.encode_record(left, actual_right, value)?;
+        }
+
+        if actual_right < right {
+            self.write_interval(actual_right, right, value)?;
+        }
+        Ok(true)
     }
 
     pub fn flush(&mut self) {

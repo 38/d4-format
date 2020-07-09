@@ -5,6 +5,10 @@
 #include <stdio.h>
 #include <unistd.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /*!< The handle for a D4 file */
 typedef struct d4_file_t d4_file_t;
 
@@ -126,4 +130,7 @@ int d4_file_profile_depth_from_bam(const char* bam_path, const char* d4_path, co
 void d4_error_clear(void);
 const char* d4_error_message(char* buf, size_t size);
 int d4_error_num(void);
+#ifdef __cplusplus
+}
+#endif
 #endif 

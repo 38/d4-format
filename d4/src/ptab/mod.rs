@@ -23,6 +23,8 @@ pub trait PTablePartitionWriter: Send {
     type EncoderType: Encoder;
     fn as_encoder(&mut self) -> Self::EncoderType;
     fn region(&self) -> (&str, u32, u32);
+    fn can_encode(&self, value: i32) -> bool;
+    fn bit_width(&self) -> usize;
 }
 
 pub trait Encoder {

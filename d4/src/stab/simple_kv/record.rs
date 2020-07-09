@@ -23,6 +23,25 @@ pub trait Record: Sized + Copy + Send + 'static {
     /// it returns None. If this is impossible, it create a new record for the new value
     fn encode(this: Option<&mut Self>, pos: u32, value: i32) -> Option<Self>;
 
+    fn encode_range<E>(left: u32, right: u32, value: i32, mut ops: impl FnMut(Self)->Result<(), E>) -> Result<(), E>{
+        let mut state =  None;
+        for record in (left..right).filter_map(move |pos| {
+            let next_state = Self::encode(state.as_mut(), pos, value);
+            if next_state.is_some() {
+                let ret = state;
+                state = next_state;
+                return ret;
+            }
+            if right - 1 == pos {
+                return state;
+            }
+            None
+        }) {
+            ops(record)?;
+        }
+        Ok(())
+    }
+
     /// Serialize the record into bytes
     #[inline(always)]
     fn as_bytes(&self) -> &[u8] {
@@ -94,6 +113,20 @@ impl Record for RangeRecord {
             size_enc: 0,
             value,
         })
+    }
+    
+    #[inline(always)]
+    fn encode_range<E>(mut left: u32, right: u32, value: i32, mut ops: impl FnMut(Self)->Result<(), E>) -> Result<(), E>{
+        while left < right {
+            let size = (right - left).min(65536);
+            left += size;
+            ops(Self {
+                left: left + 1,
+                size_enc: (size - 1) as u16,
+                value
+            })?;
+        }
+        Ok(())
     }
 
     fn is_valid(&self) -> bool {

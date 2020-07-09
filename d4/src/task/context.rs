@@ -99,10 +99,13 @@ where
             // regions with the same ordering function. So we just loop over the file regions that doesn't
             // have any task on it
             while idx < file_partition.len()
-                && (file_partition[idx].0.region().0 != region.0
+                && (file_partition[idx].0.region().0 < region.0.as_ref()
                     || file_partition[idx].0.region().2 < region.1)
             {
                 idx += 1;
+            }
+            if file_partition[idx].0.region().0 > region.0.as_ref() {
+                continue;
             }
             if idx >= file_partition.len() {
                 break;

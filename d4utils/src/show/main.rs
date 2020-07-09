@@ -2,7 +2,25 @@ use clap::{load_yaml, App};
 use d4::ptab::{DecodeResult, PTablePartitionReader, UncompressedReader};
 use d4::stab::{RangeRecord, STablePartitionReader, SimpleKeyValueReader};
 use d4::D4FileReader;
+use std::io::{Write, Result as IOResult};
 use regex::Regex;
+fn write_bed_record_fast<W: Write>(
+    mut writer: W,
+    chr: &str,
+    left: u32,
+    right: u32,
+    value: i32,
+) -> IOResult<()> {
+    writer.write_all(chr.as_bytes())?;
+    writer.write_all(b"\t")?;
+    writer.write_all(left.to_string().as_bytes())?;
+    writer.write_all(b"\t")?;
+    writer.write_all(right.to_string().as_bytes())?;
+    writer.write_all(b"\t")?;
+    writer.write_all(value.to_string().as_bytes())?;
+    writer.write_all(b"\n")?;
+    Ok(())
+}
 pub fn entry_point(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
     let yaml = load_yaml!("cli.yml");
     let matches = App::from_yaml(yaml).get_matches_from(args);
@@ -19,6 +37,8 @@ pub fn entry_point(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> 
     }
 
     let partition = d4file.split(None)?;
+
+    let mut stdout = std::io::BufWriter::new(std::io::stdout());
 
     let region_pattern = Regex::new(r"^(?P<CHR>[^:]+)((:(?P<FROM>\d+)-)?(?P<TO>\d+)?)?$")?;
     let mut should_print_all = true;
@@ -61,8 +81,11 @@ pub fn entry_point(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> 
         };
 
         let decoder = ptab.as_decoder();
-        for (from, to) in regions {
+        for (from, mut to) in regions {
+            to = to.min(te);
             let mut last = None;
+            from = from.max(ts);
+            to = to.min(te);
             for pos in from..to {
                 let value = match decoder.decode(pos as usize) {
                     DecodeResult::Definitely(value) => value,
@@ -76,7 +99,7 @@ pub fn entry_point(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> 
                 };
                 if let Some((begin, val)) = last {
                     if value != val {
-                        println!("{}\t{}\t{}\t{}", chr, begin, pos, val);
+                        write_bed_record_fast(&mut stdout, chr.as_ref(), begin, pos, val)?;
                         last = Some((pos, value));
                     }
                 } else {
@@ -84,10 +107,12 @@ pub fn entry_point(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> 
                 }
             }
             if let Some(last) = last {
-                println!("{}\t{}\t{}\t{}", chr, last.0, to, last.1);
+                write_bed_record_fast(&mut stdout, chr.as_ref(), last.0, to, last.1)?;
             }
         }
     }
+
+    stdout.flush()?;
 
     Ok(())
 }

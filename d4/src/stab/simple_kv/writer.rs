@@ -80,6 +80,14 @@ impl<R: Record> STablePartitionWriter for SimpleKeyValuePartialWriter<R> {
         }
         Ok(())
     }
+
+    fn encode_record(&mut self, left: u32, right: u32, value: i32) -> Result<()> {
+        self.flush()?;
+        R::encode_range(left, right, value, |record| {
+            self.compression.append_record(Some(&record), &mut self.stream)
+        })
+    }
+
     fn encode(&mut self, pos: u32, value: i32) -> Result<()> {
         if let Some(new_pending) = R::encode(self.pending_record.as_mut(), pos, value) {
             self.flush()?;

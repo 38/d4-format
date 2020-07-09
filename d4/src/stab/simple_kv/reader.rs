@@ -416,15 +416,17 @@ impl<R: Record> STableReader for SimpleKeyValueReader<R> {
 
                 if block_min != left {
                     let left_rec = block.get(left_idx);
-                    let (_, left_rec_max) = left_rec.effective_range();
+                    let (left_rec_min, left_rec_max) = left_rec.effective_range();
                     if right < left_rec_max {
-                        cur_part.blocks.push(RecordBlock::Record(
-                            left_rec
-                                .limit_left(left)
-                                .unwrap()
-                                .limit_right(right)
-                                .unwrap(),
-                        ));
+                        if left_rec_min < right {
+                            cur_part.blocks.push(RecordBlock::Record(
+                                left_rec
+                                    .limit_left(left)
+                                    .unwrap()
+                                    .limit_right(right)
+                                    .unwrap(),
+                            ));
+                        }
                     } else {
                         cur_part
                             .blocks
@@ -442,7 +444,7 @@ impl<R: Record> STableReader for SimpleKeyValueReader<R> {
                         block = buf.unwrap();
                     }
 
-                    let right_record = if right == block_max || right_idx == block.count() {
+                    let right_record = if right == block_max || right_idx >= block.count() {
                         None
                     } else {
                         let right_record = block.get(right_idx);

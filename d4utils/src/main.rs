@@ -17,7 +17,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Some("show") => show::entry_point(args),
         Some("stat") => stat::entry_point(args),
         Some("plot") => plot::entry_point(args),
-        _ => panic!("Subcommand: create, framedump, show, stat, plot"),
+        _ => {
+            eprintln!("D4 Utilities Program");
+            eprintln!("Usage: d4utils <subcommnd> <args>");
+            eprintln!("Possible subcommands are:");
+            eprintln!("\tcreate   \tCreate a new D4 depth profile");
+            eprintln!("\tframedump\tDump The container data");
+            eprintln!("\tshow     \tPrint the underlying depth profile");
+            eprintln!("\tstat     \tRun statistics on the given file");
+            eprintln!("\tplot     \tPlot the specified region");
+            Ok(())
+        }
     };
     #[cfg(feature = "prof")]
     cpuprofiler::PROFILER.lock().unwrap().stop()?;

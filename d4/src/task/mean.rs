@@ -51,6 +51,9 @@ impl Task for Mean {
             values += v;
             counts += c;
         }
+        if counts == 0 {
+            return 0.0;
+        }
         values as f64 / counts as f64
     }
 }
