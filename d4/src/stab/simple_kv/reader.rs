@@ -345,7 +345,7 @@ impl<R: Record> STableReader for SimpleKeyValueReader<R> {
             _p: PhantomData,
         })
     }
-    // TODO : This function probably not working for the compressed mode
+
     fn split(&mut self, partitions: &[(&str, u32, u32)]) -> Result<Vec<Self::Partition>> {
         let root = self.s_table_root.clone();
         let mut record_blocks = self.load_record_blocks()?;

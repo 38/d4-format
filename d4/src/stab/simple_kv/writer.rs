@@ -84,7 +84,8 @@ impl<R: Record> STablePartitionWriter for SimpleKeyValuePartialWriter<R> {
     fn encode_record(&mut self, left: u32, right: u32, value: i32) -> Result<()> {
         self.flush()?;
         R::encode_range(left, right, value, |record| {
-            self.compression.append_record(Some(&record), &mut self.stream)
+            self.compression
+                .append_record(Some(&record), &mut self.stream)
         })
     }
 

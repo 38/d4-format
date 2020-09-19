@@ -71,6 +71,27 @@ fn percentile_stat(matches: ArgMatches, percentile: f64) -> Result<(), Box<dyn s
     Ok(())
 }
 
+fn hist_stat(matches: ArgMatches) -> Result<(), Box<dyn std::error::Error>> {
+    let histograms = run_task::<Histogram>(matches, 0..1000)?;
+    let mut hist_result = [0; 1001];
+    let (mut below, mut above) = (0, 0);
+    for (_, _, _, (b, hist, a)) in histograms {
+        below += b;
+        above += a;
+        for (id, val) in hist.iter().enumerate() {
+            hist_result[id + 1] += val;
+        }
+    }
+
+    println!("<0\t{}", below);
+    for (val, cnt) in hist_result[1..].into_iter().enumerate() {
+        println!("{}\t{}", val, cnt);
+    }
+    println!(">1000\t{}", above);
+
+    Ok(())
+}
+
 pub fn entry_point(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
     let yaml = load_yaml!("cli.yml");
     let matches = App::from_yaml(yaml).get_matches_from(&args);
@@ -88,6 +109,9 @@ pub fn entry_point(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> 
         }
         Some("median") => {
             percentile_stat(matches, 0.5)?;
+        }
+        Some("hist") => {
+            hist_stat(matches)?;
         }
         Some(whatever) if whatever.starts_with("percentile=") => {
             let prefix_len = "percentile=".len();

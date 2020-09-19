@@ -86,7 +86,14 @@ fn main_impl<P: PTableWriter, S: STableWriter>(
     let input_path: &Path = matches.value_of("input-file").unwrap().as_ref();
     let ext = input_path.extension().unwrap();
 
-    let output_path = matches.value_of("output-file").unwrap();
+    let output_path = matches.value_of("output-file").map_or_else(
+        || {
+            let mut ret = input_path.to_owned();
+            ret.set_extension("d4");
+            ret
+        },
+        |path| path.into(),
+    );
     let mut d4_builder = d4::D4FileBuilder::new(output_path);
 
     d4_builder.set_dictionary(make_dictionary(
@@ -111,6 +118,11 @@ fn main_impl<P: PTableWriter, S: STableWriter>(
                 matches.value_of("ref"),
             )?);
         }
+    }
+
+    if matches.values_of("dump-dict").is_some() {
+        println!("{}", d4_builder.dictionary().pretty_print()?);
+        std::process::exit(0);
     }
 
     if let Some(pattern) = matches

@@ -14,7 +14,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let ret = match args.get(0).map(AsRef::as_ref) {
         Some("create") => create::entry_point(args),
         Some("framedump") => framedump::entry_point(args),
-        Some("show") => show::entry_point(args),
+        Some("show") | Some("view") => show::entry_point(args),
         Some("stat") => stat::entry_point(args),
         Some("plot") => plot::entry_point(args),
         _ => {
@@ -23,7 +23,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             eprintln!("Possible subcommands are:");
             eprintln!("\tcreate   \tCreate a new D4 depth profile");
             eprintln!("\tframedump\tDump The container data");
-            eprintln!("\tshow     \tPrint the underlying depth profile");
+            eprintln!("\tview     \tPrint the underlying depth profile");
             eprintln!("\tstat     \tRun statistics on the given file");
             eprintln!("\tplot     \tPlot the specified region");
             Ok(())

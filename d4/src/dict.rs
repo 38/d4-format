@@ -26,6 +26,9 @@ pub enum EncodeResult {
 }
 
 impl Dictionary {
+    pub fn pretty_print(&self) -> serde_json::Result<String> {
+        serde_json::to_string_pretty(self)
+    }
     pub fn from_sample_bam<P: AsRef<Path>, F: Fn(&str, usize) -> bool>(
         path: P,
         filter: F,
@@ -51,9 +54,11 @@ impl Dictionary {
                 from += 100_000;
             }
         }
-        let mut histogram = vec![0; 65536];
+        let mut histogram = HashMap::new();
+        let mut range_count = HashMap::new();
         let path = path.as_ref();
-        for values in parts
+
+        let part_results: Vec<_> = parts
             .into_par_iter()
             .map(|(chr, from, to)| {
                 let mut bam = BamFile::open(path).unwrap();
@@ -61,51 +66,58 @@ impl Dictionary {
                     bam.reference_path(reference);
                 }
                 let range = bam.range(chr, from, to).unwrap();
-                let mut histogram = vec![0usize; 65536];
+                let mut previous_value = None;
+                let mut histogram = HashMap::new();
+                let mut range_count = HashMap::new();
                 for (_, _, dep) in DepthIter::new(range) {
-                    if dep < 65536 {
-                        histogram[dep as usize] += 1;
+                    match previous_value {
+                        Some(d) if d == dep => continue,
+                        Some(_) | None => {
+                            previous_value = Some(dep);
+                            *range_count.entry(dep).or_insert(0) += 1;
+                        }
                     }
+                    *histogram.entry(dep).or_insert(0) += 1;
                 }
-                histogram
+                (histogram, range_count)
             })
-            .collect::<Vec<_>>()
-        {
-            for (idx, val) in values.into_iter().enumerate() {
-                histogram[idx] += val;
+            .collect();
+        for (part_hist, part_rc) in part_results {
+            for (k, v) in part_hist.into_iter() {
+                *histogram.entry(k).or_insert(0) += v;
+            }
+            for (k, v) in part_rc.into_iter() {
+                *range_count.entry(k).or_insert(0) += v;
             }
         }
-
-        let mut values: Vec<_> = (0..histogram.len()).collect();
-        values.sort_by_key(|idx| total_size - histogram[*idx]);
-
-        let total_sample: usize = histogram.iter().sum();
+        let mut histogram: Vec<_> = histogram.into_iter().collect();
+        histogram.sort_by_key(|(_, count)| total_size - count);
+        let total_intervals: usize = range_count.values().sum();
 
         let best_bit_width = (0..=16)
             .map(|b| {
-                let n_values = 1 << b;
-
-                let indexed_value: usize = values[..n_values].iter().map(|&x| histogram[x]).sum();
-
-                let ov_per_pos = (total_sample - indexed_value) as f64 / sample_size as f64;
-
+                let mut out_of_range_values = total_intervals;
+                for &(key, _) in histogram.iter().take(1 << b) {
+                    out_of_range_values -= range_count[&key];
+                }
                 let p_size = total_size as f64 * b as f64 / 8.0;
-                let s_size = ov_per_pos * 8.0 * total_size as f64;
-
-                (b, (s_size + p_size).round() as usize)
+                let s_size =
+                    (out_of_range_values as f64) * 4.0 / sample_size as f64 * total_size as f64;
+                (b, (p_size + s_size).round() as usize)
             })
-            .min_by_key(|&(_, v)| v)
+            .min_by_key(|&(_, size)| size)
             .unwrap();
 
         let mut dict = vec![];
         for i in 0..(1 << best_bit_width.0) {
-            dict.push(values[i as usize] as i32);
+            dict.push(histogram[i as usize].0 as i32);
         }
-        if dict.len() > 1 {
-            let size = dict.len();
-            dict[..size - 1].sort();
+
+        let min = dict.iter().min().unwrap();
+        let max = dict.iter().max().unwrap();
+        if max - min + 1 == dict.len() as i32 && (dict.len() == 1 || *min != dict[0]) {
+            dict.sort();
         }
-        println!("{:?}", dict);
         Ok(Self::from_dict_list(dict)?)
     }
     pub fn from_dict_list(mapping: Vec<i32>) -> Result<Self> {

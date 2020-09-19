@@ -96,6 +96,10 @@ impl D4FileBuilder {
         self
     }
 
+    pub fn dictionary(&self) -> &Dictionary {
+        &self.dict
+    }
+
     pub fn create<PT: PTableWriter, ST: STableWriter>(&mut self) -> Result<D4FileWriter<PT, ST>> {
         let mut file = OpenOptions::new()
             .create(true)

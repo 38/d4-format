@@ -470,7 +470,7 @@ pub fn d4_file_write_intervals(
         sr.flush();
         return ret;
     }
-    
+
     -1
 }
 

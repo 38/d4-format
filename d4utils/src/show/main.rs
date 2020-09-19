@@ -2,8 +2,8 @@ use clap::{load_yaml, App};
 use d4::ptab::{DecodeResult, PTablePartitionReader, UncompressedReader};
 use d4::stab::{RangeRecord, STablePartitionReader, SimpleKeyValueReader};
 use d4::D4FileReader;
-use std::io::{Write, Result as IOResult};
 use regex::Regex;
+use std::io::{Result as IOResult, Write};
 fn write_bed_record_fast<W: Write>(
     mut writer: W,
     chr: &str,
@@ -54,7 +54,7 @@ pub fn entry_point(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> 
                     let end: u32 = captures
                         .name("TO")
                         .map_or(!0u32, |x| x.as_str().parse().unwrap_or(!0));
-                    return (chr.to_string(), start, end);
+                    return (chr.to_string(), start - 1, end - 1);
                 }
                 panic!("Unexpected region specifier")
             })
@@ -64,7 +64,7 @@ pub fn entry_point(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> 
                     .iter_mut()
                     .find(|((p, _), _)| p.region().0 == chr)
                 {
-                    part.1.push((start, end));
+                    part.1.push((start - 1, end - 1));
                 }
             });
     });

@@ -1,8 +1,8 @@
 use d4::ptab::DecodeResult;
 use d4::ptab::PTablePartitionReader;
 use d4::ptab::{
-    UncompressedDecoder, UncompressedEncoder, UncompressedPartReader, UncompressedPartWriter,
-    UncompressedReader, UncompressedWriter, PTablePartitionWriter,
+    PTablePartitionWriter, UncompressedDecoder, UncompressedEncoder, UncompressedPartReader,
+    UncompressedPartWriter, UncompressedReader, UncompressedWriter,
 };
 use d4::stab::{
     RangeRecord, RecordIterator, STablePartitionReader, STablePartitionWriter,
@@ -303,7 +303,7 @@ impl StreamWriter {
             if self.current_part_id >= self.parts.len() {
                 return Ok(false);
             }
-            
+
             let current_part = &mut self.parts[self.current_part_id];
             let (chr, begin, end) = current_part.0.region();
 
@@ -314,7 +314,7 @@ impl StreamWriter {
             if chr == self.current_chr && begin <= left && left < end {
                 break (current_part, end);
             }
-            
+
             self.current_part_id += 1;
             self.current_primary_encoder = None;
         };
@@ -322,7 +322,7 @@ impl StreamWriter {
         let actual_right = end.min(right);
 
         let should_iterate = current_part.0.bit_width() != 0;
-        
+
         if self.current_primary_encoder.is_none() {
             self.current_primary_encoder = Some(current_part.0.as_codec());
         }
@@ -330,10 +330,12 @@ impl StreamWriter {
 
         if should_iterate {
             for pos in left..actual_right {
-                if !self.current_primary_encoder
-                .as_mut()
-                .unwrap()
-                .encode(pos as usize, value) {
+                if !self
+                    .current_primary_encoder
+                    .as_mut()
+                    .unwrap()
+                    .encode(pos as usize, value)
+                {
                     stab.encode(pos, value)?;
                 }
             }

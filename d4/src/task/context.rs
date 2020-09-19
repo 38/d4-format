@@ -104,7 +104,7 @@ where
             {
                 idx += 1;
             }
-            if file_partition[idx].0.region().0 > region.0.as_ref() {
+            if idx < file_partition.len() && file_partition[idx].0.region().0 > region.0.as_ref() {
                 continue;
             }
             if idx >= file_partition.len() {

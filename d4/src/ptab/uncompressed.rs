@@ -249,8 +249,8 @@ impl PTablePartitionWriter for PartialPrimaryTable<Writer> {
     }
     fn can_encode(&self, value: i32) -> bool {
         match self.dictionary.encode_value(value) {
-            EncodeResult::DictionaryIndex(_) => { true }, 
-            _ => { false },
+            EncodeResult::DictionaryIndex(_) => true,
+            _ => false,
         }
     }
     fn bit_width(&self) -> usize {
