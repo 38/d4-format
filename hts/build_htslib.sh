@@ -40,10 +40,14 @@ then
 	sed -i 's/CPPFLAGS =/CPPFLAGS = -Izlib-1.2.11 -Ibzip2-1.0.6/g' Makefile
 
 	make -j8 lib-static
+
+	exit 0
 fi
-if [ "${HTSLIB}" = "dynamic" ]
+
+
+if [ "${HTSLIB}" = "static"  ]
 then
-	make -j8 lib-shared
-else
 	make -j8 lib-static
+else
+	make -j8 lib-shared
 fi

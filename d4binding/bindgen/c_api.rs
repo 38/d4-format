@@ -1721,18 +1721,18 @@ extern "C" {
 extern "C" {
     pub fn fread(
         __ptr: *mut ::std::os::raw::c_void,
-        __size: size_t,
-        __n: size_t,
+        __size: ::std::os::raw::c_ulong,
+        __n: ::std::os::raw::c_ulong,
         __stream: *mut FILE,
-    ) -> size_t;
+    ) -> ::std::os::raw::c_ulong;
 }
 extern "C" {
     pub fn fwrite(
         __ptr: *const ::std::os::raw::c_void,
-        __size: size_t,
-        __n: size_t,
+        __size: ::std::os::raw::c_ulong,
+        __n: ::std::os::raw::c_ulong,
         __s: *mut FILE,
-    ) -> size_t;
+    ) -> ::std::os::raw::c_ulong;
 }
 extern "C" {
     pub fn fread_unlocked(

@@ -20,47 +20,50 @@ fn create_hts_bindings(includes: &Vec<PathBuf>) -> Result<(), ()> {
     }
     Ok(())
 }
+fn build_own_htslib(dynamic_link: bool) -> Vec<PathBuf> {
+    let mut hts_root = PathBuf::from(env::var("OUT_DIR").unwrap());
+    hts_root.push("htslib");
+
+    assert!(Command::new("bash")
+        .args(&["build_htslib.sh"])
+        .stdout(std::process::Stdio::null())
+        .spawn()
+        .expect("Unable to build htslib")
+        .wait()
+        .unwrap()
+        .success());
+
+    println!("cargo:rerun-if-changed=build_htslib.sh");
+
+    println!("cargo:rustc-link-search={}", hts_root.to_str().unwrap());
+
+    if !dynamic_link {
+        println!("cargo:rustc-link-lib=static=hts");
+        println!("cargo:rustc-link-search=/usr/lib/x86_64-linux-gnu/");
+        if env::var("CARGO_CFG_TARGET_ENV") == Ok("musl".to_string()) {
+            println!("cargo:rustc-link-lib=static=z");
+            println!("cargo:rustc-link-lib=static=bz2");
+        } else {
+            println!("cargo:rustc-link-lib=static=z");
+            println!("cargo:rustc-link-lib=static=lzma");
+            println!("cargo:rustc-link-lib=static=bz2");
+        }
+    } else {
+        println!("cargo:rustc-link-lib=hts");
+    }
+
+    vec![hts_root]
+}
 fn main() -> Result<(), std::io::Error> {
-    let dynamic_link = env::var("HTSLIB").map_or(false, |htslib| htslib == "dynamic");
+    let dynamic_link = env::var("HTSLIB").map_or(true, |htslib| htslib != "static")
+        && env::var("TARGET").map_or(true, |target| !target.ends_with("musl"));
     let htslib_includes = if dynamic_link && env::var("HTSLIB_VERSION").is_err() {
         pkg_config::Config::new()
-            .statik(false)
+            .atleast_version("1.6")
             .probe("htslib")
-            .unwrap()
-            .include_paths
+            .map_or_else(|_| build_own_htslib(dynamic_link), |lib| lib.include_paths)
     } else {
-        let mut hts_root = PathBuf::from(env::var("OUT_DIR").unwrap());
-        hts_root.push("htslib");
-
-        assert!(Command::new("bash")
-            .args(&["build_htslib.sh"])
-            .stdout(std::process::Stdio::null())
-            .spawn()
-            .expect("Unable to build htslib")
-            .wait()
-            .unwrap()
-            .success());
-
-        println!("cargo:rerun-if-changed=build_htslib.sh");
-
-        println!("cargo:rustc-link-search={}", hts_root.to_str().unwrap());
-
-        if !dynamic_link {
-            println!("cargo:rustc-link-lib=static=hts");
-            println!("cargo:rustc-link-search=/usr/lib/x86_64-linux-gnu/");
-            if env::var("CARGO_CFG_TARGET_ENV") == Ok("musl".to_string()) {
-                println!("cargo:rustc-link-lib=static=z");
-                println!("cargo:rustc-link-lib=static=bz2");
-            } else {
-                println!("cargo:rustc-link-lib=static=z");
-                println!("cargo:rustc-link-lib=static=lzma");
-                println!("cargo:rustc-link-lib=static=bz2");
-            }
-        } else {
-            println!("cargo:rustc-link-lib=hts");
-        }
-
-        vec![hts_root]
+        build_own_htslib(dynamic_link)
     };
 
     if let Err(_) = create_hts_bindings(&htslib_includes) {
