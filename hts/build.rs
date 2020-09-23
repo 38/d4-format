@@ -1,18 +1,15 @@
-use std::path::Path;
-use std::process::Command;
-
 use bindgen::Builder as BG;
-
-use num_cpus::get as get_num_cpus;
+use std::path::{Path, PathBuf};
 
 use std::env;
+use std::process::Command;
 
-fn create_hts_bindings(base: &str) -> Result<(), ()> {
-    let include_param = format!("-I{}/htslib/", base);
+fn create_hts_bindings(includes: &Vec<PathBuf>) -> Result<(), ()> {
+    let include_params: Vec<_> = includes.into_iter().map(|x| format!("-I{:?}", x)).collect();
     if !Path::new("generated/hts.rs").exists() {
         BG::default()
             .header("hts_inc.h")
-            .clang_arg(include_param.as_str())
+            .clang_args(&include_params)
             .layout_tests(false)
             .generate_comments(false)
             .generate()?
@@ -22,34 +19,53 @@ fn create_hts_bindings(base: &str) -> Result<(), ()> {
     Ok(())
 }
 fn main() -> Result<(), std::io::Error> {
-    let base = format!("{}", env::var("CARGO_MANIFEST_DIR").unwrap());
-    let hts_bin_path = format!("{}/htslib/libhts.a", base);
-    if let Err(_) = create_hts_bindings(base.as_str()) {
+    let dynamic_link = env::var("HTSLIB").map_or(false, |htslib| htslib == "dynamic");
+    let htslib_includes = if dynamic_link && env::var("HTSLIB_VERSION").is_err(){
+        pkg_config::Config::new()
+            .statik(false)
+            .probe("htslib")
+            .unwrap()
+            .include_paths
+    } else {
+        let mut hts_root = PathBuf::from(env::var("OUT_DIR").unwrap());
+        hts_root.push("htslib");
+
+        assert!(Command::new("bash")
+            .args(&["build_htslib.sh"])
+            .stdout(std::process::Stdio::null())
+            .spawn()
+            .expect("Unable to build htslib")
+            .wait()
+            .unwrap()
+            .success());
+
+        println!("cargo:rerun-if-changed=build_htslib.sh");
+
+        println!("cargo:rustc-link-search={}", hts_root.to_str().unwrap());
+        
+        if !dynamic_link {
+            println!("cargo:rustc-link-lib=static=hts");
+            println!("cargo:rustc-link-search=/usr/lib/x86_64-linux-gnu/");
+            println!("cargo:rustc-link-lib=static=curl");
+            println!("cargo:rustc-link-lib=static=z");
+            println!("cargo:rustc-link-lib=static=lzma");
+            println!("cargo:rustc-link-lib=static=bz2");
+        } else {
+            println!("cargo:rustc-link-lib=hts");
+        }
+
+        vec![hts_root]
+    };
+
+    if let Err(_) = create_hts_bindings(&htslib_includes) {
         return Err(std::io::Error::new(
             std::io::ErrorKind::Other,
             "Bindgen failed",
         ));
     }
-    if !Path::new(hts_bin_path.as_str()).exists() {
-        Command::new("make")
-            .arg(format!("-j{}", get_num_cpus()))
-            .current_dir(format!("{}/htslib", base))
-            .spawn()
-            .expect("Unable to call makefile for htslib");
-    }
 
-    if env::var("HTSLIB").ok().map_or(true, |x| x != "dynamic") {
-        println!("cargo:rustc-link-search={}/htslib/", base);
-        println!("cargo:rustc-link-lib=static=hts");
-        println!("cargo:rustc-link-search=/usr/lib/x86_64-linux-gnu/");
-        println!("cargo:rustc-link-lib=static=curl");
-        println!("cargo:rustc-link-lib=static=z");
-        println!("cargo:rustc-link-lib=static=lzma");
-        println!("cargo:rustc-link-lib=static=bz2");
-    } else {
-        println!("cargo:rustc-link-search={}/htslib/", base);
-        println!("cargo:rustc-link-lib=hts");
-    }
+    println!("cargo:rerun-if-env-changed=HTSLIB");
+    println!("cargo:rerun-if-env-changed=HTSLIB_VERSION");
 
     Ok(())
 }

@@ -10,4 +10,4 @@ edition = "2018"
 
 [build-dependencies]
 bindgen = "*"
-num_cpus = "*"
+pkg-config = "0.3.18"
