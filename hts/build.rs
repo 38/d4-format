@@ -6,7 +6,9 @@ use std::process::Command;
 
 fn create_hts_bindings(includes: &Vec<PathBuf>) -> Result<(), ()> {
     let include_params: Vec<_> = includes.into_iter().map(|x| format!("-I{:?}", x)).collect();
-    if !Path::new("generated/hts.rs").exists() {
+    if env::var("UPDATE_HEADER").map_or(false, |update| update == "1")
+        || !Path::new("generated/hts.rs").exists()
+    {
         BG::default()
             .header("hts_inc.h")
             .clang_args(&include_params)
@@ -20,7 +22,7 @@ fn create_hts_bindings(includes: &Vec<PathBuf>) -> Result<(), ()> {
 }
 fn main() -> Result<(), std::io::Error> {
     let dynamic_link = env::var("HTSLIB").map_or(false, |htslib| htslib == "dynamic");
-    let htslib_includes = if dynamic_link && env::var("HTSLIB_VERSION").is_err(){
+    let htslib_includes = if dynamic_link && env::var("HTSLIB_VERSION").is_err() {
         pkg_config::Config::new()
             .statik(false)
             .probe("htslib")
@@ -42,14 +44,18 @@ fn main() -> Result<(), std::io::Error> {
         println!("cargo:rerun-if-changed=build_htslib.sh");
 
         println!("cargo:rustc-link-search={}", hts_root.to_str().unwrap());
-        
+
         if !dynamic_link {
             println!("cargo:rustc-link-lib=static=hts");
             println!("cargo:rustc-link-search=/usr/lib/x86_64-linux-gnu/");
-            println!("cargo:rustc-link-lib=static=curl");
-            println!("cargo:rustc-link-lib=static=z");
-            println!("cargo:rustc-link-lib=static=lzma");
-            println!("cargo:rustc-link-lib=static=bz2");
+            if env::var("CARGO_CFG_TARGET_ENV") == Ok("musl".to_string()) {
+                println!("cargo:rustc-link-lib=static=z");
+                println!("cargo:rustc-link-lib=static=bz2");
+            } else {
+                println!("cargo:rustc-link-lib=static=z");
+                println!("cargo:rustc-link-lib=static=lzma");
+                println!("cargo:rustc-link-lib=static=bz2");
+            }
         } else {
             println!("cargo:rustc-link-lib=hts");
         }
