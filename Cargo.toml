@@ -1,4 +1,5 @@
 [workspace]
+default-members=["d4utils"]
 members = [
 	"framefile",
 	"hts",
@@ -8,4 +9,4 @@ members = [
 ]
 
 [profile.release]
-debug = true
+debug = false

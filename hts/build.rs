@@ -26,6 +26,7 @@ fn build_own_htslib(dynamic_link: bool) -> Vec<PathBuf> {
 
     assert!(Command::new("bash")
         .args(&["build_htslib.sh"])
+        .env("HTSLIB", if dynamic_link { "dynamic" } else {"static"})
         .stdout(std::process::Stdio::null())
         .spawn()
         .expect("Unable to build htslib")
@@ -45,7 +46,6 @@ fn build_own_htslib(dynamic_link: bool) -> Vec<PathBuf> {
             println!("cargo:rustc-link-lib=static=bz2");
         } else {
             println!("cargo:rustc-link-lib=static=z");
-            println!("cargo:rustc-link-lib=static=lzma");
             println!("cargo:rustc-link-lib=static=bz2");
         }
     } else {
@@ -61,9 +61,9 @@ fn main() -> Result<(), std::io::Error> {
         pkg_config::Config::new()
             .atleast_version("1.6")
             .probe("htslib")
-            .map_or_else(|_| build_own_htslib(dynamic_link), |lib| lib.include_paths)
+            .map_or_else(|_| build_own_htslib(false), |lib| lib.include_paths)
     } else {
-        build_own_htslib(dynamic_link)
+        build_own_htslib(false)
     };
 
     if let Err(_) = create_hts_bindings(&htslib_includes) {
