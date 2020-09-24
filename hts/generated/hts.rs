@@ -181,7 +181,7 @@ pub const FT_VCF_GZ: u32 = 3;
 pub const FT_BCF: u32 = 4;
 pub const FT_BCF_GZ: u32 = 5;
 pub const FT_STDIN: u32 = 8;
-pub const SAM_FORMAT_VERSION: &'static [u8; 4usize] = b"1.6\0";
+pub const SAM_FORMAT_VERSION: &'static [u8; 4usize] = b"1.5\0";
 pub const BAM_CMATCH: u32 = 0;
 pub const BAM_CINS: u32 = 1;
 pub const BAM_CDEL: u32 = 2;
@@ -208,6 +208,7 @@ pub const BAM_FSECONDARY: u32 = 256;
 pub const BAM_FQCFAIL: u32 = 512;
 pub const BAM_FDUP: u32 = 1024;
 pub const BAM_FSUPPLEMENTARY: u32 = 2048;
+pub const USE_SYSTEM_HTSLIB: u32 = 1;
 pub type __u_char = ::std::os::raw::c_uchar;
 pub type __u_short = ::std::os::raw::c_ushort;
 pub type __u_int = ::std::os::raw::c_uint;
@@ -284,6 +285,7 @@ pub type uint_fast32_t = ::std::os::raw::c_ulong;
 pub type uint_fast64_t = ::std::os::raw::c_ulong;
 pub type intmax_t = __intmax_t;
 pub type uintmax_t = __uintmax_t;
+pub type size_t = ::std::os::raw::c_ulong;
 pub type wchar_t = ::std::os::raw::c_int;
 #[repr(C)]
 #[repr(align(16))]
@@ -334,19 +336,14 @@ pub struct hFILE {
 }
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
-pub struct hFILE_callback_ops {
-    _unused: [u8; 0],
-}
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
 pub struct hts_tpool {
     _unused: [u8; 0],
 }
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct __kstring_t {
-    pub l: usize,
-    pub m: usize,
+    pub l: size_t,
+    pub m: size_t,
     pub s: *mut ::std::os::raw::c_char,
 }
 pub type kstring_t = __kstring_t;
@@ -562,8 +559,6 @@ pub const hts_fmt_option_CRAM_OPT_USE_RANS: hts_fmt_option = 17;
 pub const hts_fmt_option_CRAM_OPT_REQUIRED_FIELDS: hts_fmt_option = 18;
 pub const hts_fmt_option_CRAM_OPT_LOSSY_NAMES: hts_fmt_option = 19;
 pub const hts_fmt_option_CRAM_OPT_BASES_PER_SLICE: hts_fmt_option = 20;
-pub const hts_fmt_option_CRAM_OPT_STORE_MD: hts_fmt_option = 21;
-pub const hts_fmt_option_CRAM_OPT_STORE_NM: hts_fmt_option = 22;
 pub const hts_fmt_option_HTS_OPT_COMPRESSION_LEVEL: hts_fmt_option = 100;
 pub const hts_fmt_option_HTS_OPT_NTHREADS: hts_fmt_option = 101;
 pub const hts_fmt_option_HTS_OPT_THREAD_POOL: hts_fmt_option = 102;
@@ -610,7 +605,7 @@ extern "C" {
     ) -> ::std::os::raw::c_int;
 }
 extern "C" {
-    pub static mut seq_nt16_table: [::std::os::raw::c_uchar; 256usize];
+    pub static seq_nt16_table: [::std::os::raw::c_uchar; 256usize];
 }
 extern "C" {
     pub static mut seq_nt16_str: [::std::os::raw::c_char; 0usize];
@@ -630,13 +625,6 @@ extern "C" {
 extern "C" {
     pub fn hts_open(
         fn_: *const ::std::os::raw::c_char,
-        mode: *const ::std::os::raw::c_char,
-    ) -> *mut htsFile;
-}
-extern "C" {
-    pub fn hts_open_callback(
-        fn_: *const ::std::os::raw::c_char,
-        ops: *mut hFILE_callback_ops,
         mode: *const ::std::os::raw::c_char,
     ) -> *mut htsFile;
 }
@@ -1480,29 +1468,6 @@ extern "C" {
         tag: *const ::std::os::raw::c_char,
         len: ::std::os::raw::c_int,
         data: *const ::std::os::raw::c_char,
-    ) -> ::std::os::raw::c_int;
-}
-extern "C" {
-    pub fn bam_aux_update_int(
-        b: *mut bam1_t,
-        tag: *const ::std::os::raw::c_char,
-        val: i64,
-    ) -> ::std::os::raw::c_int;
-}
-extern "C" {
-    pub fn bam_aux_update_float(
-        b: *mut bam1_t,
-        tag: *const ::std::os::raw::c_char,
-        val: f32,
-    ) -> ::std::os::raw::c_int;
-}
-extern "C" {
-    pub fn bam_aux_update_array(
-        b: *mut bam1_t,
-        tag: *const ::std::os::raw::c_char,
-        type_: u8,
-        items: u32,
-        data: *mut ::std::os::raw::c_void,
     ) -> ::std::os::raw::c_int;
 }
 #[repr(C)]

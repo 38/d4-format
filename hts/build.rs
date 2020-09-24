@@ -4,10 +4,12 @@ use std::path::{Path, PathBuf};
 use std::env;
 use std::process::Command;
 
-fn create_hts_bindings(includes: &Vec<PathBuf>) -> Result<(), ()> {
-    let include_params: Vec<_> = includes.into_iter().map(|x| format!("-I{:?}", x)).collect();
-    if env::var("UPDATE_HEADER").map_or(false, |update| update == "1")
-        || !Path::new("generated/hts.rs").exists()
+fn create_hts_bindings(includes: &Vec<PathBuf>, version: &str, system: bool) -> Result<(), ()> {
+    let mut include_params: Vec<_> = includes.into_iter().map(|x| format!("-I{}/htslib", x.to_str().unwrap())).collect();
+    if system {
+        include_params.push("-DUSE_SYSTEM_HTSLIB".to_string());
+    }
+    if version != "1.11" || !Path::new("generated/hts.rs").exists()
     {
         BG::default()
             .header("hts_inc.h")
@@ -20,13 +22,13 @@ fn create_hts_bindings(includes: &Vec<PathBuf>) -> Result<(), ()> {
     }
     Ok(())
 }
-fn build_own_htslib(dynamic_link: bool) -> Vec<PathBuf> {
+fn build_own_htslib() -> (Vec<PathBuf>, String, bool) {
     let mut hts_root = PathBuf::from(env::var("OUT_DIR").unwrap());
     hts_root.push("htslib");
+    let version =  env::var("HTSLIB").map_or_else(|_| "1.11".to_string(), |v| v);
 
     assert!(Command::new("bash")
-        .args(&["build_htslib.sh"])
-        .env("HTSLIB", if dynamic_link { "dynamic" } else {"static"})
+        .args(&["build_htslib.sh", &version])
         .stdout(std::process::Stdio::null())
         .spawn()
         .expect("Unable to build htslib")
@@ -35,38 +37,29 @@ fn build_own_htslib(dynamic_link: bool) -> Vec<PathBuf> {
         .success());
 
     println!("cargo:rerun-if-changed=build_htslib.sh");
+    println!("cargo:rerun-if-changed=hts_inc.h");
 
     println!("cargo:rustc-link-search={}", hts_root.to_str().unwrap());
+    println!("cargo:rustc-link-lib=static=hts");
+    println!("cargo:rustc-link-search=/usr/lib/x86_64-linux-gnu/");
+    println!("cargo:rustc-link-lib=static=z");
+    println!("cargo:rustc-link-lib=static=bz2");
 
-    if !dynamic_link {
-        println!("cargo:rustc-link-lib=static=hts");
-        println!("cargo:rustc-link-search=/usr/lib/x86_64-linux-gnu/");
-        if env::var("CARGO_CFG_TARGET_ENV") == Ok("musl".to_string()) {
-            println!("cargo:rustc-link-lib=static=z");
-            println!("cargo:rustc-link-lib=static=bz2");
-        } else {
-            println!("cargo:rustc-link-lib=static=z");
-            println!("cargo:rustc-link-lib=static=bz2");
-        }
-    } else {
-        println!("cargo:rustc-link-lib=hts");
-    }
-
-    vec![hts_root]
+    (vec![hts_root], version, false)
 }
 fn main() -> Result<(), std::io::Error> {
-    let dynamic_link = env::var("HTSLIB").map_or(true, |htslib| htslib != "static")
-        && env::var("TARGET").map_or(true, |target| !target.ends_with("musl"));
-    let htslib_includes = if dynamic_link && env::var("HTSLIB_VERSION").is_err() {
+    let link_system_lib = env::var("HTSLIB").map_or(false, |htslib| htslib == "system");
+    
+    let (htslib_includes, lib_version, system) = if link_system_lib {
         pkg_config::Config::new()
             .atleast_version("1.6")
             .probe("htslib")
-            .map_or_else(|_| build_own_htslib(false), |lib| lib.include_paths)
+            .map_or_else(|_| build_own_htslib(), |lib| (lib.include_paths, lib.version, true))
     } else {
-        build_own_htslib(false)
+        build_own_htslib()
     };
 
-    if let Err(_) = create_hts_bindings(&htslib_includes) {
+    if let Err(_) = create_hts_bindings(&htslib_includes, &lib_version, system) {
         return Err(std::io::Error::new(
             std::io::ErrorKind::Other,
             "Bindgen failed",
@@ -74,7 +67,9 @@ fn main() -> Result<(), std::io::Error> {
     }
 
     println!("cargo:rerun-if-env-changed=HTSLIB");
-    println!("cargo:rerun-if-env-changed=HTSLIB_VERSION");
+    if !["1.6", "1.7", "1.8", "1.9"].iter().find(|&x| lib_version.starts_with(x)).is_some() {
+        println!("cargo:rustc-cfg=no_bam_hdr_destroy");
+    }
 
     Ok(())
 }
