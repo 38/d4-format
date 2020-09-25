@@ -5,12 +5,14 @@ use std::env;
 use std::process::Command;
 
 fn create_hts_bindings(includes: &Vec<PathBuf>, version: &str, system: bool) -> Result<(), ()> {
-    let mut include_params: Vec<_> = includes.into_iter().map(|x| format!("-I{}/htslib", x.to_str().unwrap())).collect();
+    let mut include_params: Vec<_> = includes
+        .into_iter()
+        .map(|x| format!("-I{}/htslib", x.to_str().unwrap()))
+        .collect();
     if system {
         include_params.push("-DUSE_SYSTEM_HTSLIB".to_string());
     }
-    if version != "1.11" || !Path::new("generated/hts.rs").exists()
-    {
+    if version != "1.11" || !Path::new("generated/hts.rs").exists() {
         BG::default()
             .header("hts_inc.h")
             .clang_args(&include_params)
@@ -25,7 +27,7 @@ fn create_hts_bindings(includes: &Vec<PathBuf>, version: &str, system: bool) -> 
 fn build_own_htslib() -> (Vec<PathBuf>, String, bool) {
     let mut hts_root = PathBuf::from(env::var("OUT_DIR").unwrap());
     hts_root.push("htslib");
-    let version =  env::var("HTSLIB").map_or_else(|_| "1.11".to_string(), |v| v);
+    let version = env::var("HTSLIB").map_or_else(|_| "1.11".to_string(), |v| v);
 
     assert!(Command::new("bash")
         .args(&["build_htslib.sh", &version])
@@ -49,12 +51,15 @@ fn build_own_htslib() -> (Vec<PathBuf>, String, bool) {
 }
 fn main() -> Result<(), std::io::Error> {
     let link_system_lib = env::var("HTSLIB").map_or(false, |htslib| htslib == "system");
-    
+
     let (htslib_includes, lib_version, system) = if link_system_lib {
         pkg_config::Config::new()
             .atleast_version("1.6")
             .probe("htslib")
-            .map_or_else(|_| build_own_htslib(), |lib| (lib.include_paths, lib.version, true))
+            .map_or_else(
+                |_| build_own_htslib(),
+                |lib| (lib.include_paths, lib.version, true),
+            )
     } else {
         build_own_htslib()
     };
@@ -67,7 +72,11 @@ fn main() -> Result<(), std::io::Error> {
     }
 
     println!("cargo:rerun-if-env-changed=HTSLIB");
-    if !["1.6", "1.7", "1.8", "1.9"].iter().find(|&x| lib_version.starts_with(x)).is_some() {
+    if !["1.6", "1.7", "1.8", "1.9"]
+        .iter()
+        .find(|&x| lib_version.starts_with(x))
+        .is_some()
+    {
         println!("cargo:rustc-cfg=no_bam_hdr_destroy");
     }
 

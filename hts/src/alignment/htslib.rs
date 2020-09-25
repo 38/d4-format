@@ -8,5 +8,5 @@ include!("../../generated/hts.rs");
 #[cfg(no_bam_hdr_destroy)]
 #[no_mangle]
 pub unsafe extern "C" fn bam_hdr_destroy(h: *mut bam_hdr_t) {
-    sam_hdr_destroy(h as _) 
+    sam_hdr_destroy(h as _)
 }

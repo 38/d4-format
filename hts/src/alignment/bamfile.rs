@@ -183,7 +183,14 @@ impl BamFile {
             }
         };
 
-        let iter = unsafe { sam_itr_queryi(self.idx, chrom as i32, (from as i32).into(), (to as i32).into()) };
+        let iter = unsafe {
+            sam_itr_queryi(
+                self.idx,
+                chrom as i32,
+                (from as i32).into(),
+                (to as i32).into(),
+            )
+        };
 
         if iter == null_mut() {
             return Err((-1).into());

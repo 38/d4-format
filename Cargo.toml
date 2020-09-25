@@ -6,6 +6,7 @@ members = [
 	"d4",
 	"d4utils",
 	"d4binding",
+	"bigwig",
 ]
 
 [profile.release]

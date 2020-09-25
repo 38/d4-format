@@ -198,6 +198,55 @@ fn main_impl<P: PTableWriter, S: STableWriter>(
                     );
                 });
         }
+        "bw" | "bigwig" => {
+            let bw_file = bigwig::BigWigFile::open(input_path)?;
+            d4_builder.append_chrom(
+                bw_file
+                    .chroms()
+                    .into_iter()
+                    .map(|(name, size)| Chrom { name, size }),
+            );
+            let mut d4_writer = d4_builder.create::<P, S>()?;
+            if enable_compression {
+                d4_writer
+                    .s_table
+                    .as_mut()
+                    .unwrap()
+                    .enable_deflate_encoding(compression_level);
+            }
+            let partition = d4_writer.parallel_parts(None)?;
+            for (mut pt, mut st) in partition {
+                let (chrom, left, right) = pt.region();
+                let chrom = chrom.to_string();
+                let mut last = left;
+                let mut p_encoder = pt.as_encoder();
+
+                let mut write_value = |pos: u32, value: i32| {
+                    if !p_encoder.encode(pos as usize, value) {
+                        st.encode(pos as u32, value).unwrap();
+                    }
+                };
+                if let Some(iter) = bw_file.query_range(&chrom, left, right) {
+                    for bigwig::BigWigInterval {
+                        begin: left,
+                        end: right,
+                        value,
+                    } in iter
+                    {
+                        for pos in last..left {
+                            write_value(pos, 0);
+                        }
+                        for pos in left..right {
+                            write_value(pos, value as i32);
+                        }
+                        last = right;
+                    }
+                }
+                for pos in last..right {
+                    write_value(pos, 0);
+                }
+            }
+        }
         "txt" | "bedgraph" => {
             d4_builder.append_chrom(
                 parse_genome_file(
