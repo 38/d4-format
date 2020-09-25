@@ -7,7 +7,7 @@ use std::process::Command;
 fn create_bindings(lib_root: &Path) -> Result<(), ()> {
     let include_param = format!("-I{}/libBigWig", lib_root.to_str().unwrap());
     eprintln!("{}", include_param);
-    if !Path::new("generated/hts.rs").exists() {
+    if !Path::new("generated/bigwig.rs").exists() {
         BG::default()
             .header("bigwig_inc.h")
             .clang_args(&[include_param.as_str()])
