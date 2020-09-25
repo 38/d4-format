@@ -101,6 +101,10 @@ fn main_impl<P: PTableWriter, S: STableWriter>(
         matches.value_of("dict-file"),
     )?);
 
+    if matches.is_present("sparse") {
+        d4_builder.set_dictionary(d4::Dictionary::new_simple_range_dict(0, 1)?);
+    }
+
     if matches.values_of("dict-auto").is_some() {
         if let Some(pattern) = matches
             .value_of("filter")
@@ -134,7 +138,7 @@ fn main_impl<P: PTableWriter, S: STableWriter>(
 
     let reference = matches.value_of("ref");
 
-    let enable_compression = matches.is_present("deflate");
+    let enable_compression = matches.is_present("deflate") || matches.is_present("sparse");
     let compression_level: u32 = matches
         .value_of("deflate-level")
         .unwrap_or("5")

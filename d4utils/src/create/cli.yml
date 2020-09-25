@@ -44,6 +44,10 @@ args:
         long: deflate-level
         value_name: level
         help: Configure the deflate algorithm, default 5
+    - sparse:
+        long: sparse
+        short: S
+        help: Sparse mode, this is same as '-zR0-1', which enable secondary table compression and disable primary table 
     - dump-dict:
         long: dump-dict
         help: Do not profile the BAM file, only dump the dictionary 
