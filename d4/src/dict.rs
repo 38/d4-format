@@ -109,8 +109,12 @@ impl Dictionary {
             .unwrap();
 
         let mut dict = vec![];
-        for i in 0..(1 << best_bit_width.0) {
-            dict.push(histogram[i as usize].0 as i32);
+        if histogram.empty() {
+            dict.push(0);
+        } else {
+            for i in 0..(1 << best_bit_width.0) {
+                dict.push(histogram[i as usize].0 as i32);
+            }
         }
 
         let min = dict.iter().min().unwrap();
