@@ -109,7 +109,7 @@ impl Dictionary {
             .unwrap();
 
         let mut dict = vec![];
-        if histogram.empty() {
+        if histogram.is_empty() {
             dict.push(0);
         } else {
             for i in 0..(1 << best_bit_width.0) {
