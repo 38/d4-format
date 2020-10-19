@@ -18,6 +18,7 @@ fn create_hts_bindings(includes: &Vec<PathBuf>, version: &str, system: bool) -> 
             .clang_args(&include_params)
             .layout_tests(false)
             .generate_comments(false)
+            .generate_inline_functions(false)
             .generate()?
             .write_to_file("generated/hts.rs")
             .expect("Unable to write the generated file");

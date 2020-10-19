@@ -50,5 +50,3 @@ sed -i 's/CPPFLAGS =/CPPFLAGS = -Izlib-1.2.11 -Ibzip2-1.0.6/g' Makefile
 is_musl || sed -i 's/CFLAGS *=/CFLAGS = -fPIC/g' Makefile
 
 make -j8 lib-static
-
-exit 0
