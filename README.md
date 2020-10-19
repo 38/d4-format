@@ -29,7 +29,7 @@ Modern DNA sequencing is used as a readout for diverse assays, with the count of
 ### Print the content of D4 file
 
 ```text
-$ d4utils show ../data/hg002.d4 | head -n 10
+$ d4utils view ../data/hg002.d4 | head -n 10
 chr1    0       9998    0
 chr1    9998    9999    6
 chr1    9999    10000   9
@@ -95,4 +95,10 @@ You can choose to install the d4utils bindary by running
 
 ```bash
 cargo install --path .
+```
+
+Or you can choose install from crates.io:
+
+```bash
+cargo install d4utils
 ```
