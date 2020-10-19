@@ -1,6 +1,6 @@
 use super::*;
-use framefile::mode::{AccessMode, ReadOnly, ReadWrite};
-use framefile::{Chunk, Directory};
+use d4_framefile::mode::{AccessMode, ReadOnly, ReadWrite};
+use d4_framefile::{Chunk, Directory};
 use std::fs::File;
 use std::io::Result;
 use std::sync::{Arc, Mutex};

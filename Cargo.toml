@@ -1,12 +1,12 @@
 [workspace]
 default-members=["d4utils"]
 members = [
-	"framefile",
-	"hts",
+	"d4-framefile",
+	"d4-hts",
 	"d4",
 	"d4utils",
 	"d4binding",
-	"bigwig",
+	"d4-bigwig",
 ]
 
 [profile.release]

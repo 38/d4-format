@@ -1,5 +1,5 @@
-use framefile::mode::ReadOnly;
-use framefile::Directory;
+use d4_framefile::mode::ReadOnly;
+use d4_framefile::Directory;
 
 use crate::header::Header;
 use crate::ptab::{PTablePartitionReader, PTableReader};

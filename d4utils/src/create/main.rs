@@ -3,7 +3,7 @@ use d4::ptab::{Encoder, PTablePartitionWriter, PTableWriter, UncompressedWriter}
 use d4::stab::{RangeRecord, STablePartitionWriter, STableWriter, SimpleKeyValueWriter};
 use d4::Chrom;
 use d4::Dictionary;
-use hts::{BamFile, DepthIter};
+use d4_hts::{BamFile, DepthIter};
 use log::info;
 use rayon::prelude::*;
 use std::fs::File;
@@ -203,7 +203,7 @@ fn main_impl<P: PTableWriter, S: STableWriter>(
                 });
         }
         "bw" | "bigwig" => {
-            let bw_file = bigwig::BigWigFile::open(input_path)?;
+            let bw_file = d4_bigwig::BigWigFile::open(input_path)?;
             d4_builder.append_chrom(
                 bw_file
                     .chroms()
@@ -231,7 +231,7 @@ fn main_impl<P: PTableWriter, S: STableWriter>(
                     }
                 };
                 if let Some(iter) = bw_file.query_range(&chrom, left, right) {
-                    for bigwig::BigWigInterval {
+                    for d4_bigwig::BigWigInterval {
                         begin: left,
                         end: right,
                         value,

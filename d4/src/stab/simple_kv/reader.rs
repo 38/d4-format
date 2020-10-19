@@ -1,6 +1,6 @@
-use framefile::mapped::{MappedDirectory, MappedStreamFrame};
-use framefile::mode::ReadOnly;
-use framefile::Directory;
+use d4_framefile::mapped::{MappedDirectory, MappedStreamFrame};
+use d4_framefile::mode::ReadOnly;
+use d4_framefile::Directory;
 
 use super::record::Record;
 use super::record_block::RecordBlock;

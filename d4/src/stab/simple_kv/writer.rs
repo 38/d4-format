@@ -1,5 +1,5 @@
-use framefile::mode::ReadWrite;
-use framefile::{Directory, Stream};
+use d4_framefile::mode::ReadWrite;
+use d4_framefile::{Directory, Stream};
 
 use crate::stab::{STablePartitionWriter, STableWriter};
 use crate::Header;

@@ -1,6 +1,6 @@
 use crate::header::Header;
-use framefile::mode::{ReadOnly, ReadWrite};
-use framefile::Directory;
+use d4_framefile::mode::{ReadOnly, ReadWrite};
+use d4_framefile::Directory;
 use std::fs::File;
 use std::io::Result;
 

@@ -1,7 +1,7 @@
 use super::record::Record;
+use d4_framefile::mode::ReadWrite;
+use d4_framefile::Stream;
 use flate2::{write::DeflateEncoder, Compression};
-use framefile::mode::ReadWrite;
-use framefile::Stream;
 use serde_derive::{Deserialize, Serialize};
 
 use std::fs::File;

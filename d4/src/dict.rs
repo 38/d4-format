@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::io::{BufRead, BufReader, Read, Result};
 use std::path::Path;
 
-use hts::{BamFile, DepthIter};
+use d4_hts::{BamFile, DepthIter};
 use rand::Rng;
 use rayon::prelude::*;
 

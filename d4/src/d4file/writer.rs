@@ -1,6 +1,6 @@
-use framefile::mode::ReadWrite;
-use framefile::Directory;
-use hts::BamFile;
+use d4_framefile::mode::ReadWrite;
+use d4_framefile::Directory;
+use d4_hts::BamFile;
 use std::fs::{File, OpenOptions};
 use std::io::{Result, Write};
 use std::path::{Path, PathBuf};
