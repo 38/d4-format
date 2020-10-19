@@ -9,14 +9,14 @@ edition = "2018"
 [dependencies]
 d4 = {path = "../d4"}
 rayon = "1.3.0"
-d4-hts = { path = "../d4-hts" }
-d4-framefile = { path = "../d4-framefile" }
+d4-hts = "0.1.1"
+d4-framefile = "0.1.0"
 clap = { version = "2.33.0", features = ["yaml"] }
 regex = "1.3.1"
 log = "0.4.8"
 env_logger = "0.7.1"
 plotters = { version = "0.2.12", default_features = false, features = ["svg", "area_series"] }
-d4-bigwig = {path = "../d4-bigwig"}
+d4-bigwig = "0.1.0"
 
 [dependencies.cpuprofiler]
 version = "0.0.4"
