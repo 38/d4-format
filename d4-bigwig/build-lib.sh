@@ -1,4 +1,10 @@
 #!/bin/bash
+
+if [ "${DOCS_RS}" = "1" ]
+then
+	exit 0
+fi
+
 set -x
 cd $1
 rm -rf ${1}/libBigWig

@@ -1,19 +1,14 @@
 [package]
 name = "d4-bigwig"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["Hao Hou <haohou302@gmail.com>"]
 edition = "2018"
 license = "MIT"
 description = "The libBigWig binding used by D4"
 repository = "https://github.com/38/d4-format"
 
-[features]
-docs_build = []
-
 [dependencies]
 
 [build-dependencies]
 bindgen = "0.55.1"
 
-[package.metadata.docs.rs]
-features = ["docs_build"]
