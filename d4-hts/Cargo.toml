@@ -10,5 +10,5 @@ repository = "https://github.com/38/d4-format"
 [dependencies]
 
 [build-dependencies]
-bindgen = "*"
+bindgen = "0.55.1"
 pkg-config = "0.3.18"
