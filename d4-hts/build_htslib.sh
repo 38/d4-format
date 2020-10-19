@@ -1,5 +1,10 @@
 #!/bin/bash
 
+if [ "${DOCS_RS}" = "1" ]
+then
+	exit 0
+fi
+
 set -ex
 
 pushd ${OUT_DIR}
