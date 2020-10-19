@@ -4,6 +4,8 @@ version = "0.1.0"
 authors = ["Hao Hou <haohou302@gmail.com>"]
 edition = "2018"
 license = "MIT"
+description = "The D4 file format implementation"
+repository = "https://github.com/38/d4-format"
 readme = "../readme.md"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
