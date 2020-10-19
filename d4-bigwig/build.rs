@@ -20,6 +20,10 @@ fn create_bindings(lib_root: &Path) -> Result<(), ()> {
     Ok(())
 }
 
+#[cfg(docs_build)]
+fn main() {}
+
+#[cfg(not(docs_build))]
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let lib_root = PathBuf::from(env::var("OUT_DIR").unwrap());
     assert!(Command::new("bash")
