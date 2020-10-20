@@ -11,7 +11,7 @@ Modern DNA sequencing is used as a readout for diverse assays, with the count of
 - From CRAM/BAM file
 
 ```bash
-  d4utils create -Azr ../data/hg19.fa.gz.fai ../data/hg002.cram /tmp/hg002.d4
+  d4utils create -Azr hg19.fa.gz.fai hg002.cram hg002.d4
 ```
 
 - From BigWig file
@@ -26,10 +26,10 @@ Modern DNA sequencing is used as a readout for diverse assays, with the count of
   d4utils create -z -g hg19.genome input.bedgraph output.d4
 ```
 
-### Print the content of D4 file
+### Convert the contents of a D4 file to BEDGRAPH
 
 ```text
-$ d4utils view ../data/hg002.d4 | head -n 10
+$ d4utils view hg002.d4 | head -n 10
 chr1    0       9998    0
 chr1    9998    9999    6
 chr1    9999    10000   9
@@ -45,7 +45,7 @@ chr1    10006   10007   135
 ### Run stat on a D4 file
 
 ```text
-$ d4utils stat ../data/hg002.d4
+$ d4utils stat hg002.d4
 chr1    0       249250621       27.075065016588262
 chr10   0       135534747       31.59483947684648
 chr11   0       135006516       25.970025943044114
@@ -91,7 +91,7 @@ you choose.
 
 ### Installation
 
-You can choose to install the d4utils bindary by running
+You can choose to install the d4utils binary by running
 
 ```bash
 cargo install --path .
