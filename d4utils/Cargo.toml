@@ -9,7 +9,7 @@ description = "The CLI utils for D4 file format"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-d4 = { path = "../d4 }
+d4 = { path = "../d4" }
 d4-hts = { path = "../d4-hts" }
 d4-framefile = { path = "../d4-framefile" }
 d4-bigwig = { path = "../d4-bigwig" }

@@ -64,7 +64,7 @@ pub fn entry_point(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> 
                     .iter_mut()
                     .find(|((p, _), _)| p.region().0 == chr)
                 {
-                    part.1.push((start - 1, end - 1));
+                    part.1.push((start, end));
                 }
             });
     });

@@ -11,26 +11,38 @@ pub struct DepthIter<'a, R: AlignmentReader<'a>> {
     cur_pos: usize,
     heap: BinaryHeap<Reverse<usize>>,
     next_read: Option<(i32, usize, usize)>,
+    filter: Option<Box<dyn Fn(&Alignment) -> bool + 'a>>,
 }
 
 impl<'a, R: AlignmentReader<'a>> DepthIter<'a, R> {
-    pub fn new(reader: R) -> Self {
+    pub fn with_filter<F: Fn(&Alignment) -> bool + 'a>(reader: R, filter: F) -> Self {
         let (chrom, pos) = reader.start();
-        let mut iter = reader.to_alignment_iter();
-        let next_read = iter.next().map(|x| {
-            (
-                x.as_ref().unwrap().ref_id(),
-                x.as_ref().unwrap().ref_begin(),
-                x.as_ref().unwrap().ref_end(),
-            )
-        });
-        Self {
+        let iter = reader.to_alignment_iter();
+
+        let mut ret = Self {
             iter,
-            next_read,
+            next_read: None,
             cur_chrom: chrom as i32,
             cur_pos: pos as usize,
             heap: BinaryHeap::new(),
+            filter: Some(Box::new(filter)),
+        };
+
+        ret.load_next();
+        ret
+    }
+
+    fn load_next(&mut self) {
+        self.next_read = loop {
+            if let Some(Ok(read)) = self.iter.next() {
+                if self.filter.as_ref().map_or(true, |predict| predict(&read)) {
+                    break Some(read);
+                }
+            } else {
+                break None;
+            }
         }
+        .map(|read| (read.ref_id(), read.ref_begin(), read.ref_end()));
     }
 }
 

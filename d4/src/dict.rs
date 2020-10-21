@@ -33,6 +33,7 @@ impl Dictionary {
         path: P,
         filter: F,
         reference: Option<&str>,
+        min_mq: u8,
     ) -> std::result::Result<Self, Box<dyn std::error::Error>> {
         let bam = BamFile::open(path.as_ref())?;
         let mut parts = vec![];
@@ -69,7 +70,7 @@ impl Dictionary {
                 let mut previous_value = None;
                 let mut histogram = HashMap::new();
                 let mut range_count = HashMap::new();
-                for (_, _, dep) in DepthIter::new(range) {
+                for (_, _, dep) in DepthIter::with_filter(range, |r| r.map_qual() >= min_mq) {
                     match previous_value {
                         Some(d) if d == dep => continue,
                         Some(_) | None => {

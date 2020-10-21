@@ -51,6 +51,11 @@ args:
     - dump-dict:
         long: dump-dict
         help: Do not profile the BAM file, only dump the dictionary 
+    - min-mqual:
+        long: mapping-qual
+        short: q
+        value_name: mapping-qual
+        help: The minimal mapping quality (Only valid with CRAM/BAM inputs)
     - input-file:
         required: true
         help: Path to the input file 
