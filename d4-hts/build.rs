@@ -11,6 +11,7 @@ fn create_hts_bindings(includes: &Vec<PathBuf>, version: &str, system: bool) -> 
         .collect();
     if system {
         include_params.push("-DUSE_SYSTEM_HTSLIB".to_string());
+        println!("cargo:rustc-cfg=system-htslib");
     }
     if version != "1.11" || !Path::new("generated/hts.rs").exists() {
         BG::default()

@@ -6,7 +6,11 @@ members = [
 	"d4",
 	"d4utils",
 	"d4binding",
+<<<<<<< Updated upstream
 	"d4-bigwig",
+=======
+	"bigwig",
+>>>>>>> Stashed changes
 ]
 
 [profile.release]
