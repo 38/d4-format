@@ -34,6 +34,7 @@ git commit -am 'Update the dependency'
 function publish-crate() {
 	mv Cargo.toml Cargo.toml.tmp
 	pushd $1
+	cargo update
 	cargo publish
 	popd
 	mv Cargo.toml.tmp Cargo.toml
