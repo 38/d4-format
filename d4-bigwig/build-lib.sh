@@ -10,7 +10,7 @@ cd $1
 rm -rf ${1}/libBigWig
 git clone -b ${2} https://github.com/dpryan79/libBigWig
 cd libBigWig
-sed -i 's/-lcurl//g' Makefile
+perl -i -pe 's/-lcurl//g' Makefile
 
 if [ ! -z $(echo ${TARGET} | grep "musl") ]
 then

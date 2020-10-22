@@ -22,7 +22,7 @@ cat > config.h << CONFIG_H
 #define HAVE_DRAND48 1
 CONFIG_H
 
-sed -i 's/hfile_libcurl\.o//g' Makefile
+perl -i -pe 's/hfile_libcurl\.o//g' Makefile
 	
 function is_musl() {
 	if [ ! -z $(echo $TARGET | grep musl) ]; then 
@@ -32,7 +32,7 @@ function is_musl() {
 	fi
 }
 
-is_musl && sed -i 's/gcc/musl-gcc/g' Makefile
+is_musl && perl -i -pe 's/gcc/musl-gcc/g' Makefile
 
 
 curl 'https://zlib.net/zlib-1.2.11.tar.gz' | tar xz
@@ -44,14 +44,14 @@ cd ..
 
 curl https://pilotfiber.dl.sourceforge.net/project/bzip2/bzip2-1.0.6.tar.gz | tar xz
 cd bzip2-1.0.6
-is_musl && sed -i 's/gcc/musl-gcc/g' Makefile
-is_musl || sed -i 's/CFLAGS=/CFLAGS=-fPIC /g' Makefile
+is_musl && perl -i -pe 's/gcc/musl-gcc/g' Makefile
+is_musl || perl -i -pe 's/CFLAGS=/CFLAGS=-fPIC /g' Makefile
 make
 cp libbz2.a ..
 cd ..
 
-sed -i 's/CPPFLAGS =/CPPFLAGS = -Izlib-1.2.11 -Ibzip2-1.0.6/g' Makefile
+perl -i -pe 's/CPPFLAGS =/CPPFLAGS = -Izlib-1.2.11 -Ibzip2-1.0.6/g' Makefile
 
-is_musl || sed -i 's/CFLAGS *=/CFLAGS = -fPIC/g' Makefile
+is_musl || perl -i -pe 's/CFLAGS *=/CFLAGS = -fPIC/g' Makefile
 
 make -j8 lib-static
