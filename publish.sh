@@ -38,6 +38,7 @@ function publish-crate() {
 	cargo publish
 	popd
 	mv Cargo.toml.tmp Cargo.toml
+	sleep 20
 }
 
 publish-crate d4-hts
