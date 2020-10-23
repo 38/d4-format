@@ -6,12 +6,12 @@ args:
         short: s
         long: stat
         value_name: stat_type
-        help: "The type of statistics we want to perform, by default average. You can specify statistic methods: mean, median, hist, percentile=X% (If this is not speficied d4utils will use mean by default)"
+        help: "The type of statistics we want to perform, by default average. You can specify statistic methods: mean, median, hist, percentile=X% (If this is not specified d4utils will use mean by default)"
     - region:
         short: r
         long: region
         value_name: bed_file_path
-        help: A bed file that describes the region we want to run the stat
+        help: A bed file that describes the region on which we want to run the stat
     - threads:
         short: t
         long: threads
