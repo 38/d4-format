@@ -12,12 +12,14 @@ use std::fs::File;
 use std::io::Result;
 use std::marker::PhantomData;
 
+/// The writer type for the simple sparse array based secondary table
 pub struct SimpleKeyValueWriter<R: Record>(
     Directory<'static, ReadWrite, File>,
     CompressionMethod,
     PhantomData<R>,
 );
 
+/// The partial writer type for the simple sparse array based secondary table
 pub struct SimpleKeyValuePartialWriter<R: Record> {
     stream: Stream<'static, ReadWrite, File>,
     pending_record: Option<R>,

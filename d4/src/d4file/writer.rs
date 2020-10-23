@@ -13,15 +13,17 @@ use crate::stab::STableWriter;
 
 use super::FILE_MAGIC_NUM;
 
+/// Create a D4 file
 #[allow(dead_code)]
 pub struct D4FileWriter<PT: PTableWriter, ST: STableWriter> {
     file_root: Directory<'static, ReadWrite, File>,
-    pub header: Header,
-    pub p_table: PT,
-    pub s_table: Option<ST>,
+    pub(crate) header: Header,
+    pub(crate) p_table: PT,
+    pub(crate) s_table: Option<ST>,
 }
 
 impl<PT: PTableWriter, ST: STableWriter> D4FileWriter<PT, ST> {
+    /// Split the file writer into parts for parallel writing
     pub fn parallel_parts(
         &mut self,
         size_limit: Option<usize>,
@@ -40,6 +42,14 @@ impl<PT: PTableWriter, ST: STableWriter> D4FileWriter<PT, ST> {
             .collect();
         Ok(ret)
     }
+
+    /// Enable the secondary table compression
+    pub fn enable_secondary_table_compression(&mut self, level: u32) {
+        self.s_table
+            .as_mut()
+            .unwrap()
+            .enable_deflate_encoding(level);
+    }
 }
 
 impl<PT: PTableWriter, ST: STableWriter> Drop for D4FileWriter<PT, ST> {
@@ -48,6 +58,7 @@ impl<PT: PTableWriter, ST: STableWriter> Drop for D4FileWriter<PT, ST> {
     }
 }
 
+/// The builder that is used to build a D4 file
 pub struct D4FileBuilder {
     path: PathBuf,
     chrom_info: Vec<Chrom>,
@@ -56,6 +67,7 @@ pub struct D4FileBuilder {
 }
 
 impl D4FileBuilder {
+    /// Create a new D4 file builder
     pub fn new<P: AsRef<Path>>(path: P) -> D4FileBuilder {
         Self {
             path: path.as_ref().to_owned(),
@@ -65,11 +77,14 @@ impl D4FileBuilder {
         }
     }
 
+    /// Set a chromosome filter lambda, this will be used to determine if the chromosome should be
+    /// in the output
     pub fn set_filter<T: Fn(&str, usize) -> bool + 'static>(&mut self, filter: T) -> &mut Self {
         self.chrom_filter = Box::new(filter);
         self
     }
 
+    /// Append chromosomes to the chrom list
     pub fn append_chrom<I: Iterator<Item = Chrom>>(&mut self, chrom_it: I) -> &mut Self {
         for chrom in chrom_it {
             if (self.chrom_filter)(chrom.name.as_str(), chrom.size) {
@@ -79,6 +94,7 @@ impl D4FileBuilder {
         self
     }
 
+    /// Load the chromosome information from a input BAM file
     pub fn load_chrom_info_from_bam<P: AsRef<Path>>(&mut self, path: P) -> Result<&mut Self> {
         let bam_file = BamFile::open(path)
             .map_err(|_| std::io::Error::new(std::io::ErrorKind::Other, "Bam Read error"))?;
@@ -91,15 +107,18 @@ impl D4FileBuilder {
         )
     }
 
+    /// Set the file's dictionary
     pub fn set_dictionary(&mut self, dict: Dictionary) -> &mut Self {
         self.dict = dict;
         self
     }
 
+    /// Get a reference to the dictionary
     pub fn dictionary(&self) -> &Dictionary {
         &self.dict
     }
 
+    /// Create the D4 file writer for this file
     pub fn create<PT: PTableWriter, ST: STableWriter>(&mut self) -> Result<D4FileWriter<PT, ST>> {
         let mut file = OpenOptions::new()
             .create(true)

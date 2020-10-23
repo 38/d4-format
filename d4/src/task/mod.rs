@@ -1,3 +1,5 @@
+/*! The high-level parallel task interface */
+
 mod context;
 mod histogram;
 mod mean;

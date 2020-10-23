@@ -157,11 +157,7 @@ fn main_impl<P: PTableWriter, S: STableWriter>(
             let mut d4_writer = d4_builder.create::<P, S>()?;
 
             if enable_compression {
-                d4_writer
-                    .s_table
-                    .as_mut()
-                    .unwrap()
-                    .enable_deflate_encoding(compression_level);
+                d4_writer.enable_secondary_table_compression(compression_level);
             }
 
             let partitions = d4_writer.parallel_parts(Some(10_000_000))?;
@@ -220,11 +216,7 @@ fn main_impl<P: PTableWriter, S: STableWriter>(
             );
             let mut d4_writer = d4_builder.create::<P, S>()?;
             if enable_compression {
-                d4_writer
-                    .s_table
-                    .as_mut()
-                    .unwrap()
-                    .enable_deflate_encoding(compression_level);
+                d4_writer.enable_secondary_table_compression(compression_level);
             }
             let partition = d4_writer.parallel_parts(None)?;
             for (mut pt, mut st) in partition {
@@ -270,11 +262,7 @@ fn main_impl<P: PTableWriter, S: STableWriter>(
             );
             let mut d4_writer = d4_builder.create::<P, S>()?;
             if enable_compression {
-                d4_writer
-                    .s_table
-                    .as_mut()
-                    .unwrap()
-                    .enable_deflate_encoding(compression_level);
+                d4_writer.enable_secondary_table_compression(compression_level);
             }
             let mut partition = d4_writer.parallel_parts(None)?;
             let input = parse_text_file(input_path)?;

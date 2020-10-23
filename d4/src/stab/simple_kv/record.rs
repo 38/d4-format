@@ -57,6 +57,7 @@ pub trait Record: Sized + Copy + Send + 'static {
     fn is_valid(&self) -> bool;
 }
 
+/// The record that encoded by the triple (left, right, value)
 #[repr(packed)]
 #[derive(Clone, Copy)]
 pub struct RangeRecord {

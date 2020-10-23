@@ -7,12 +7,12 @@ use d4_hts::{BamFile, DepthIter};
 use rand::Rng;
 use rayon::prelude::*;
 
+/// The dictionary (a.k.a encoding table)
 #[derive(Clone, Serialize, Deserialize)]
 pub enum Dictionary {
-    SimpleRange {
-        low: i32,
-        high: i32,
-    },
+    /// The dictionary for a consequtive range
+    SimpleRange { low: i32, high: i32 },
+    /// The dctionary described as a key-value map
     Dictionary {
         #[serde(skip)]
         _v2i_map: Box<HashMap<i32, u32>>,
@@ -20,15 +20,22 @@ pub enum Dictionary {
     },
 }
 
+/// The dictionary encoding result
 pub enum EncodeResult {
+    /// The dictionary is successfully encoded the value
     DictionaryIndex(u32),
+    /// The dictionary can not encode the value, so that you need to sotre it elsewhere
     OutOfRange(i32),
 }
 
 impl Dictionary {
+    /// Pretty print the dictionary in JSON format
     pub fn pretty_print(&self) -> serde_json::Result<String> {
         serde_json::to_string_pretty(self)
     }
+
+    /// Run the random sampling algorithm on an alignment file, determining the optimal
+    /// dictionary configuration
     pub fn from_sample_bam<P: AsRef<Path>, F: Fn(&str, usize) -> bool>(
         path: P,
         filter: F,
@@ -125,6 +132,8 @@ impl Dictionary {
         }
         Ok(Self::from_dict_list(dict)?)
     }
+
+    /// Create a dictioanry from the mapping vector
     pub fn from_dict_list(mapping: Vec<i32>) -> Result<Self> {
         if mapping.len() == 0 {
             return Err(
@@ -148,6 +157,10 @@ impl Dictionary {
         ret.ensure_v2i_map();
         Ok(ret)
     }
+
+    /// Create a dictionary from a dictionay specification file.
+    /// The dictionary has 2^K lines, the N-th lines contains the actual value that
+    /// code N-1 encodes.
     pub fn new_dictionary_from_file<R: Read>(file: R) -> Result<Self> {
         let fp = BufReader::new(file);
         let mut mapping = vec![];
@@ -160,6 +173,7 @@ impl Dictionary {
         Self::from_dict_list(mapping)
     }
 
+    /// Create a new simple range dictionary
     pub fn new_simple_range_dict(left: i32, right: i32) -> Result<Self> {
         let n_values = (right - left).max(0) as usize;
         if n_values == 0 {
@@ -211,7 +225,7 @@ impl Dictionary {
         ret
     }
     #[inline(always)]
-    pub fn first_value(&self) -> i32 {
+    pub(crate) fn first_value(&self) -> i32 {
         match self {
             Self::SimpleRange { low, .. } => *low,
             Self::Dictionary { i2v_map, .. } => i2v_map[0],
@@ -219,7 +233,7 @@ impl Dictionary {
     }
 
     #[inline(always)]
-    pub fn decode_value(&self, idx: u32) -> Option<i32> {
+    pub(crate) fn decode_value(&self, idx: u32) -> Option<i32> {
         match self {
             Self::SimpleRange { low, .. } => {
                 return Some(*low + idx as i32);
@@ -231,7 +245,7 @@ impl Dictionary {
     }
 
     #[inline(always)]
-    pub fn encode_value(&self, value: i32) -> EncodeResult {
+    pub(crate) fn encode_value(&self, value: i32) -> EncodeResult {
         match self {
             Self::SimpleRange { low, high } => {
                 if value >= *low && value < *high {

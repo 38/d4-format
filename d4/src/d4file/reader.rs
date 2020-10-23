@@ -9,6 +9,7 @@ use std::fs::File;
 use std::io::{Read, Result};
 use std::path::Path;
 
+/// The reader that reads a D4 file
 pub struct D4FileReader<P: PTableReader, S: STableReader> {
     _root: Directory<'static, ReadOnly, File>,
     header: Header,
@@ -17,6 +18,7 @@ pub struct D4FileReader<P: PTableReader, S: STableReader> {
 }
 
 impl<P: PTableReader, S: STableReader> D4FileReader<P, S> {
+    /// Split the input D4 file into small chunks
     pub fn split(
         &mut self,
         size_limit: Option<usize>,
@@ -26,9 +28,11 @@ impl<P: PTableReader, S: STableReader> D4FileReader<P, S> {
         let s_parts = self.s_table.split(partition.as_ref())?;
         Ok(p_parts.into_iter().zip(s_parts.into_iter()).collect())
     }
+    /// Get the header of the input D4 file
     pub fn header(&self) -> &Header {
         &self.header
     }
+    /// Open a D4 file for read
     pub fn open<PathType: AsRef<Path>>(path: PathType) -> Result<Self> {
         let mut fp = File::open(path.as_ref())?;
         let mut signature = [0u8; 8];

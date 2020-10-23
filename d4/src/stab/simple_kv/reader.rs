@@ -16,11 +16,13 @@ use std::sync::Arc;
 
 use std::cell::RefCell;
 
+/// The reader for simple sparse array based secondary table
 pub struct SimpleKeyValueReader<R: Record> {
     s_table_root: Arc<MappedDirectory>,
     _p: PhantomData<R>,
 }
 
+/// The parallel partial reader for simple sparse array based secondary table
 pub struct SimpleKeyValuePartialReader<R: Record> {
     _root: Arc<MappedDirectory>,
     records: Vec<RecordBlock<'static, R>>,

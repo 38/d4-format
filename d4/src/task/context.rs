@@ -64,6 +64,7 @@ impl<P: PTableReader, S: STableReader, T: Task> PartitionContext<P, S, T> {
     }
 }
 
+/// The context for a parallel task
 pub struct TaskContext<P: PTableReader, S: STableReader, T: Task> {
     regions: Vec<T>,
     partitions: Vec<PartitionContext<P, S, T>>,
@@ -75,6 +76,7 @@ where
     S::Partition: Send,
     T::Partition: Send,
 {
+    /// Create a new task that processing the given file
     pub fn new<Name: AsRef<str>>(
         reader: &mut D4FileReader<P, S>,
         regions: &[(Name, u32, u32)],
@@ -151,6 +153,7 @@ where
         })
     }
 
+    /// Run the task in parallel
     pub fn run(mut self) -> Vec<(String, u32, u32, T::Output)> {
         let mut tasks = vec![];
         std::mem::swap(&mut tasks, &mut self.partitions);
