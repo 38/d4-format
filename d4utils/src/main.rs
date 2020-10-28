@@ -31,5 +31,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
     #[cfg(feature = "prof")]
     cpuprofiler::PROFILER.lock().unwrap().stop()?;
+
+    if let Some(io_error) = ret.as_ref().err().map_or(None, |e| e.downcast_ref::<std::io::Error>()) {
+        match io_error.kind() {
+            std::io::ErrorKind::BrokenPipe => {
+                return Ok(());
+            },
+            _ => {}
+        }
+    }
     ret
 }
