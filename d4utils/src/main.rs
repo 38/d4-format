@@ -19,13 +19,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Some("plot") => plot::entry_point(args),
         _ => {
             eprintln!("D4 Utilities Program");
-            eprintln!("Usage: d4utils <subcommnd> <args>");
+            eprintln!("Usage: d4tools <subcommnd> <args>");
             eprintln!("Possible subcommands are:");
             eprintln!("\tcreate   \tCreate a new D4 depth profile");
             eprintln!("\tframedump\tDump The container data");
             eprintln!("\tview     \tPrint the underlying depth profile");
             eprintln!("\tstat     \tRun statistics on the given file");
             eprintln!("\tplot     \tPlot the specified region");
+            eprintln!("");
+            eprintln!("Type 'd4tools <subcommand> --help' to learn more about each subcommands.");
             Ok(())
         }
     };

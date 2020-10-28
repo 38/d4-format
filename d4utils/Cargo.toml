@@ -27,3 +27,6 @@ optional = true
 [features]
 prof = ["cpuprofiler"]
 
+[[bin]]
+name = "d4tools"
+path = "src/main.rs"
