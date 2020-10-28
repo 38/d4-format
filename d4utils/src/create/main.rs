@@ -87,8 +87,8 @@ fn main_impl<P: PTableWriter, S: STableWriter>(
     let ext = input_path.extension().unwrap();
 
     let min_mq = matches
-        .value_of("mapping-qual")
-        .map_or(60, |v| v.parse().unwrap_or(60));
+        .value_of("min-mqual")
+        .map_or(60, |v| v.parse().expect("Invalid minimal mapping quality option"));
 
     let output_path = matches.value_of("output-file").map_or_else(
         || {
