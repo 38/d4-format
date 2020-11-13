@@ -9,7 +9,7 @@ use crate::stab::{STablePartitionReader, STableReader};
 struct PartitionContext<P: PTableReader, S: STableReader, T: Task> {
     primary: P::Partition,
     secondary: S::Partition,
-    tasks: Vec<T::Partition>,
+    tasks: Vec<(usize, T::Partition)>,
 }
 
 impl<P: PTableReader, S: STableReader, T: Task> PartitionContext<P, S, T> {
@@ -17,6 +17,7 @@ impl<P: PTableReader, S: STableReader, T: Task> PartitionContext<P, S, T> {
         &mut self,
     ) -> Result<
         Vec<(
+            usize,
             String,
             u32,
             u32,
@@ -26,9 +27,36 @@ impl<P: PTableReader, S: STableReader, T: Task> PartitionContext<P, S, T> {
         let chr = self.primary.region().0.to_string();
         let per_base = self.primary.bit_width() > 0;
         let mut decoder = self.primary.as_decoder();
-        let mut result = vec![];
-        for mut stat_part in std::mem::replace(&mut self.tasks, vec![]) {
-            let (part_left, part_right) = stat_part.scope();
+        let mut break_points: Vec<_> = self
+            .tasks
+            .iter()
+            .map(|(_, x)| vec![x.scope().0, x.scope().1].into_iter())
+            .flatten()
+            .collect();
+        break_points.sort();
+
+        if break_points.is_empty() {
+            return Ok(vec![]);
+        }
+
+        for idx in 0..break_points.len() - 1 {
+            if break_points[idx] == break_points[idx + 1] {
+                continue;
+            }
+            let part_left = break_points[idx];
+            let part_right = break_points[idx + 1];
+
+            let active_tasks: Vec<_> = (0..self.tasks.len())
+                .filter(|&x| {
+                    let (l, r) = self.tasks[x].1.scope();
+                    l <= part_left && part_right <= r
+                })
+                .collect();
+
+            if active_tasks.is_empty() {
+                continue;
+            }
+
             if per_base {
                 decoder.decode_block(
                     part_left as usize,
@@ -44,7 +72,9 @@ impl<P: PTableReader, S: STableReader, T: Task> PartitionContext<P, S, T> {
                                 }
                             }
                         };
-                        stat_part.feed(pos as u32, value);
+                        for &task_id in active_tasks.iter() {
+                            self.tasks[task_id].1.feed(pos as u32, value);
+                        }
                     },
                 );
             } else {
@@ -52,14 +82,23 @@ impl<P: PTableReader, S: STableReader, T: Task> PartitionContext<P, S, T> {
                 for (mut left, mut right, value) in iter {
                     left = left.max(part_left);
                     right = right.min(part_right);
-                    stat_part.feed_range(left, right, value);
+                    for &task_id in active_tasks.iter() {
+                        self.tasks[task_id].1.feed_range(left, right, value);
+                    }
                     if right == part_right {
                         break;
                     }
                 }
             }
-            result.push((chr.clone(), part_left, part_right, stat_part.into_result()));
         }
+        let result = std::mem::take(&mut self.tasks)
+            .into_iter()
+            .map(|task| {
+                let (left, right) = task.1.scope();
+                let chr = chr.clone();
+                (task.0, chr, left, right, task.1.into_result())
+            })
+            .collect();
         Ok(result)
     }
 }
@@ -90,56 +129,45 @@ where
             .collect();
         regions.sort();
 
-        let mut task_assignment: Vec<Vec<T::Partition>> =
+        let mut task_assignment: Vec<Vec<(usize, T::Partition)>> =
             (0..file_partition.len()).map(|_| vec![]).collect();
 
         // Now assign the d4 file partition to each task assignments
         let mut idx = 0;
-        for region in regions.iter() {
-            // for each task region, try to assign it to one or more file partitions
-            // Before actually perform the assignment, since we have sorted both task_partition and
-            // regions with the same ordering function. So we just loop over the file regions that doesn't
-            // have any task on it
-            while idx < file_partition.len()
-                && (file_partition[idx].0.region().0 < region.0.as_ref()
-                    || file_partition[idx].0.region().2 < region.1)
-            {
+        for (part, fpid) in file_partition.iter().zip(0..) {
+            let (chr, fpl, fpr) = part.0.region();
+            while idx < regions.len() && (regions[idx].0.as_str() < chr || regions[idx].2 < fpl) {
                 idx += 1;
             }
-            if idx < file_partition.len() && file_partition[idx].0.region().0 > region.0.as_ref() {
-                continue;
-            }
-            if idx >= file_partition.len() {
-                break;
-            }
-            while idx < file_partition.len() {
-                let file_part = &file_partition[idx];
-                let file_region = file_part.0.region();
-                let actual_left = region.1.max(file_region.1);
-                let actual_right = region.2.min(file_region.2);
-                // If the size of the assignment on this part is zero, this indicates
-                // the task the completely assigned. Thus we are good to go.
-                if file_region.0 != region.0 || actual_right - actual_left == 0 {
+
+            let mut overlapping_idx = idx;
+
+            while overlapping_idx < regions.len() {
+                let this = &regions[overlapping_idx];
+                let (c, l, r) = (&this.0, this.1, this.2);
+                if c != chr || fpl < l {
                     break;
                 }
-                task_assignment[idx].push(<<T as Task>::Partition as TaskPartition>::new(
-                    actual_left,
-                    actual_right,
-                    partition_param.clone(),
+                let actual_left = fpl.max(l);
+                let actual_right = fpr.min(r);
+
+                task_assignment[fpid].push((
+                    overlapping_idx,
+                    <<T as Task>::Partition as TaskPartition>::new(
+                        actual_left,
+                        actual_right,
+                        partition_param.clone(),
+                    ),
                 ));
-                if actual_right == file_region.2 {
-                    idx += 1;
-                }
-                if actual_right == region.2 {
-                    break;
-                }
+
+                overlapping_idx += 1;
             }
         }
 
         Ok(Self {
             regions: regions
                 .into_iter()
-                .map(|r| T::new(r.0.as_ref(), r.1, r.2))
+                .map(|r| T::new(&r.0, r.1, r.2))
                 .collect(),
             partitions: file_partition
                 .into_iter()
@@ -163,26 +191,21 @@ where
             .map(|mut partition| partition.execute().unwrap())
             .flatten()
             .collect();
-        task_result.sort_by_key(|k| (k.0.clone(), k.1, k.2));
+        task_result.sort_by_key(|&(region_id, ..)| region_id);
 
         let mut result = vec![];
 
-        let mut idx = 0;
-        for region_ctx in self.regions {
+        let mut task_result_idx = 0;
+        for (id, region_ctx) in self.regions.into_iter().enumerate() {
             let region = region_ctx.region();
-            let mut partitions = vec![];
-            while idx < task_result.len()
-                && task_result[idx].0.as_str() <= region.0
-                && task_result[idx].2 <= region.2
-            {
-                let next_result = &task_result[idx];
-                let (chr, left, right, _) = next_result;
-                if &region.0 == chr && region.1 <= *left && *right <= region.2 {
-                    partitions.push(task_result[idx].3.clone());
+            let mut region_partition_results = vec![];
+            while task_result_idx < task_result.len() && task_result[task_result_idx].0 <= id {
+                if task_result[task_result_idx].0 == id {
+                    region_partition_results.push(task_result[task_result_idx].4.clone());
                 }
-                idx += 1;
+                task_result_idx += 1;
             }
-            let final_result = region_ctx.combine(&partitions);
+            let final_result = region_ctx.combine(&region_partition_results);
             result.push((region.0.to_string(), region.1, region.2, final_result));
         }
         result
