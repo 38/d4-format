@@ -136,7 +136,10 @@ where
         let mut idx = 0;
         for (part, fpid) in file_partition.iter().zip(0..) {
             let (chr, fpl, fpr) = part.0.region();
-            while idx < regions.len() && (regions[idx].0.as_str() < chr || regions[idx].2 < fpl) {
+            while idx < regions.len()
+                && (regions[idx].0.as_str() < chr
+                    || (regions[idx].0.as_str() == chr && regions[idx].2 < fpl))
+            {
                 idx += 1;
             }
 
@@ -145,7 +148,7 @@ where
             while overlapping_idx < regions.len() {
                 let this = &regions[overlapping_idx];
                 let (c, l, r) = (&this.0, this.1, this.2);
-                if c != chr || fpl < l {
+                if c != chr || fpr < l {
                     break;
                 }
                 let actual_left = fpl.max(l);
