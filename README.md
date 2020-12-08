@@ -4,7 +4,7 @@
 
 Modern DNA sequencing is used as a readout for diverse assays, with the count of aligned sequences, or "read depth", serving as the quantitative signal for many underlying cellular phenomena. Despite wide use and thousands of datasets, existing formats used for the storage and analysis of read depths are limited with respect to both size and speed. For example, it is faster to recalculate sequencing depth from an alignment file than it is to analyze the text output from that calculation. We sought to improve on existing formats such as BigWig and compressed BED files by creating the Dense Depth Data Dump (D4) format and tool suite. The D4 format is adaptive in that it profiles a random sample of aligned sequence depth from the input BAM or CRAM file to determine an optimal encoding that  minimizes file size, while also enabling fast data access. We show that D4 uses less disk space for both RNA-Seq and whole-genome sequencing and offers 3 to 440 fold speed improvements over existing formats for random access, aggregation and summarization for scalable downstream analyses that would be otherwise intractable.
 
-## Basic Usage by Examples
+## Basic Usage by Examples (each should take seconds)
 
 ### Create a D4 file
 
@@ -220,7 +220,7 @@ And it will produce the `d4utils` binary which you can find at either
 `target/debug/d4utils` or `target/release/d4utils` depends on which build mode
 you choose.
 
-### Installation
+### Installation (< 2 minutes)
 
 You can choose to install the d4utils binary by running
 
