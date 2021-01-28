@@ -196,7 +196,7 @@ fn main_impl<P: PTableWriter, S: STableWriter>(
                     s_table.flush().unwrap();
                     s_table.finish().unwrap();
                     let time_end = std::time::SystemTime::now();
-                    let duration = time_end.duration_since(time_begin).unwrap();
+                    let duration = time_end.duration_since(time_begin).unwrap_or_default();
                     info!(
                         "Task completed: {}:{}-{} Duration: {}ms",
                         chr,
