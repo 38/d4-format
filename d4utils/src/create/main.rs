@@ -151,7 +151,7 @@ fn main_impl<P: PTableWriter, S: STableWriter>(
         .parse()
         .unwrap();
 
-    match ext.to_str().unwrap() {
+    match ext.to_str().unwrap().to_lowercase().as_ref() {
         "sam" | "bam" | "cram" => {
             d4_builder.load_chrom_info_from_bam(input_path)?;
             let mut d4_writer = d4_builder.create::<P, S>()?;

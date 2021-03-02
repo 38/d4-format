@@ -10,6 +10,11 @@ args:
         required: true
         help: Path to the input file 
         index: 1
+    - no-missing-data:
+        required: false
+        short: A
+        long: no-missing-data
+        help: Do not print print those region without data
     - regions:
         required: false
         help: Regions to be viewed

@@ -36,6 +36,8 @@ pub fn entry_point(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> 
         return Ok(());
     }
 
+    let should_print_zero = !matches.is_present("no-missing-data");
+
     let partition = d4file.split(None)?;
 
     let mut stdout = std::io::BufWriter::new(std::io::stdout());
@@ -99,7 +101,9 @@ pub fn entry_point(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> 
                 };
                 if let Some((begin, val)) = last {
                     if value != val {
-                        write_bed_record_fast(&mut stdout, chr.as_ref(), begin, pos, val)?;
+                        if val != 0 || should_print_zero {
+                            write_bed_record_fast(&mut stdout, chr.as_ref(), begin, pos, val)?;
+                        }
                         last = Some((pos, value));
                     }
                 } else {
@@ -107,7 +111,9 @@ pub fn entry_point(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> 
                 }
             }
             if let Some(last) = last {
-                write_bed_record_fast(&mut stdout, chr.as_ref(), last.0, to, last.1)?;
+                if last.1 != 0 || should_print_zero {
+                    write_bed_record_fast(&mut stdout, chr.as_ref(), last.0, to, last.1)?;
+                }
             }
         }
     }
