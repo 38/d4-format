@@ -1,5 +1,9 @@
 use super::Alignment;
 impl<'a> Alignment<'a> {
+    pub fn flag(&self) -> u16 {
+        self.hts_obj().core.flag
+    }
+
     pub fn seq_len(&self) -> usize {
         self.hts_obj().core.l_qseq as usize
     }

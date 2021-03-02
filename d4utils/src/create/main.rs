@@ -90,6 +90,10 @@ fn main_impl<P: PTableWriter, S: STableWriter>(
         v.parse().expect("Invalid minimal mapping quality option")
     });
 
+    let bam_flags = matches
+        .value_of("bam-flag")
+        .map(|v| v.parse::<u16>().expect("Invalid BAM flag"));
+
     let output_path = matches.value_of("output-file").map_or_else(
         || {
             let mut ret = input_path.to_owned();
@@ -180,9 +184,10 @@ fn main_impl<P: PTableWriter, S: STableWriter>(
                         .range(&chr, al_from as usize, to as usize)
                         .unwrap();
                     let mut p_encoder = p_table.as_encoder();
-                    for (_, pos, depth) in
-                        DepthIter::with_filter(range_iter, |r| r.map_qual() >= min_mq)
-                    {
+                    for (_, pos, depth) in DepthIter::with_filter(range_iter, |r| {
+                        r.map_qual() >= min_mq
+                            && (bam_flags.is_none() || bam_flags.unwrap() == r.flag())
+                    }) {
                         if pos < from as usize {
                             continue;
                         }

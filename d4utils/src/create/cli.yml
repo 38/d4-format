@@ -56,6 +56,11 @@ args:
         short: q
         value_name: mapping-qual
         help: The minimal mapping quality (Only valid with CRAM/BAM inputs)
+    - bam-flag:
+        long: bam-flag
+        short: F
+        value_name: BAM-FLAG
+        help: Count the reads with flag (Only valid with BAM/CRAM inputs)
     - input-file:
         required: true
         help: Path to the input file 
