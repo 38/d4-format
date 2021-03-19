@@ -1,6 +1,6 @@
 [package]
 name = "d4-framefile"
-version = "0.1.16"
+version = "0.1.17"
 authors = ["Hao Hou <haohou302@gmail.com>"]
 edition = "2018"
 license = "MIT"
