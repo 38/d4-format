@@ -54,12 +54,12 @@ impl Iterator for BigWigIntervalIter {
 impl BigWigFile {
     pub fn open<P: AsRef<Path>>(path: P) -> Result<Self, std::io::Error> {
         let handle = unsafe {
+            let path_buf = CString::new(path.as_ref().as_os_str().as_bytes()).unwrap();
+            let mod_buf = CString::new("r").unwrap();
             bwOpen(
-                CString::new(path.as_ref().as_os_str().as_bytes())
-                    .unwrap()
-                    .as_ptr() as *mut _,
+                path_buf.as_ptr() as *mut _,
                 None,
-                CString::new("r").unwrap().as_ptr() as *mut _,
+                mod_buf.as_ptr() as *mut _,
             )
         };
 
