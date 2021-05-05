@@ -58,14 +58,8 @@ impl BamFile {
     /// Set the path to the reference FAI file. Only used for CRAM
     pub fn reference_path<P: AsRef<Path>>(&self, path: P) {
         unsafe {
-            let path_buf = 
-                CString::new(path.as_ref().as_os_str().as_bytes())
-                    .unwrap();
-            hts_set_fai_filename(
-                self.fp,
-                path_buf
-                    .as_ptr(),
-            );
+            let path_buf = CString::new(path.as_ref().as_os_str().as_bytes()).unwrap();
+            hts_set_fai_filename(self.fp, path_buf.as_ptr());
         }
     }
     /// Open a BAM/CRAM/SAM file on the disk
@@ -81,15 +75,9 @@ impl BamFile {
         };
 
         ret.fp = unsafe {
-            let path_buf = 
-                CString::new(path.as_ref().as_os_str().as_bytes())
-                    .unwrap();
-            let mod_buf = 
-                CString::new("rb").unwrap();
-            let ptr = hts_open(
-                    path_buf.as_ptr(),
-                mod_buf.as_ptr(),
-            );
+            let path_buf = CString::new(path.as_ref().as_os_str().as_bytes()).unwrap();
+            let mod_buf = CString::new("rb").unwrap();
+            let ptr = hts_open(path_buf.as_ptr(), mod_buf.as_ptr());
             if ptr == null_mut() {
                 return Err((-1).into());
             }
@@ -165,13 +153,8 @@ impl BamFile {
     pub fn range(&mut self, chrom: &str, from: usize, to: usize) -> Result<Ranged, AlignmentError> {
         if self.idx == null_mut() {
             self.idx = unsafe {
-                let path_buf = 
-                    CString::new(self.path.as_path().as_os_str().as_bytes())
-                        .unwrap();
-                sam_index_load(
-                    self.fp,
-                        path_buf.as_ptr(),
-                )
+                let path_buf = CString::new(self.path.as_path().as_os_str().as_bytes()).unwrap();
+                sam_index_load(self.fp, path_buf.as_ptr())
             };
             if self.idx == null_mut() {
                 return Err((-1).into());

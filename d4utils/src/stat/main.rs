@@ -72,8 +72,9 @@ fn percentile_stat(matches: ArgMatches, percentile: f64) -> Result<(), Box<dyn s
 }
 
 fn hist_stat(matches: ArgMatches) -> Result<(), Box<dyn std::error::Error>> {
-    let histograms = run_task::<Histogram>(matches, 0..1000)?;
-    let mut hist_result = [0; 1001];
+    let max_bin = matches.value_of("max-bin").unwrap_or("1000").parse()?;
+    let histograms = run_task::<Histogram>(matches, 0..max_bin)?;
+    let mut hist_result = vec![0; max_bin as usize + 1];
     let (mut below, mut above) = (0, 0);
     for (_, _, _, (b, hist, a)) in histograms {
         below += b;
@@ -87,7 +88,7 @@ fn hist_stat(matches: ArgMatches) -> Result<(), Box<dyn std::error::Error>> {
     for (val, cnt) in hist_result[1..].into_iter().enumerate() {
         println!("{}\t{}", val, cnt);
     }
-    println!(">1000\t{}", above);
+    println!(">{}\t{}", max_bin, above);
 
     Ok(())
 }

@@ -17,6 +17,10 @@ args:
         long: threads
         value_name: num_of_threads
         help: Number of threads 
+    - max-bin:
+        long: max-bin
+        value_name: maxium bin
+        help: "Set the upper bound of max bin (default: 1000)"
     - input:
         required: true
         value_name: input_d4_file
