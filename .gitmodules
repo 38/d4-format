@@ -1,0 +1,3 @@
+[submodule "scripts-for-manuscript/scripts-for-manuscript/figure4/src/libBigWig"]
+	path = scripts-for-manuscript/scripts-for-manuscript/figure4/src/libBigWig
+	url = https://github.com/dpryan79/libBigWig
