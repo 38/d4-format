@@ -10,6 +10,10 @@ We runs the experiment on a server with following hardward and software
  - OS: CentOS 7.6.180 w/ Linux Kernel 3.0.10
  - Rust Version: 1.47.0-nightly
 
+## Python API for D4
+
+We provide a [Python API](https://github.com/38/pyd4) that allows users to read and query D4 files.
+
 ## Basic Usage by Examples (each should take seconds)
 
 ### Create a D4 file
