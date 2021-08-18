@@ -245,3 +245,9 @@ Or you can choose install from crates.io:
 ```bash
 cargo install d4utils
 ```
+
+### Sample Data
+
+- WGS  [https://home.chpc.utah.edu/~u0875014/hg002.cram](https://home.chpc.utah.edu/~u0875014/hg002.cram)
+- RNASeq [https://www.encodeproject.org/files/ENCFF164HRL/](https://www.encodeproject.org/files/ENCFF164HRL/)
+
