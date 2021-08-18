@@ -206,7 +206,16 @@ impl<R: Record> SimpleKeyValuePartialReader<R> {
             {
                 Ok(idx) => idx,
                 Err(idx) if idx > 0 && idx < self.records.len() => idx - 1,
-                _ => return None,
+                _ => {
+                    if self.records.last().map_or(false, |last_block| {
+                        let count = last_block.count();
+                        pos < last_block.get(count - 1).effective_range().1 
+                    }) {
+                        self.records.len() - 1
+                    } else {
+                        return None;
+                    }
+                }
             };
         };
 
@@ -216,6 +225,17 @@ impl<R: Record> SimpleKeyValuePartialReader<R> {
             .as_ref()
             .binary_search_by_key(&pos, |rec| rec.effective_range().1)
         {
+            Ok(blk_idx) if blk_idx < len - 1 => {
+                let item = self.records[idx].get(blk_idx + 1);
+                self.cursor = (idx, blk_idx + 1);
+                if item.in_range(pos) {
+                    self.load_cache(!item.in_range(pos + 1));
+                    Some(item.value())
+                } else {
+                    self.load_cache(false);
+                    None
+                }
+            }
             Err(blk_idx) if blk_idx < len => {
                 let item = self.records[idx].get(blk_idx);
                 self.cursor = (idx, blk_idx);
