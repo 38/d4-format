@@ -81,7 +81,7 @@ impl<P: PTableReader, S: STableReader, T: Task> PartitionContext<P, S, T> {
                 let iter = self.secondary.seek_iter(part_left);
                 for (mut left, mut right, value) in iter {
                     left = left.max(part_left);
-                    right = right.min(part_right);
+                    right = right.min(part_right).max(left);
                     for &task_id in active_tasks.iter() {
                         self.tasks[task_id].1.feed_range(left, right, value);
                     }
