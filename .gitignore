@@ -17,8 +17,11 @@
 **/target
 **/*.rs.bk
 
+#Editors
 #Vim Temp Files
 **/.*.sw*
+# pycharm
+.idea/
 
 test.d4
 
