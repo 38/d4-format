@@ -128,7 +128,7 @@ impl BamFile {
         }
 
         self.mp_free.replace(cur_list);
-        return Ok(ret);
+        Ok(ret)
     }
 
     pub(super) fn free_inner_obj(&self, obj: *mut bam1_t) {
@@ -156,7 +156,7 @@ impl BamFile {
                 let path_buf = CString::new(self.path.as_path().as_os_str().as_bytes()).unwrap();
                 sam_index_load(self.fp, path_buf.as_ptr())
             };
-            if self.idx == null_mut() {
+            if self.idx.is_null() {
                 return Err((-1).into());
             }
         }
@@ -239,7 +239,7 @@ impl<'a> AlignmentReader<'a> for Ranged<'a> {
         (self.chrom, self.start)
     }
     fn get_file(&self) -> &'a BamFile {
-        return self.file;
+        self.file
     }
 
     fn next(&self, buf: *mut bam1_t) -> Result<Option<Alignment<'a>>, AlignmentError> {

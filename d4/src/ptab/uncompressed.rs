@@ -106,6 +106,7 @@ impl<M: PrimaryTableMode> PartialPrimaryTable<M> {
 }
 
 impl<M: PrimaryTableMode> PrimaryTable<M> {
+    #[allow(clippy::ptr_offset_with_cast)]
     pub fn split_chunk(
         &mut self,
         header: &Header,
@@ -115,9 +116,10 @@ impl<M: PrimaryTableMode> PrimaryTable<M> {
 
         let data = M::get_mapping_address(self);
 
-        max_chunk_size
-            .as_mut()
-            .map(|max_chunk_size| *max_chunk_size -= *max_chunk_size % 8);
+        if let Some(ref mut max_chunk_size) = max_chunk_size {
+            *max_chunk_size -= *max_chunk_size % 8;
+        }
+
         let bit_width = self.bit_width;
 
         let mut ret = vec![];
@@ -309,8 +311,8 @@ impl Decoder for PrimaryTableCodec<Reader> {
             start = unsafe { start.offset(-(addr_delta[0] as isize)) };
 
             for idx in 0..count {
-                start = unsafe { start.offset(addr_delta[idx % 8] as isize) };
-                let value = *unsafe { std::mem::transmute::<_, &u32>(start) };
+                start = unsafe { start.add(addr_delta[idx % 8]) };
+                let value = unsafe { &*(start as *const u32) };
                 let value = (value >> shift[idx % 8]) & mask;
                 let result = if value == mask {
                     DecodeResult::Maybe(self.dict.decode_value(mask).unwrap_or(0))

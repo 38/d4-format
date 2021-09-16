@@ -60,7 +60,7 @@ impl<P: PTableReader, S: STableReader> D4FileReader<P, S> {
                 return Err(std::io::Error::new(
                     std::io::ErrorKind::Other,
                     "Empty container",
-                ))?;
+                ));
             }
         };
 

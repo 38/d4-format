@@ -132,14 +132,14 @@ impl<R: Record> SimpleKeyValueReader<R> {
                         excess = Self::load_frame(
                             frame,
                             excess,
-                            record_blocks.entry(chr.to_string()).or_insert(vec![]),
+                            record_blocks.entry(chr.to_string()).or_default(),
                         );
                     }
                     super::compression::CompressionMethod::Deflate(_) => {
                         Self::load_compressed_frame(
                             frame,
                             first,
-                            record_blocks.entry(chr.to_string()).or_insert(vec![]),
+                            record_blocks.entry(chr.to_string()).or_default(),
                         );
                     }
                 }
@@ -149,19 +149,14 @@ impl<R: Record> SimpleKeyValueReader<R> {
 
             // After we have done this stream, we need to strip the last invalid records if there is
             if let Some(record_block) = record_blocks.get_mut(chr) {
-                match record_block.last_mut() {
-                    Some(RecordBlock::Block(data)) => {
-                        data.iter()
-                            .enumerate()
-                            .find(|(_, rec)| !rec.is_valid())
-                            .map(|(idx, _)| {
-                                *data = &data[..idx];
-                            });
-                        if data.len() == 0 {
-                            record_block.pop();
-                        }
+                if let Some(RecordBlock::Block(data)) = record_block.last_mut() {
+                    if let Some((idx, _)) = data.iter().enumerate().find(|(_, rec)| !rec.is_valid())
+                    {
+                        *data = &data[..idx];
                     }
-                    _ => {}
+                    if data.is_empty() {
+                        record_block.pop();
+                    }
                 }
             }
         }
@@ -187,6 +182,7 @@ impl<R: Record> SimpleKeyValuePartialReader<R> {
         }
     }
     #[inline(never)]
+    #[allow(clippy::never_loop)]
     fn seek(&mut self, pos: u32, seq_hint: bool) -> Option<i32> {
         let idx = loop {
             if self.cursor.0 < self.records.len() && seq_hint {
@@ -208,8 +204,7 @@ impl<R: Record> SimpleKeyValuePartialReader<R> {
                 Err(idx) if idx > 0 && idx < self.records.len() => idx - 1,
                 _ => {
                     if self.records.last().map_or(false, |last_block| {
-                        let count = last_block.count();
-                        pos < last_block.get(count - 1).effective_range().1
+                        pos < last_block.get(last_block.count() - 1).effective_range().1
                     }) {
                         self.records.len() - 1
                     } else {
@@ -261,7 +256,7 @@ impl<R: Record> STablePartitionReader for SimpleKeyValuePartialReader<R> {
         if let Some(record) = self
             .records
             .get(state.0)
-            .map_or(None, |block| block.as_ref().get(state.1))
+            .and_then(|block| block.as_ref().get(state.1))
         {
             state.1 += 1;
             if state.1 >= self.records[state.0].count() {

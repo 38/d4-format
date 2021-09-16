@@ -13,6 +13,7 @@ struct PartitionContext<P: PTableReader, S: STableReader, T: Task> {
 }
 
 impl<P: PTableReader, S: STableReader, T: Task> PartitionContext<P, S, T> {
+    #[allow(clippy::type_complexity)]
     fn execute(
         &mut self,
     ) -> Vec<(
@@ -31,7 +32,7 @@ impl<P: PTableReader, S: STableReader, T: Task> PartitionContext<P, S, T> {
             .map(|(_, x)| vec![x.scope().0, x.scope().1].into_iter())
             .flatten()
             .collect();
-        break_points.sort();
+        break_points.sort_unstable();
 
         if break_points.is_empty() {
             return vec![];
@@ -89,15 +90,14 @@ impl<P: PTableReader, S: STableReader, T: Task> PartitionContext<P, S, T> {
                 }
             }
         }
-        let result = std::mem::take(&mut self.tasks)
+        std::mem::take(&mut self.tasks)
             .into_iter()
             .map(|task| {
                 let (left, right) = task.1.scope();
                 let chr = chr.clone();
                 (task.0, chr, left, right, task.1.into_result())
             })
-            .collect();
-        result
+            .collect()
     }
 }
 

@@ -53,7 +53,7 @@ impl Frame {
         &mut self,
         file: &mut RandFile<M, W>,
     ) -> Result<()> {
-        if self.dirty == false {
+        if !self.dirty {
             return Ok(());
         }
 
@@ -202,9 +202,7 @@ impl<'a, M: AccessMode, T: 'a> Stream<'a, M, T> {
     }
 
     pub(crate) fn get_frame_offset(&self) -> Option<u64> {
-        self.current_frame
-            .as_ref()
-            .map_or(None, |frame| frame.offset)
+        self.current_frame.as_ref().and_then(|frame| frame.offset)
     }
 
     pub(crate) fn get_frame_size(&self) -> Option<usize> {
@@ -251,7 +249,7 @@ impl<M: CanWrite<T>, T: Write + Seek> Stream<'_, M, T> {
     ) -> Result<usize> {
         let mut ret = 0;
         let mut ptr = buffer;
-        while ptr.len() > 0 {
+        while !ptr.is_empty() {
             // First, let's determine the size we can write for this iteration
             let bytes_can_write = if self
                 .current_frame
@@ -290,7 +288,7 @@ impl<M: CanWrite<T>, T: Write + Seek> Stream<'_, M, T> {
                 continue;
             }
             let cursor = self.cursor;
-            self.current_frame.as_mut().map(|frame| {
+            if let Some(ref mut frame) = self.current_frame {
                 let start = frame.payload_offset + cursor;
                 let end = start + bytes_can_write;
                 if frame.data.len() < end {
@@ -298,7 +296,7 @@ impl<M: CanWrite<T>, T: Write + Seek> Stream<'_, M, T> {
                 }
                 frame.data[start..end].copy_from_slice(&ptr[..bytes_can_write]);
                 frame.current_frame_size = frame.current_frame_size.max(end);
-            });
+            }
             ptr = &ptr[bytes_can_write..];
             self.cursor += bytes_can_write;
             ret += bytes_can_write;
@@ -385,7 +383,7 @@ impl<'a, T: Read + Write + Seek> Stream<'a, ReadWrite, T> {
             file,
             current_frame,
             cursor: 0,
-            frame_size: frame_size,
+            frame_size,
             on_drop: Box::new(|this| {
                 this.flush().unwrap();
             }),

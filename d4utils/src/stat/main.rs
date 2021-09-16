@@ -28,6 +28,7 @@ fn parse_bed_file<P: AsRef<Path>>(
     }))
 }
 
+#[allow(clippy::type_complexity)]
 fn run_task<T: Task>(
     matches: ArgMatches,
     param: <T::Partition as TaskPartition>::PartitionParam,
@@ -39,7 +40,7 @@ fn run_task<T: Task>(
 
     let region_spec: Vec<_> = if let Some(path) = matches.value_of("region") {
         parse_bed_file(path)?
-            .map(|(chr, left, right)| (chr.to_string(), left, right))
+            .map(|(chr, left, right)| (chr, left, right))
             .collect()
     } else {
         input
@@ -85,7 +86,7 @@ fn hist_stat(matches: ArgMatches) -> Result<(), Box<dyn std::error::Error>> {
     }
 
     println!("<0\t{}", below);
-    for (val, cnt) in hist_result[1..].into_iter().enumerate() {
+    for (val, cnt) in hist_result[1..].iter().enumerate() {
         println!("{}\t{}", val, cnt);
     }
     println!(">{}\t{}", max_bin, above);

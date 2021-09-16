@@ -198,17 +198,14 @@ impl Dictionary {
 
     #[inline(always)]
     pub(crate) fn ensure_v2i_map(&mut self) {
-        match self {
-            Self::Dictionary { _v2i_map, i2v_map } => {
-                if _v2i_map.len() == i2v_map.len() {
-                    return;
-                }
-                _v2i_map.clear();
-                for (idx, &value) in i2v_map.iter().enumerate() {
-                    _v2i_map.insert(value, idx as u32);
-                }
+        if let Self::Dictionary { _v2i_map, i2v_map } = self {
+            if _v2i_map.len() == i2v_map.len() {
+                return;
             }
-            _ => (),
+            _v2i_map.clear();
+            for (idx, &value) in i2v_map.iter().enumerate() {
+                _v2i_map.insert(value, idx as u32);
+            }
         }
     }
     #[inline(always)]
@@ -235,12 +232,8 @@ impl Dictionary {
     #[inline(always)]
     pub(crate) fn decode_value(&self, idx: u32) -> Option<i32> {
         match self {
-            Self::SimpleRange { low, .. } => {
-                return Some(*low + idx as i32);
-            }
-            Self::Dictionary { i2v_map, .. } => {
-                return i2v_map.get(idx as usize).map(|x| *x);
-            }
+            Self::SimpleRange { low, .. } => Some(*low + idx as i32),
+            Self::Dictionary { i2v_map, .. } => i2v_map.get(idx as usize).copied(),
         }
     }
 

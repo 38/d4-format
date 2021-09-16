@@ -73,6 +73,6 @@ impl<'a, R: AlignmentReader<'a>> Iterator for AlignmentIter<'a, R> {
             };
         }
 
-        return Some(Err((-1).into()));
+        Some(Err((-1).into()))
     }
 }

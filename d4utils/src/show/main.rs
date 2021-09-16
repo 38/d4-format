@@ -45,7 +45,7 @@ pub fn entry_point(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> 
     let region_pattern = Regex::new(r"^(?P<CHR>[^:]+)((:(?P<FROM>\d+)-)?(?P<TO>\d+)?)?$")?;
     let mut should_print_all = true;
     let mut partition_context: Vec<_> = partition.into_iter().map(|part| (part, vec![])).collect();
-    matches.values_of("regions").map(|regions| {
+    if let Some(regions) = matches.values_of("regions") {
         regions
             .map(move |s: &str| {
                 if let Some(captures) = region_pattern.captures(s) {
@@ -69,14 +69,14 @@ pub fn entry_point(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> 
                     part.1.push((start, end));
                 }
             });
-    });
+    }
 
     for ((mut ptab, mut stab), mut regions) in partition_context {
         let (chr, ts, te) = ptab.region();
         let chr = chr.to_string();
         let all_region = vec![(ts, te)];
         let regions = if !should_print_all {
-            regions.sort();
+            regions.sort_unstable();
             regions
         } else {
             all_region

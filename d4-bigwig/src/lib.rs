@@ -4,7 +4,6 @@ use bigwig_sys::*;
 use std::ffi::{CStr, CString};
 use std::os::unix::ffi::OsStrExt;
 use std::path::Path;
-use std::ptr::null_mut;
 
 pub struct BigWigFile(*mut bigWigFile_t);
 
@@ -63,7 +62,7 @@ impl BigWigFile {
             )
         };
 
-        if null_mut() == handle {
+        if handle.is_null() {
             return Err(std::io::Error::new(
                 std::io::ErrorKind::Other,
                 "Cannot open BW file",
@@ -96,7 +95,7 @@ impl BigWigFile {
         let str = CString::new(chrom).unwrap();
         let chrom = str.as_ptr();
         let handle = unsafe { bwGetOverlappingIntervals(self.0 as _, chrom as _, left, right) };
-        if null_mut() == handle {
+        if handle.is_null() {
             return None;
         }
         Some(BigWigIntervalIter {

@@ -26,7 +26,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             eprintln!("\tview     \tPrint the underlying depth profile");
             eprintln!("\tstat     \tRun statistics on the given file");
             eprintln!("\tplot     \tPlot the specified region");
-            eprintln!("");
+            eprintln!();
             eprintln!("Type 'd4tools <subcommand> --help' to learn more about each subcommands.");
             Ok(())
         }
@@ -37,13 +37,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     if let Some(io_error) = ret
         .as_ref()
         .err()
-        .map_or(None, |e| e.downcast_ref::<std::io::Error>())
+        .and_then(|e| e.downcast_ref::<std::io::Error>())
     {
-        match io_error.kind() {
-            std::io::ErrorKind::BrokenPipe => {
-                return Ok(());
-            }
-            _ => {}
+        if io_error.kind() == std::io::ErrorKind::BrokenPipe {
+            return Ok(());
         }
     }
     ret

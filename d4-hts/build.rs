@@ -1,12 +1,13 @@
 use bindgen::Builder as BG;
+use std::ops::Not;
 use std::path::{Path, PathBuf};
 
 use std::env;
 use std::process::Command;
 
-fn create_hts_bindings(includes: &Vec<PathBuf>, version: &str, system: bool) -> Result<(), ()> {
+fn create_hts_bindings(includes: &[PathBuf], version: &str, system: bool) -> Result<(), ()> {
     let mut include_params: Vec<_> = includes
-        .into_iter()
+        .iter()
         .map(|x| format!("-I{}/htslib", x.to_str().unwrap()))
         .collect();
     if system {
@@ -65,7 +66,7 @@ fn main() -> Result<(), std::io::Error> {
         build_own_htslib()
     };
 
-    if let Err(_) = create_hts_bindings(&htslib_includes, &lib_version, system) {
+    if create_hts_bindings(&htslib_includes, &lib_version, system).is_err() {
         return Err(std::io::Error::new(
             std::io::ErrorKind::Other,
             "Bindgen failed",
@@ -73,10 +74,10 @@ fn main() -> Result<(), std::io::Error> {
     }
 
     println!("cargo:rerun-if-env-changed=HTSLIB");
-    if !["1.6", "1.7", "1.8", "1.9"]
+    if ["1.6", "1.7", "1.8", "1.9"]
         .iter()
-        .find(|&x| lib_version.starts_with(x))
-        .is_some()
+        .any(|&x| lib_version.starts_with(x))
+        .not()
     {
         println!("cargo:rustc-cfg=no_bam_hdr_destroy");
     }

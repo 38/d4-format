@@ -140,7 +140,7 @@ impl D4FileBuilder {
         let mut directory = Self::write_d4_header(self.path.as_path())?;
         let mut metadata_stream = directory.create_stream(".metadata", 512)?;
         let header = Header {
-            chrom_list: std::mem::replace(&mut self.chrom_info, vec![]),
+            chrom_list: std::mem::take(&mut self.chrom_info),
             dictionary: self.dict.clone(),
         };
 

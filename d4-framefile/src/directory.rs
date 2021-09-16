@@ -1,8 +1,8 @@
-use crate::Blob;
 use crate::mapped::MappedDirectory;
 use crate::mode::{AccessMode, CanWrite, ReadOnly, ReadWrite};
 use crate::randfile::RandFile;
 use crate::stream::Stream;
+use crate::Blob;
 use std::fs::File;
 use std::io::{Error, ErrorKind, Read, Result, Seek, SeekFrom, Write};
 use std::path::{Component, Path, PathBuf};
@@ -262,7 +262,7 @@ impl<'a> Directory<'a, ReadWrite, File> {
 }
 
 impl<'a> Directory<'a, ReadOnly, File> {
-    pub fn map_directory<'b>(&'b self, name: &str) -> Result<MappedDirectory> {
+    pub fn map_directory(&self, name: &str) -> Result<MappedDirectory> {
         let inner = self
             .0
             .read()
@@ -316,10 +316,7 @@ impl<'a, T: Read + Seek + 'a> Directory<'a, ReadOnly, T> {
             .find(|e| e.name == name && e.kind == EntryKind::Stream)
         {
             let file = inner.stream.clone_underlying_file();
-            return Ok(Stream::open_ro(
-                file,
-                (entry.primary_offset, entry.primary_size),
-            )?);
+            return Stream::open_ro(file, (entry.primary_offset, entry.primary_size));
         }
         Err(Error::new(ErrorKind::Other, "Stream not found"))
     }
@@ -384,8 +381,7 @@ impl<'a, T: Read + Seek + 'a> Directory<'a, ReadOnly, T> {
         let entries = self.entries();
         if entries
             .iter()
-            .find(|Entry { name: ent_name, .. }| name == ent_name)
-            .is_some()
+            .any(|Entry { name: ent_name, .. }| name == ent_name)
         {
             prefix.push(name);
             return true;
