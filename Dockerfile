@@ -8,4 +8,4 @@ FROM debian:buster-slim
 RUN rm -rf /var/lib/apt/lists/*
 COPY --from=builder /usr/src/d4format/target/release/d4tools /usr/local/bin/d4tools
 
-CMD d4tools
+CMD ["d4tools"]
