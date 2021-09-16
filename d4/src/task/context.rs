@@ -15,15 +15,13 @@ struct PartitionContext<P: PTableReader, S: STableReader, T: Task> {
 impl<P: PTableReader, S: STableReader, T: Task> PartitionContext<P, S, T> {
     fn execute(
         &mut self,
-    ) -> Result<
-        Vec<(
-            usize,
-            String,
-            u32,
-            u32,
-            <T::Partition as TaskPartition>::ResultType,
-        )>,
-    > {
+    ) -> Vec<(
+        usize,
+        String,
+        u32,
+        u32,
+        <T::Partition as TaskPartition>::ResultType,
+    )> {
         let chr = self.primary.region().0.to_string();
         let per_base = self.primary.bit_width() > 0;
         let mut decoder = self.primary.as_decoder();
@@ -36,7 +34,7 @@ impl<P: PTableReader, S: STableReader, T: Task> PartitionContext<P, S, T> {
         break_points.sort();
 
         if break_points.is_empty() {
-            return Ok(vec![]);
+            return vec![];
         }
 
         for idx in 0..break_points.len() - 1 {
@@ -99,7 +97,7 @@ impl<P: PTableReader, S: STableReader, T: Task> PartitionContext<P, S, T> {
                 (task.0, chr, left, right, task.1.into_result())
             })
             .collect();
-        Ok(result)
+        result
     }
 }
 
@@ -191,7 +189,7 @@ where
 
         let mut task_result: Vec<_> = tasks
             .into_par_iter()
-            .map(|mut partition| partition.execute().unwrap())
+            .map(|mut partition| partition.execute())
             .flatten()
             .collect();
         task_result.sort_by_key(|&(region_id, ..)| region_id);

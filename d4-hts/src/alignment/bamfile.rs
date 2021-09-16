@@ -5,9 +5,9 @@ use std::os::unix::ffi::OsStrExt;
 use std::path::{Path, PathBuf};
 use std::ptr::null_mut;
 
-use super::alignment::{Alignment, AlignmentReader};
 use super::error::AlignmentError;
 use super::htslib::*;
+use super::{Alignment, AlignmentReader};
 
 /// A BAM/CRAM/SAM File
 pub struct BamFile {
@@ -22,21 +22,21 @@ pub struct BamFile {
 
 impl Drop for BamFile {
     fn drop(&mut self) {
-        if self.idx != null_mut() {
+        if !self.idx.is_null() {
             unsafe {
                 hts_idx_destroy(self.idx);
             }
             self.idx = null_mut();
         }
 
-        if self.hdr != null_mut() {
+        if !self.hdr.is_null() {
             unsafe {
                 bam_hdr_destroy(self.hdr);
             }
             self.hdr = null_mut();
         }
 
-        if self.fp != null_mut() {
+        if !self.fp.is_null() {
             unsafe { hts_close(self.fp) };
             self.fp = null_mut();
         }
@@ -78,7 +78,7 @@ impl BamFile {
             let path_buf = CString::new(path.as_ref().as_os_str().as_bytes()).unwrap();
             let mod_buf = CString::new("rb").unwrap();
             let ptr = hts_open(path_buf.as_ptr(), mod_buf.as_ptr());
-            if ptr == null_mut() {
+            if ptr.is_null() {
                 return Err((-1).into());
             }
             ptr
@@ -86,7 +86,7 @@ impl BamFile {
 
         ret.hdr = unsafe { sam_hdr_read(ret.fp) };
 
-        if ret.hdr == null_mut() {
+        if ret.hdr.is_null() {
             return Err((-1).into());
         }
 
@@ -119,7 +119,7 @@ impl BamFile {
 
         if cur_list.is_empty() {
             ret = unsafe { bam_init1() };
-            if null_mut() == ret {
+            if ret.is_null() {
                 self.mp_free.replace(cur_list);
                 return Err((-1).into());
             }
@@ -132,7 +132,7 @@ impl BamFile {
     }
 
     pub(super) fn free_inner_obj(&self, obj: *mut bam1_t) {
-        if obj == null_mut() {
+        if obj.is_null() {
             return;
         }
 
@@ -151,7 +151,7 @@ impl BamFile {
     }
 
     pub fn range(&mut self, chrom: &str, from: usize, to: usize) -> Result<Ranged, AlignmentError> {
-        if self.idx == null_mut() {
+        if self.idx.is_null() {
             self.idx = unsafe {
                 let path_buf = CString::new(self.path.as_path().as_os_str().as_bytes()).unwrap();
                 sam_index_load(self.fp, path_buf.as_ptr())
@@ -181,7 +181,7 @@ impl BamFile {
             )
         };
 
-        if iter == null_mut() {
+        if iter.is_null() {
             return Err((-1).into());
         }
 
@@ -203,7 +203,7 @@ pub struct Ranged<'a> {
 
 impl<'a> Drop for Ranged<'a> {
     fn drop(&mut self) {
-        if self.iter != null_mut() {
+        if !self.iter.is_null() {
             unsafe { hts_itr_destroy(self.iter) };
             self.iter = null_mut();
         }
@@ -218,6 +218,7 @@ impl<'a> AlignmentReader<'a> for &'a BamFile {
         *self
     }
 
+    #[allow(clippy::not_unsafe_ptr_arg_deref)]
     fn next(&self, buf: *mut bam1_t) -> Result<Option<Alignment<'a>>, AlignmentError> {
         let rc = unsafe { sam_read1(self.fp, self.hdr, buf) };
 
@@ -229,7 +230,7 @@ impl<'a> AlignmentReader<'a> for &'a BamFile {
             return Ok(None);
         }
 
-        return Err(rc.into());
+        Err(rc.into())
     }
 }
 
@@ -259,6 +260,6 @@ impl<'a> AlignmentReader<'a> for Ranged<'a> {
             return Ok(None);
         }
 
-        return Err(rc.into());
+        Err(rc.into())
     }
 }

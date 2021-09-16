@@ -2,8 +2,6 @@ use super::error::AlignmentError;
 use super::htslib::*;
 use super::BamFile;
 
-use std::ptr::null_mut;
-
 pub struct Alignment<'a> {
     data_obj: *mut bam1_t,
     file: &'a BamFile,
@@ -36,7 +34,7 @@ pub trait AlignmentReader<'a> {
     fn get_file(&self) -> &'a BamFile;
     fn next(&self, buf: *mut bam1_t) -> Result<Option<Alignment<'a>>, AlignmentError>;
 
-    fn to_alignment_iter(self) -> AlignmentIter<'a, Self>
+    fn into_alignment_iter(self) -> AlignmentIter<'a, Self>
     where
         Self: Sized,
     {
@@ -56,7 +54,7 @@ impl<'a, R: AlignmentReader<'a>> Iterator for AlignmentIter<'a, R> {
     type Item = Result<Alignment<'a>, AlignmentError>;
     fn next(&mut self) -> Option<Self::Item> {
         if let Ok(buf) = self.reader.get_file().alloc_inner_obj() {
-            if buf == null_mut() {
+            if buf.is_null() {
                 return Some(Err((-1).into()));
             }
 

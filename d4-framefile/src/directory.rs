@@ -1,25 +1,42 @@
-use crate::chunk::Chunk;
+use crate::Blob;
 use crate::mapped::MappedDirectory;
 use crate::mode::{AccessMode, CanWrite, ReadOnly, ReadWrite};
 use crate::randfile::RandFile;
 use crate::stream::Stream;
-use std::io::{Error, ErrorKind, Read, Result, Seek, Write};
+use std::fs::File;
+use std::io::{Error, ErrorKind, Read, Result, Seek, SeekFrom, Write};
+use std::path::{Component, Path, PathBuf};
 use std::sync::{Arc, RwLock};
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
 pub enum EntryKind {
-    VariantLengthStream = 0,
-    StreamCluster = 1,
-    FixedSized = 2,
+    /// A stream with arbitrary size
+    Stream = 0,
+    /// A sub-directory
+    SubDir = 1,
+    /// A fix sized blob
+    Blob = 2,
 }
 
+/// Describes an entry in a directory
 #[derive(Clone, Debug)]
 pub struct Entry {
+    /// The type of the entry
     pub kind: EntryKind,
+    /// The absolute offset of the beginning of the data object
+    /// - for streams, this is the address of the primary frame of the stream
+    /// - for blobs, this is the address of the actual blob
+    /// - for directory, this is the address of the primary frame of the metadata stream for this directory
+    /// Note in the file, this is actually the relative offset from the beginning of the parent directory
     pub primary_offset: u64,
+    /// The size of the primary frame of the data object.
+    /// - For blobs and directories,  it describes the **total size** of the object
+    /// - For streams, this only describes the primary frame of the data object
     pub primary_size: usize,
+    /// The name of the stream
     pub name: String,
 }
+
 struct DirectoryImpl<'a, M: AccessMode, T> {
     offset: u64,
     entries: Vec<Entry>,
@@ -36,6 +53,7 @@ impl<M: AccessMode, T> Clone for Directory<'_, M, T> {
 
 impl<M: AccessMode, T> Directory<'_, M, T> {
     pub const INIT_BLOCK_SIZE: usize = 512;
+    /// Get the type of the child object
     pub fn entry_kind(&self, name: &str) -> Option<EntryKind> {
         self.0.read().unwrap().entries.iter().find_map(|e| {
             if e.name == name {
@@ -47,12 +65,49 @@ impl<M: AccessMode, T> Directory<'_, M, T> {
 }
 
 impl<'a, T: Read + Seek + 'a> Directory<'a, ReadOnly, T> {
+    /// Get a list of children under this directory
     pub fn entries(&self) -> Vec<Entry> {
         self.0.read().unwrap().entries.clone()
     }
-    pub fn open_directory(back: T, offset: u64) -> Result<Directory<'a, ReadOnly, T>> {
+    /// Open an root directory from a seek-able backend stream and an **absolute** offset
+    pub fn open_root(back: T, offset: u64) -> Result<Directory<'a, ReadOnly, T>> {
         let randfile = RandFile::for_read_only(back);
         Self::open_directory_impl(randfile, offset)
+    }
+    pub(crate) fn read_next_entry<R: Read>(base: u64, input: &mut R) -> Result<Option<Entry>> {
+        let mut has_next = [0u8];
+        if input.read(&mut has_next)? != 1 || has_next[0] == 0 {
+            return Ok(None);
+        }
+        let mut kind_buffer = [0];
+        let mut offset_buffer = [0; 8];
+        let mut size_buffer = [0; 8];
+        input.read_exact(&mut kind_buffer)?;
+        input.read_exact(&mut offset_buffer)?;
+        input.read_exact(&mut size_buffer)?;
+        let offset = u64::from_le_bytes(offset_buffer) + base;
+        let size = usize::from_le_bytes(size_buffer);
+        let mut name = vec![];
+        let mut current_byte = [0];
+        while input.read(&mut current_byte)? > 0 {
+            if current_byte[0] == 0 {
+                break;
+            }
+            name.push(current_byte[0]);
+        }
+        let name = String::from_utf8_lossy(&name[..]).to_string();
+        let kind = match kind_buffer[0] {
+            0 => EntryKind::Stream,
+            1 => EntryKind::SubDir,
+            2 => EntryKind::Blob,
+            _ => return Err(Error::new(ErrorKind::Other, "Invalid directory type code")),
+        };
+        Ok(Some(Entry {
+            kind,
+            name,
+            primary_offset: offset,
+            primary_size: size,
+        }))
     }
     fn open_directory_impl(
         randfile: RandFile<'a, ReadOnly, T>,
@@ -60,45 +115,9 @@ impl<'a, T: Read + Seek + 'a> Directory<'a, ReadOnly, T> {
     ) -> Result<Directory<'a, ReadOnly, T>> {
         let mut stream = Stream::open_ro(randfile, (offset, Self::INIT_BLOCK_SIZE))?;
         let mut entries = vec![];
-        loop {
-            let mut has_next = [0u8];
-            if stream.read(&mut has_next)? != 1 || has_next[0] == 0 {
-                break;
-            }
-            let mut kind_buffer = [0];
-            let mut offset_buffer = [0; 8];
-            let mut size_buffer = [0; 8];
-            if stream.read(&mut kind_buffer)? != 1
-                || stream.read(&mut offset_buffer)? != 8
-                || stream.read(&mut size_buffer)? != 8
-            {
-                break;
-            }
-            let offset = u64::from_le_bytes(offset_buffer) + offset;
-            let size = usize::from_le_bytes(size_buffer);
-            let mut name = vec![];
-            let mut current_byte = [0];
-            while stream.read(&mut current_byte)? > 0 {
-                if current_byte[0] == 0 {
-                    break;
-                }
-                name.push(current_byte[0]);
-            }
-            let name = String::from_utf8_lossy(&name[..]).to_string();
-
-            entries.push(Entry {
-                kind: match kind_buffer[0] {
-                    0 => EntryKind::VariantLengthStream,
-                    1 => EntryKind::StreamCluster,
-                    2 => EntryKind::FixedSized,
-                    _ => return Err(Error::new(ErrorKind::Other, "Invalid directory type code")),
-                },
-                primary_offset: offset,
-                primary_size: size,
-                name,
-            });
+        while let Some(entry) = Self::read_next_entry(offset, &mut stream)? {
+            entries.push(entry);
         }
-
         Ok(Directory(Arc::new(RwLock::new(DirectoryImpl {
             offset,
             entries,
@@ -107,7 +126,7 @@ impl<'a, T: Read + Seek + 'a> Directory<'a, ReadOnly, T> {
     }
 }
 impl<'a, T: Read + Write + Seek + 'a> Directory<'a, ReadWrite, T> {
-    pub fn create_directory(back: T) -> Result<Directory<'a, ReadWrite, T>> {
+    pub fn make_root(back: T) -> Result<Directory<'a, ReadWrite, T>> {
         let randfile = RandFile::for_read_write(back);
         let stream = Stream::create_rw(randfile, 512)?;
         let entries = vec![];
@@ -139,11 +158,11 @@ impl<'a, M: CanWrite<T>, T: Write + Seek + 'a> DirectoryImpl<'a, M, T> {
 }
 
 impl<'a, T: Read + Write + Seek + 'a> Directory<'a, ReadWrite, T> {
-    pub fn new_fixed_size_chunk<'b>(
+    pub fn create_blob<'b>(
         &'b mut self,
         name: &str,
         size: usize,
-    ) -> Result<Chunk<'a, ReadWrite, T>> {
+    ) -> Result<Blob<'a, ReadWrite, T>> {
         let mut inner = self
             .0
             .write()
@@ -151,15 +170,15 @@ impl<'a, T: Read + Write + Seek + 'a> Directory<'a, ReadWrite, T> {
         let mut file = inner.stream.clone_underlying_file();
         let offset = file.reserve_block(size)?;
         inner.append_directory(Entry {
-            kind: EntryKind::FixedSized,
+            kind: EntryKind::Blob,
             primary_offset: offset,
             primary_size: size,
             name: name.to_string(),
         })?;
-        Ok(Chunk::new(file, offset, size))
+        Ok(Blob::new(file, offset, size))
     }
 
-    pub fn new_stream_cluster<'b>(&'b mut self, name: &str) -> Result<Directory<'a, ReadWrite, T>>
+    pub fn create_directory<'b>(&'b mut self, name: &str) -> Result<Directory<'a, ReadWrite, T>>
     where
         T: Send,
     {
@@ -174,7 +193,7 @@ impl<'a, T: Read + Write + Seek + 'a> Directory<'a, ReadWrite, T> {
             let parent_directory = self.clone();
             let name = name.to_string();
             parent_file.clone().lock(Box::new(move || {
-                let kind = EntryKind::StreamCluster;
+                let kind = EntryKind::SubDir;
                 let primary_offset = dir_addr;
                 let primary_size = (parent_file.size().unwrap() - dir_addr) as usize;
                 let mut inner = parent_directory.0.write().unwrap();
@@ -187,7 +206,7 @@ impl<'a, T: Read + Write + Seek + 'a> Directory<'a, ReadWrite, T> {
                 inner.append_directory(entry).unwrap();
             }))?
         };
-        let stream = Stream::create_rw(file, 512)?;
+        let stream = Stream::create_rw(file, Self::INIT_BLOCK_SIZE)?;
         let entries = vec![];
         Ok(Directory(Arc::new(RwLock::new(DirectoryImpl {
             offset: stream.get_frame_offset().unwrap(),
@@ -195,7 +214,7 @@ impl<'a, T: Read + Write + Seek + 'a> Directory<'a, ReadWrite, T> {
             stream,
         }))))
     }
-    pub fn new_variant_length_stream<'b>(
+    pub fn create_stream<'b>(
         &'b mut self,
         name: &str,
         frame_size: usize,
@@ -207,7 +226,7 @@ impl<'a, T: Read + Write + Seek + 'a> Directory<'a, ReadWrite, T> {
         let file = inner.stream.clone_underlying_file();
         let stream = Stream::create_rw(file, frame_size)?;
         inner.append_directory(Entry {
-            kind: EntryKind::VariantLengthStream,
+            kind: EntryKind::Stream,
             primary_offset: stream.get_frame_offset().unwrap(),
             primary_size: stream.get_frame_size().unwrap(),
             name: name.to_string(),
@@ -215,8 +234,35 @@ impl<'a, T: Read + Write + Seek + 'a> Directory<'a, ReadWrite, T> {
         Ok(stream)
     }
 }
-impl<'a> Directory<'a, ReadOnly, std::fs::File> {
-    pub fn map_cluster_ro<'b>(&'b self, name: &str) -> Result<MappedDirectory> {
+impl<'a> Directory<'a, ReadWrite, File> {
+    pub fn copy_directory_from_file<T: Read + Seek>(
+        &mut self,
+        name: &str,
+        mut source: T,
+        offset: u64,
+        size: usize,
+    ) -> Result<()> {
+        let mut inner = self
+            .0
+            .write()
+            .map_err(|_| Error::new(ErrorKind::Other, "Lock Error"))?;
+        let mut file = inner.stream.clone_underlying_file();
+        let dest_offset = file.reserve_block(size)?;
+        inner.append_directory(Entry {
+            kind: EntryKind::SubDir,
+            primary_offset: dest_offset,
+            primary_size: size,
+            name: name.to_string(),
+        })?;
+        let mut object = Blob::new(file, dest_offset, size);
+        let mut object_data = object.mmap_mut()?;
+        source.seek(SeekFrom::Start(offset))?;
+        source.read_exact(object_data.as_mut())
+    }
+}
+
+impl<'a> Directory<'a, ReadOnly, File> {
+    pub fn map_directory<'b>(&'b self, name: &str) -> Result<MappedDirectory> {
         let inner = self
             .0
             .read()
@@ -224,7 +270,7 @@ impl<'a> Directory<'a, ReadOnly, std::fs::File> {
         if let Some(entry) = inner
             .entries
             .iter()
-            .find(|e| e.name == name && e.kind == EntryKind::StreamCluster)
+            .find(|e| e.name == name && e.kind == EntryKind::SubDir)
         {
             return MappedDirectory::new(
                 inner.stream.clone_underlying_file(),
@@ -236,8 +282,15 @@ impl<'a> Directory<'a, ReadOnly, std::fs::File> {
         Err(Error::new(ErrorKind::Other, "Directory not found"))
     }
 }
+
+pub enum OpenResult<'a, T: Read + Seek + 'a> {
+    Blob(Blob<'a, ReadOnly, T>),
+    Stream(Stream<'a, ReadOnly, T>),
+    SubDir(Directory<'a, ReadOnly, T>),
+}
+
 impl<'a, T: Read + Seek + 'a> Directory<'a, ReadOnly, T> {
-    pub fn open_chunk_ro<'b>(&'b self, name: &str) -> Result<Chunk<'a, ReadOnly, T>> {
+    pub fn open_blob<'b>(&'b self, name: &str) -> Result<Blob<'a, ReadOnly, T>> {
         let inner = self
             .0
             .read()
@@ -245,14 +298,14 @@ impl<'a, T: Read + Seek + 'a> Directory<'a, ReadOnly, T> {
         if let Some(entry) = inner
             .entries
             .iter()
-            .find(|e| e.name == name && e.kind == EntryKind::FixedSized)
+            .find(|e| e.name == name && e.kind == EntryKind::Blob)
         {
             let file = inner.stream.clone_underlying_file();
-            return Ok(Chunk::new(file, entry.primary_offset, entry.primary_size));
+            return Ok(Blob::new(file, entry.primary_offset, entry.primary_size));
         }
         Err(Error::new(ErrorKind::Other, "Chunk not found"))
     }
-    pub fn open_stream_ro<'b>(&'b self, name: &str) -> Result<Stream<'a, ReadOnly, T>> {
+    pub fn open_stream<'b>(&'b self, name: &str) -> Result<Stream<'a, ReadOnly, T>> {
         let inner = self
             .0
             .read()
@@ -260,7 +313,7 @@ impl<'a, T: Read + Seek + 'a> Directory<'a, ReadOnly, T> {
         if let Some(entry) = inner
             .entries
             .iter()
-            .find(|e| e.name == name && e.kind == EntryKind::VariantLengthStream)
+            .find(|e| e.name == name && e.kind == EntryKind::Stream)
         {
             let file = inner.stream.clone_underlying_file();
             return Ok(Stream::open_ro(
@@ -271,7 +324,7 @@ impl<'a, T: Read + Seek + 'a> Directory<'a, ReadOnly, T> {
         Err(Error::new(ErrorKind::Other, "Stream not found"))
     }
 
-    pub fn open_cluster_ro<'b>(&'b self, name: &str) -> Result<Directory<'a, ReadOnly, T>> {
+    pub fn open_directory<'b>(&'b self, name: &str) -> Result<Directory<'a, ReadOnly, T>> {
         let inner = self
             .0
             .read()
@@ -279,12 +332,86 @@ impl<'a, T: Read + Seek + 'a> Directory<'a, ReadOnly, T> {
         if let Some(entry) = inner
             .entries
             .iter()
-            .find(|e| e.name == name && e.kind == EntryKind::StreamCluster)
+            .find(|e| e.name == name && e.kind == EntryKind::SubDir)
         {
             let file = inner.stream.clone_underlying_file();
             return Directory::open_directory_impl(file, entry.primary_offset);
         }
         Err(Error::new(ErrorKind::Other, "Stream not found"))
+    }
+
+    pub fn open<'b, P: AsRef<Path>>(&'b self, path: P) -> Result<OpenResult<'a, T>> {
+        let path = path.as_ref();
+        let n_comp = path.components().count();
+        let mut cur_dir = self.clone();
+        for (idx, comp) in path.components().enumerate() {
+            let comp = match comp {
+                Component::Normal(name) => name.to_string_lossy().to_owned(),
+                _ => continue,
+            };
+            if idx < n_comp - 1 {
+                cur_dir = cur_dir.open_directory(&comp)?
+            } else {
+                match cur_dir.entries().into_iter().find(|e| e.name == comp) {
+                    Some(Entry {
+                        kind: EntryKind::Blob,
+                        ..
+                    }) => {
+                        return cur_dir.open_blob(&comp).map(OpenResult::Blob);
+                    }
+                    Some(Entry {
+                        kind: EntryKind::Stream,
+                        ..
+                    }) => {
+                        return cur_dir.open_stream(&comp).map(OpenResult::Stream);
+                    }
+                    Some(Entry {
+                        kind: EntryKind::SubDir,
+                        ..
+                    }) => {
+                        return cur_dir.open_directory(&comp).map(OpenResult::SubDir);
+                    }
+                    None => {
+                        return Err(Error::new(ErrorKind::Other, "Object not found"));
+                    }
+                }
+            }
+        }
+        Err(Error::new(ErrorKind::Other, "Invalid path"))
+    }
+
+    fn find_first_object_impl(&self, name: &str, prefix: &mut PathBuf) -> bool {
+        let entries = self.entries();
+        if entries
+            .iter()
+            .find(|Entry { name: ent_name, .. }| name == ent_name)
+            .is_some()
+        {
+            prefix.push(name);
+            return true;
+        }
+        for Entry {
+            name: subdir_name, ..
+        } in entries.into_iter().filter(|e| e.kind == EntryKind::SubDir)
+        {
+            if let Ok(subdir) = self.open_directory(&subdir_name) {
+                prefix.push(subdir_name);
+                if subdir.find_first_object_impl(name, prefix) {
+                    return true;
+                }
+                prefix.pop();
+            }
+        }
+        false
+    }
+
+    pub fn find_first_object(&self, name: &str) -> Option<PathBuf> {
+        let mut ret = PathBuf::default();
+        if self.find_first_object_impl(name, &mut ret) {
+            Some(ret)
+        } else {
+            None
+        }
     }
 }
 
@@ -304,16 +431,16 @@ mod test {
         let mut buf = vec![];
         {
             let cursor = Cursor::new(&mut buf);
-            let mut dir = Directory::create_directory(cursor)?;
-            let mut stream1 = dir.new_variant_length_stream("test_stream_1", 128)?;
-            let mut stream2 = dir.new_variant_length_stream("test_stream_2", 128)?;
+            let mut dir = Directory::make_root(cursor)?;
+            let mut stream1 = dir.create_stream("test_stream_1", 128)?;
+            let mut stream2 = dir.create_stream("test_stream_2", 128)?;
             stream1.write(b"This is the data from the first stream")?;
             stream2.write(b"This is the data from the second stream")?;
         }
         {
             let cursor = Cursor::new(&buf);
-            let dir = Directory::open_directory(cursor, 0)?;
-            let mut first = dir.open_stream_ro("test_stream_1")?;
+            let dir = Directory::open_root(cursor, 0)?;
+            let mut first = dir.open_stream("test_stream_1")?;
             let mut data = [0; 128];
             let size = first.read(&mut data)?;
             let result = &data[..size.min(38)];
@@ -326,15 +453,15 @@ mod test {
         let mut buf = vec![];
         {
             let cursor = Cursor::new(&mut buf);
-            let mut dir = Directory::create_directory(cursor)?;
-            let mut stream1 = dir.new_variant_length_stream("test_stream_1", 128)?;
+            let mut dir = Directory::make_root(cursor)?;
+            let mut stream1 = dir.create_stream("test_stream_1", 128)?;
             stream1.write(b"This is a testing block")?;
             stream1.flush()?;
             stream1.write(b"This is a testing block")?;
             {
-                let mut cluster1 = dir.new_stream_cluster("test_cluster")?;
-                let mut cs1 = cluster1.new_variant_length_stream("clustered_stream_1", 128)?;
-                let mut cs2 = cluster1.new_variant_length_stream("clustered_stream_2", 128)?;
+                let mut cluster1 = dir.create_directory("test_cluster")?;
+                let mut cs1 = cluster1.create_stream("clustered_stream_1", 128)?;
+                let mut cs2 = cluster1.create_stream("clustered_stream_2", 128)?;
                 cs1.write(b"cluster test 1234")?;
                 cs2.write(b"hahahaha")?;
                 stream1.write(b"test").ok();
@@ -345,10 +472,10 @@ mod test {
         }
         {
             let cursor = Cursor::new(&buf);
-            let dir = Directory::open_directory(cursor, 0)?;
+            let dir = Directory::open_root(cursor, 0)?;
             assert_eq!(dir.0.read().unwrap().entries.len(), 2);
-            let cluster = dir.open_cluster_ro("test_cluster")?;
-            let mut test = cluster.open_stream_ro("clustered_stream_1")?;
+            let cluster = dir.open_directory("test_cluster")?;
+            let mut test = cluster.open_stream("clustered_stream_1")?;
             let mut buf = [0; 4];
             test.read(&mut buf[..])?;
             assert_eq!(&buf, b"clus");

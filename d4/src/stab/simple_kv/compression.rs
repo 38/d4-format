@@ -97,15 +97,18 @@ impl<R: Record> CompressionContext<R> {
                     }
                     compressor
                         .get_mut()
-                        .write(&first_pos.unwrap_or(0).to_le_bytes())
+                        .write_all(&first_pos.unwrap_or(0).to_le_bytes())
                         .unwrap();
                     compressor
                         .get_mut()
-                        .write(&last_pos.unwrap_or(0).to_le_bytes())
+                        .write_all(&last_pos.unwrap_or(0).to_le_bytes())
                         .unwrap();
-                    compressor.get_mut().write(&count.to_le_bytes()).unwrap();
+                    compressor
+                        .get_mut()
+                        .write_all(&count.to_le_bytes())
+                        .unwrap();
                     compressor.write_all(buffer).unwrap();
-                    let next_buffer = std::mem::replace(unused_buffer, None).unwrap();
+                    let next_buffer = unused_buffer.take().unwrap();
                     let mut result = compressor.reset(next_buffer).unwrap();
                     // We handle the first block differently, since for each stream the first block should be
                     // pre-allocated, which means we can't use variant-length block at this point.

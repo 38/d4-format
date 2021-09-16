@@ -8,7 +8,7 @@ pub struct MapIter<'a> {
 }
 
 impl<'a> Alignment<'a> {
-    pub fn map_iter<'b>(&'b self) -> MapIter<'b> {
+    pub fn map_iter(&self) -> MapIter {
         let mut ret = MapIter {
             ref_pos: self.ref_begin(),
             seq_it: self.sequence().into_iter(),
@@ -16,7 +16,7 @@ impl<'a> Alignment<'a> {
             cur_cigar: None,
         };
         ret.cur_cigar = ret.cigar_it.next();
-        return ret;
+        ret
     }
 }
 
@@ -49,10 +49,8 @@ impl<'a> Iterator for MapIter<'a> {
             ret = Some(map);
         }
 
-        if ret.is_some() {
-            if self.cur_cigar.as_ref().unwrap().len == 0 {
-                self.cur_cigar = self.cigar_it.next();
-            }
+        if ret.is_some() && self.cur_cigar.as_ref().unwrap().len == 0 {
+            self.cur_cigar = self.cigar_it.next();
         }
 
         ret

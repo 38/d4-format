@@ -2,6 +2,7 @@ use crate::mode::ReadOnly;
 use crate::randfile::mapping::MappingHandle;
 use crate::randfile::RandFile;
 use crate::stream::FrameHeader;
+use crate::{Directory, EntryKind};
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::Result;
@@ -74,19 +75,15 @@ impl MappedDirectory {
         // TODO: consider reuse the directory parsing code
         let mut dir_table = HashMap::new();
         let mut cursor = &content[..];
-        while !cursor.is_empty() && cursor[0] > 0 {
-            let kind_code = cursor[1];
-            let mut offset = [0u8; 8];
-            let mut size = [0u8; 8];
-            offset[..].copy_from_slice(&cursor[2..10]);
-            size[..].copy_from_slice(&cursor[10..18]);
-            let offset = u64::from_le_bytes(offset);
-            let size: usize = u64::from_le_bytes(size) as usize;
-            let name = unsafe { std::ffi::CStr::from_ptr(&cursor[18] as *const u8 as *const i8) };
-            cursor = &cursor[19 + name.to_bytes().len()..];
-            let name = name.to_string_lossy().to_string();
-            if kind_code == crate::directory::EntryKind::VariantLengthStream as u8 {
-                dir_table.insert(name, (&data[offset as usize] as *const u8 as usize, size));
+        while let Some(entry) = Directory::<ReadOnly, File>::read_next_entry(0, &mut cursor)? {
+            if entry.kind == EntryKind::Stream {
+                dir_table.insert(
+                    entry.name,
+                    (
+                        &data[entry.primary_offset as usize] as *const u8 as usize,
+                        entry.primary_size,
+                    ),
+                );
             }
         }
         Ok(MappedDirectory {

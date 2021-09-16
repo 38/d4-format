@@ -20,7 +20,7 @@ use std::sync::{Arc, Mutex};
 /// specified address in blocks. But rand file itself doesn't tracking the block size and it's the
 /// upper layer's responsibility to determine the correct block beginning.
 pub struct RandFile<'a, Mode: AccessMode, T: 'a> {
-    inner: Arc<Mutex<IOWrapper<'a, T>>>,
+    inner: Arc<Mutex<IoWrapper<'a, T>>>,
     token: u32,
     _phantom: PhantomData<Mode>,
 }
@@ -43,13 +43,13 @@ impl<M: AccessMode, T> Drop for RandFile<'_, M, T> {
     }
 }
 
-struct IOWrapper<'a, T: 'a> {
+struct IoWrapper<'a, T: 'a> {
     inner: T,
     current_token: u32,
     token_stack: Vec<(u32, Box<dyn FnOnce() + Send + 'a>)>,
 }
 
-impl<T> IOWrapper<'_, T> {
+impl<T> IoWrapper<'_, T> {
     fn try_borrow_mut(&mut self, token: u32) -> Result<&mut T> {
         if token == self.current_token {
             Ok(&mut self.inner)
@@ -62,7 +62,7 @@ impl<T> IOWrapper<'_, T> {
     }
 }
 
-impl<T> Deref for IOWrapper<'_, T> {
+impl<T> Deref for IoWrapper<'_, T> {
     type Target = T;
     fn deref(&self) -> &T {
         &self.inner
@@ -87,7 +87,7 @@ impl<'a, M: AccessMode, T: 'a> RandFile<'a, M, T> {
     /// - `returns`: The newly created random file object
     fn new(inner: T) -> Self {
         RandFile {
-            inner: Arc::new(Mutex::new(IOWrapper {
+            inner: Arc::new(Mutex::new(IoWrapper {
                 current_token: 0,
                 token_stack: vec![(1, Box::new(|| ()))],
                 inner,

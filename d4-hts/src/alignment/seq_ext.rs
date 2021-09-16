@@ -25,7 +25,7 @@ impl<'a> Sequence<'a> {
         } else {
             (unsafe { *seq } as u32) & 0xf
         };
-        return numeric;
+        numeric
     }
 }
 

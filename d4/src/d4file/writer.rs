@@ -8,14 +8,17 @@ use std::path::{Path, PathBuf};
 use crate::chrom::Chrom;
 use crate::dict::Dictionary;
 use crate::header::Header;
-use crate::ptab::{PTablePartitionWriter, PTableWriter};
-use crate::stab::STableWriter;
+use crate::ptab::{PTablePartitionWriter, PTableWriter, UncompressedWriter};
+use crate::stab::{RangeRecord, STableWriter, SimpleKeyValueWriter};
 
 use super::FILE_MAGIC_NUM;
 
 /// Create a D4 file
 #[allow(dead_code)]
-pub struct D4FileWriter<PT: PTableWriter, ST: STableWriter> {
+pub struct D4FileWriter<
+    PT: PTableWriter = UncompressedWriter,
+    ST: STableWriter = SimpleKeyValueWriter<RangeRecord>,
+> {
     file_root: Directory<'static, ReadWrite, File>,
     pub(crate) header: Header,
     pub(crate) p_table: PT,
@@ -118,18 +121,24 @@ impl D4FileBuilder {
         &self.dict
     }
 
-    /// Create the D4 file writer for this file
-    pub fn create<PT: PTableWriter, ST: STableWriter>(&mut self) -> Result<D4FileWriter<PT, ST>> {
-        let mut file = OpenOptions::new()
+    pub(crate) fn write_d4_header<P: AsRef<Path>>(
+        path: P,
+    ) -> Result<Directory<'static, ReadWrite, File>> {
+        let mut target = OpenOptions::new()
             .create(true)
             .read(true)
             .write(true)
             .truncate(true)
-            .open(self.path.as_path())?;
-        file.write_all(FILE_MAGIC_NUM)?;
-        file.write_all(&[0, 0, 0, 0])?;
-        let mut directory = Directory::create_directory(file)?;
-        let mut metadata_stream = directory.new_variant_length_stream(".metadata", 512)?;
+            .open(path)?;
+        target.write_all(FILE_MAGIC_NUM)?;
+        target.write_all(&[0, 0, 0, 0])?;
+        Directory::make_root(target)
+    }
+
+    /// Create the D4 file writer for this file
+    pub fn create<PT: PTableWriter, ST: STableWriter>(&mut self) -> Result<D4FileWriter<PT, ST>> {
+        let mut directory = Self::write_d4_header(self.path.as_path())?;
+        let mut metadata_stream = directory.create_stream(".metadata", 512)?;
         let header = Header {
             chrom_list: std::mem::replace(&mut self.chrom_info, vec![]),
             dictionary: self.dict.clone(),

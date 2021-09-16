@@ -6,7 +6,7 @@ use crate::Header;
 
 use super::compression::{CompressionContext, CompressionMethod};
 use super::record::Record;
-use super::SimpleKVMetadata;
+use super::SimpleKvMetadata;
 
 use std::fs::File;
 use std::io::Result;
@@ -34,7 +34,7 @@ impl<R: Record> STableWriter for SimpleKeyValueWriter<R> {
     }
     fn create(root: &mut Directory<'static, ReadWrite, File>, _header: &Header) -> Result<Self> {
         Ok(SimpleKeyValueWriter(
-            root.new_stream_cluster(".stab")?,
+            root.create_directory(".stab")?,
             Default::default(),
             PhantomData,
         ))
@@ -43,7 +43,7 @@ impl<R: Record> STableWriter for SimpleKeyValueWriter<R> {
         &mut self,
         partitions: &[(&str, u32, u32)],
     ) -> Result<Vec<SimpleKeyValuePartialWriter<R>>> {
-        let metadata = SimpleKVMetadata {
+        let metadata = SimpleKvMetadata {
             format: "SimpleKV".to_string(),
             record_format: R::FORMAT_NAME.to_string(),
             partitions: {
@@ -54,7 +54,7 @@ impl<R: Record> STableWriter for SimpleKeyValueWriter<R> {
             },
             compression: self.1,
         };
-        let mut metadata_stream = self.0.new_variant_length_stream(".metadata", 512)?;
+        let mut metadata_stream = self.0.create_stream(".metadata", 512)?;
         metadata_stream.write(serde_json::to_string(&metadata).unwrap().as_bytes())?;
         let compression = self.1;
         Ok(partitions
@@ -63,7 +63,7 @@ impl<R: Record> STableWriter for SimpleKeyValueWriter<R> {
             .map(|(idx, _)| SimpleKeyValuePartialWriter {
                 stream: self
                     .0
-                    .new_variant_length_stream(format!("{}", idx).as_ref(), 512)
+                    .create_stream(format!("{}", idx).as_ref(), 512)
                     .unwrap(),
                 pending_record: None,
                 compression: compression.context(),

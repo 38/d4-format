@@ -4,7 +4,7 @@ use d4_framefile::Directory;
 
 use super::record::Record;
 use super::record_block::RecordBlock;
-use super::SimpleKVMetadata;
+use super::SimpleKvMetadata;
 use crate::stab::{RecordIterator, STablePartitionReader, STableReader};
 use crate::Header;
 
@@ -32,7 +32,7 @@ pub struct SimpleKeyValuePartialReader<R: Record> {
 }
 
 impl<R: Record> SimpleKeyValueReader<R> {
-    fn load_metadata(&mut self) -> Option<SimpleKVMetadata> {
+    fn load_metadata(&mut self) -> Option<SimpleKvMetadata> {
         let metadata = self.s_table_root.get(".metadata")?;
         let metadata = String::from_utf8_lossy(metadata.copy_content().as_ref()).to_string();
         let actual_data = metadata.trim_end_matches(|c| c == '\0');
@@ -111,7 +111,7 @@ impl<R: Record> SimpleKeyValueReader<R> {
         excess.extend_from_slice(&data[data.len() - rem..]);
         excess
     }
-    fn load_record_blocks(&mut self) -> Result<HashMap<String, Vec<RecordBlock<R>>>> {
+    fn load_record_blocks(&mut self) -> HashMap<String, Vec<RecordBlock<R>>> {
         let metadata = self.load_metadata().unwrap();
 
         let mut record_blocks: HashMap<String, Vec<RecordBlock<R>>> = HashMap::new();
@@ -165,7 +165,7 @@ impl<R: Record> SimpleKeyValueReader<R> {
                 }
             }
         }
-        Ok(record_blocks)
+        record_blocks
     }
 }
 
@@ -209,7 +209,7 @@ impl<R: Record> SimpleKeyValuePartialReader<R> {
                 _ => {
                     if self.records.last().map_or(false, |last_block| {
                         let count = last_block.count();
-                        pos < last_block.get(count - 1).effective_range().1 
+                        pos < last_block.get(count - 1).effective_range().1
                     }) {
                         self.records.len() - 1
                     } else {
@@ -363,14 +363,14 @@ impl<R: Record> STableReader for SimpleKeyValueReader<R> {
     type Partition = SimpleKeyValuePartialReader<R>;
     fn create(root: &mut Directory<'static, ReadOnly, File>, _header: &Header) -> Result<Self> {
         Ok(Self {
-            s_table_root: Arc::new(root.map_cluster_ro(".stab")?),
+            s_table_root: Arc::new(root.map_directory(".stab")?),
             _p: PhantomData,
         })
     }
 
     fn split(&mut self, partitions: &[(&str, u32, u32)]) -> Result<Vec<Self::Partition>> {
         let root = self.s_table_root.clone();
-        let mut record_blocks = self.load_record_blocks()?;
+        let mut record_blocks = self.load_record_blocks();
 
         let mut displacement: Vec<_> = (0..partitions.len()).collect();
         displacement.sort_by_key(move |idx| partitions[*idx]);

@@ -45,7 +45,7 @@ impl std::fmt::Display for Cigar {
 
 impl Cigar {
     fn new(ops: CigarOps, len: u32) -> Cigar {
-        Cigar { op: ops, len: len }
+        Cigar { op: ops, len }
     }
     fn from_alignment(al: &Alignment, idx: usize) -> Option<Cigar> {
         if idx >= (al.hts_obj().core.n_cigar as usize) {
@@ -77,25 +77,17 @@ impl Cigar {
     }
 
     pub fn in_alignment(&self) -> bool {
-        match self.op {
-            CigarOps::Match
-            | CigarOps::Insert
-            | CigarOps::Soft
-            | CigarOps::Equal
-            | CigarOps::Diff => true,
-            _ => false,
-        }
+        matches!(
+            self.op,
+            CigarOps::Match | CigarOps::Insert | CigarOps::Soft | CigarOps::Equal | CigarOps::Diff
+        )
     }
 
     pub fn in_reference(&self) -> bool {
-        match self.op {
-            CigarOps::Match
-            | CigarOps::Delete
-            | CigarOps::Skip
-            | CigarOps::Equal
-            | CigarOps::Diff => true,
-            _ => false,
-        }
+        matches!(
+            self.op,
+            CigarOps::Match | CigarOps::Delete | CigarOps::Skip | CigarOps::Equal | CigarOps::Diff
+        )
     }
 }
 

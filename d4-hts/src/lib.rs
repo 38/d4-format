@@ -17,7 +17,7 @@ pub struct DepthIter<'a, R: AlignmentReader<'a>> {
 impl<'a, R: AlignmentReader<'a>> DepthIter<'a, R> {
     pub fn with_filter<F: Fn(&Alignment) -> bool + 'a>(reader: R, filter: F) -> Self {
         let (chrom, pos) = reader.start();
-        let iter = reader.to_alignment_iter();
+        let iter = reader.into_alignment_iter();
 
         let mut ret = Self {
             iter,
@@ -49,7 +49,7 @@ impl<'a, R: AlignmentReader<'a>> DepthIter<'a, R> {
 impl<'a, R: AlignmentReader<'a>> Iterator for DepthIter<'a, R> {
     type Item = (i32, usize, u32);
     fn next(&mut self) -> Option<Self::Item> {
-        if self.next_read.is_none() && self.heap.len() == 0 {
+        if self.next_read.is_none() && self.heap.is_empty() {
             return None;
         }
 
@@ -59,7 +59,7 @@ impl<'a, R: AlignmentReader<'a>> Iterator for DepthIter<'a, R> {
 
         while let Some((tid, left, right)) = self.next_read {
             if tid != self.cur_chrom {
-                if self.heap.len() == 0 {
+                if self.heap.is_empty() {
                     self.cur_chrom = tid;
                     self.cur_pos = 0;
                 }
@@ -82,7 +82,7 @@ impl<'a, R: AlignmentReader<'a>> Iterator for DepthIter<'a, R> {
             self.heap.pop();
         }
 
-        return Some(ret);
+        Some(ret)
     }
 }
 

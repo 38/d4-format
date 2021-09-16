@@ -1,16 +1,19 @@
 use d4_framefile::mode::ReadOnly;
-use d4_framefile::Directory;
-
-use crate::header::Header;
-use crate::ptab::{PTablePartitionReader, PTableReader};
-use crate::stab::STableReader;
+use d4_framefile::{Directory, OpenResult};
 
 use std::fs::File;
 use std::io::{Read, Result};
 use std::path::Path;
 
+use crate::header::Header;
+use crate::ptab::{PTablePartitionReader, PTableReader, UncompressedReader};
+use crate::stab::{RangeRecord, STableReader, SimpleKeyValueReader};
+
 /// The reader that reads a D4 file
-pub struct D4FileReader<P: PTableReader, S: STableReader> {
+pub struct D4FileReader<
+    P: PTableReader = UncompressedReader,
+    S: STableReader = SimpleKeyValueReader<RangeRecord>,
+> {
     _root: Directory<'static, ReadOnly, File>,
     header: Header,
     p_table: P,
@@ -37,15 +40,32 @@ impl<P: PTableReader, S: STableReader> D4FileReader<P, S> {
         let mut fp = File::open(path.as_ref())?;
         let mut signature = [0u8; 8];
         fp.read_exact(&mut signature[..])?;
-        if &signature[..4] != &super::FILE_MAGIC_NUM[..] {
+        if signature[..4] != super::FILE_MAGIC_NUM[..] {
             return Err(std::io::Error::new(
                 std::io::ErrorKind::Other,
                 "Invalid D4 File magic number",
             ));
         }
-        let mut root = Directory::open_directory(fp, 8)?;
+
+        let mut root = {
+            let file_root = Directory::open_root(fp, 8)?;
+            if let Some(mut track_metadata_path) = file_root.find_first_object(".metadata") {
+                track_metadata_path.pop();
+                let track_root_path = track_metadata_path;
+                match file_root.open(&track_root_path)? {
+                    OpenResult::SubDir(root) => root,
+                    _ => unreachable!(),
+                }
+            } else {
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    "Empty container",
+                ))?;
+            }
+        };
+
         let header_data = {
-            let mut stream = root.open_stream_ro(".metadata")?;
+            let mut stream = root.open_stream(".metadata")?;
             let mut ret = vec![];
             loop {
                 let mut buf = [0u8; 4096];

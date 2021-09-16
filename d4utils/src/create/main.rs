@@ -1,8 +1,7 @@
 use clap::{load_yaml, App, ArgMatches};
-use d4::ptab::{Encoder, PTablePartitionWriter, PTableWriter, UncompressedWriter};
-use d4::stab::{RangeRecord, STablePartitionWriter, STableWriter, SimpleKeyValueWriter};
-use d4::Chrom;
-use d4::Dictionary;
+use d4::ptab::PTablePartitionWriter;
+use d4::stab::STablePartitionWriter;
+use d4::{Chrom, D4FileWriter, Dictionary};
 use d4_hts::{BamFile, DepthIter};
 use log::info;
 use rayon::prelude::*;
@@ -73,9 +72,7 @@ fn make_dictionary(
     d4::Dictionary::new_simple_range_dict(0, 64)
 }
 
-fn main_impl<P: PTableWriter, S: STableWriter>(
-    matches: ArgMatches,
-) -> Result<(), Box<dyn std::error::Error>> {
+fn main_impl(matches: ArgMatches) -> Result<(), Box<dyn std::error::Error>> {
     if let Some(threads) = matches.value_of("threads") {
         if let Ok(threads) = threads.parse() {
             rayon::ThreadPoolBuilder::new()
@@ -158,7 +155,7 @@ fn main_impl<P: PTableWriter, S: STableWriter>(
     match ext.to_str().unwrap().to_lowercase().as_ref() {
         "sam" | "bam" | "cram" => {
             d4_builder.load_chrom_info_from_bam(input_path)?;
-            let mut d4_writer = d4_builder.create::<P, S>()?;
+            let mut d4_writer: D4FileWriter = d4_builder.create()?;
 
             if enable_compression {
                 d4_writer.enable_secondary_table_compression(compression_level);
@@ -219,7 +216,7 @@ fn main_impl<P: PTableWriter, S: STableWriter>(
                     .into_iter()
                     .map(|(name, size)| Chrom { name, size }),
             );
-            let mut d4_writer = d4_builder.create::<P, S>()?;
+            let mut d4_writer: D4FileWriter = d4_builder.create()?;
             if enable_compression {
                 d4_writer.enable_secondary_table_compression(compression_level);
             }
@@ -265,7 +262,7 @@ fn main_impl<P: PTableWriter, S: STableWriter>(
                 )?
                 .into_iter(),
             );
-            let mut d4_writer = d4_builder.create::<P, S>()?;
+            let mut d4_writer: D4FileWriter = d4_builder.create()?;
             if enable_compression {
                 d4_writer.enable_secondary_table_compression(compression_level);
             }
@@ -308,5 +305,5 @@ pub fn entry_point(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> 
     let yaml = load_yaml!("cli.yml");
     let matches = App::from_yaml(yaml).get_matches_from(args);
 
-    main_impl::<UncompressedWriter, SimpleKeyValueWriter<RangeRecord>>(matches)
+    main_impl(matches)
 }

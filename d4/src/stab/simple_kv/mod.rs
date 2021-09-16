@@ -8,7 +8,7 @@ use serde_derive::{Deserialize, Serialize};
 
 /// The metadata of the Key Value table
 #[derive(Serialize, Deserialize)]
-struct SimpleKVMetadata {
+struct SimpleKvMetadata {
     /// The format identifier
     format: String,
     /// The record format identifier
@@ -27,7 +27,7 @@ struct StreamInfo {
     range: (u32, u32),
 }
 
-impl SimpleKVMetadata {
+impl SimpleKvMetadata {
     fn streams(&self) -> impl Iterator<Item = StreamInfo> {
         self.partitions
             .clone()
@@ -35,7 +35,7 @@ impl SimpleKVMetadata {
             .enumerate()
             .map(|(idx, (chr, begin, end))| StreamInfo {
                 id: format!("{}", idx),
-                chr: chr.clone(),
+                chr,
                 range: (begin, end),
             })
     }

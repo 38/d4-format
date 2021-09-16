@@ -306,6 +306,11 @@ impl<M: CanWrite<T>, T: Write + Seek> Stream<'_, M, T> {
         Ok(ret)
     }
 }
+impl<M: CanRead<T>, T: Read + Seek> Read for Stream<'_, M, T> {
+    fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
+        Stream::read(self, buf)
+    }
+}
 impl<M: CanRead<T>, T: Read + Seek> Stream<'_, M, T> {
     pub fn read(&mut self, buffer: &mut [u8]) -> Result<usize> {
         let mut ret = 0;

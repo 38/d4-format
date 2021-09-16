@@ -57,10 +57,7 @@ impl D4FileHandle {
         }
     }
     pub fn as_stream_reader_mut(&mut self) -> Option<&mut StreamReader> {
-        if match self {
-            D4FileHandle::Reader(_) => true,
-            _ => false,
-        } {
+        if matches!(self, D4FileHandle::Reader(_)) {
             let actual = std::mem::replace(self, Self::Empty);
             match actual {
                 D4FileHandle::Reader(r) => {
@@ -78,10 +75,7 @@ impl D4FileHandle {
     }
 
     pub fn do_build(&mut self) -> Result<()> {
-        let is_builder = match self {
-            D4FileHandle::Builder(_) => true,
-            _ => false,
-        };
+        let is_builder = matches!(self, D4FileHandle::Builder(_));
         if !is_builder {
             return Ok(());
         }
@@ -110,10 +104,7 @@ impl D4FileHandle {
             println!("{:?}", _what);
             return None;
         }
-        if match self {
-            D4FileHandle::Writer(_) => true,
-            _ => false,
-        } {
+        if matches!(self, D4FileHandle::Writer(_)) {
             let actual = std::mem::replace(self, Self::Empty);
             match actual {
                 D4FileHandle::Writer(w) => {

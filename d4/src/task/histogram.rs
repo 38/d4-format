@@ -65,7 +65,7 @@ impl Task for Histogram {
         let mut below = 0;
         let mut above = 0;
         for (b, v, a) in parts {
-            for (idx, value) in v.into_iter().enumerate() {
+            for (idx, value) in v.iter().enumerate() {
                 histogram[idx] += value;
             }
             below += b;

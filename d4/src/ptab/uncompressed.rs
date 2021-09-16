@@ -1,6 +1,6 @@
 use super::*;
 use d4_framefile::mode::{AccessMode, ReadOnly, ReadWrite};
-use d4_framefile::{Chunk, Directory};
+use d4_framefile::{Blob, Directory};
 use std::fs::File;
 use std::io::Result;
 use std::sync::{Arc, Mutex};
@@ -66,7 +66,7 @@ impl PrimaryTableMode for Writer {
 pub struct PrimaryTable<M: PrimaryTableMode> {
     bit_width: usize,
     dictionary: Dictionary,
-    data: Chunk<'static, M::ChunkMode, File>,
+    data: Blob<'static, M::ChunkMode, File>,
     mapping_handle: Option<Arc<Mutex<M::HandleType>>>,
 }
 
@@ -155,7 +155,7 @@ impl PrimaryTable<Writer> {
         header: &Header,
     ) -> Result<Self> {
         let size = header.primary_table_size();
-        let data = directory.new_fixed_size_chunk(".ptab", size)?;
+        let data = directory.create_blob(".ptab", size)?;
         Ok(PrimaryTable {
             dictionary: header.dictionary.clone(),
             bit_width: header.dictionary.bit_width(),
@@ -170,7 +170,7 @@ impl PrimaryTable<Reader> {
         root_dir: &mut Directory<'static, ReadOnly, File>,
         header: &Header,
     ) -> Result<Self> {
-        let chunk = root_dir.open_chunk_ro(".ptab")?;
+        let chunk = root_dir.open_blob(".ptab")?;
         Ok(PrimaryTable {
             dictionary: header.dictionary.clone(),
             bit_width: header.dictionary.bit_width(),
@@ -213,10 +213,10 @@ impl PrimaryTableCodec<Writer> {
     #[inline(always)]
     pub fn encode(&mut self, offset: usize, value: i32) -> bool {
         if self.bit_width == 0 {
-            return match self.dict.encode_value(value) {
-                EncodeResult::DictionaryIndex(_) => true,
-                _ => false,
-            };
+            return matches!(
+                self.dict.encode_value(value),
+                EncodeResult::DictionaryIndex(_)
+            );
         }
         let actual_offset = offset - self.base_offset;
         let start: &mut u32 =
@@ -248,10 +248,10 @@ impl PTablePartitionWriter for PartialPrimaryTable<Writer> {
         PartialPrimaryTable::region(self)
     }
     fn can_encode(&self, value: i32) -> bool {
-        match self.dictionary.encode_value(value) {
-            EncodeResult::DictionaryIndex(_) => true,
-            _ => false,
-        }
+        matches!(
+            self.dictionary.encode_value(value),
+            EncodeResult::DictionaryIndex(_)
+        )
     }
     fn bit_width(&self) -> usize {
         self.dictionary.bit_width()

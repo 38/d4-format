@@ -9,6 +9,12 @@ pub struct Header {
     pub(crate) dictionary: Dictionary,
 }
 
+impl Default for Header {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Header {
     /// Build a new header
     pub fn new() -> Self {

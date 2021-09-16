@@ -19,54 +19,52 @@ pub(super) enum RecordBlock<'a, R: Record> {
 impl<'a, R: Record> RecordBlock<'a, R> {
     #[inline(never)]
     fn decompress(&self, mut count: isize) -> Result<()> {
-        match self {
-            Self::CompressedBlock {
-                raw,
-                decompressed,
-                unused,
-                block_count,
-                ..
-            } => {
-                let mut decompressed = decompressed.borrow_mut();
-                if (count < 0 && *block_count != decompressed.len())
-                    || (count >= 0 && decompressed.len() < unused + count as usize)
-                {
-                    // to avoid decompress the unused blocks again and again, if we see an unused block is here
-                    // we always uncompress the entire block
-                    if *unused > 0 {
-                        count = -1;
-                    } else if count > 0 && decompressed.len() < unused + count as usize {
-                        // To avoid decompression many times, we double the decompressed region
-                        // each time.
-                        count = (count as usize)
-                            .max(decompressed.len() * 2)
-                            .min(*block_count) as isize;
-                    }
-                    let mut decoder = DeflateDecoder::new(*raw);
-                    let bytes_to_read = (if count > 0 {
-                        count as usize + unused
-                    } else {
-                        *block_count
-                    }) * R::SIZE;
-                    let mut buffer = vec![0; bytes_to_read];
-                    let mut size = 0;
-                    while size < bytes_to_read {
-                        let this_size = decoder.read(&mut buffer[size..])?;
-                        size += this_size;
-                        if this_size == 0 {
-                            break;
-                        }
-                    }
-                    let records = unsafe {
-                        std::slice::from_raw_parts(
-                            &buffer[0] as *const u8 as *const R,
-                            size / std::mem::size_of::<R>(),
-                        )
-                    };
-                    *decompressed = records.to_owned();
+        if let Self::CompressedBlock {
+            raw,
+            decompressed,
+            unused,
+            block_count,
+            ..
+        } = self
+        {
+            let mut decompressed = decompressed.borrow_mut();
+            if (count < 0 && *block_count != decompressed.len())
+                || (count >= 0 && decompressed.len() < unused + count as usize)
+            {
+                // to avoid decompress the unused blocks again and again, if we see an unused block is here
+                // we always uncompress the entire block
+                if *unused > 0 {
+                    count = -1;
+                } else if count > 0 && decompressed.len() < unused + count as usize {
+                    // To avoid decompression many times, we double the decompressed region
+                    // each time.
+                    count = (count as usize)
+                        .max(decompressed.len() * 2)
+                        .min(*block_count) as isize;
                 }
+                let mut decoder = DeflateDecoder::new(*raw);
+                let bytes_to_read = (if count > 0 {
+                    count as usize + unused
+                } else {
+                    *block_count
+                }) * R::SIZE;
+                let mut buffer = vec![0; bytes_to_read];
+                let mut size = 0;
+                while size < bytes_to_read {
+                    let this_size = decoder.read(&mut buffer[size..])?;
+                    size += this_size;
+                    if this_size == 0 {
+                        break;
+                    }
+                }
+                let records = unsafe {
+                    std::slice::from_raw_parts(
+                        &buffer[0] as *const u8 as *const R,
+                        size / std::mem::size_of::<R>(),
+                    )
+                };
+                *decompressed = records.to_owned();
             }
-            _ => {}
         }
         Ok(())
     }
@@ -102,12 +100,16 @@ impl<'a, R: Record> RecordBlock<'a, R> {
             let m = (l + r) / 2;
             self.decompress(m as isize + 1).unwrap();
             let mk = kf(&self.get(m));
-            if key < mk {
-                r = m;
-            } else if key == mk {
-                return Ok(m);
-            } else {
-                l = m;
+            match &key {
+                key if key < &mk => {
+                    r = m;
+                }
+                key if key == &mk => {
+                    return Ok(m);
+                }
+                _ => {
+                    l = m;
+                }
             }
         }
         if r < self.count() {

@@ -15,8 +15,8 @@ pub enum Dictionary {
     /// The dctionary described as a key-value map
     Dictionary {
         #[serde(skip)]
-        _v2i_map: Box<HashMap<i32, u32>>,
-        i2v_map: Box<Vec<i32>>,
+        _v2i_map: HashMap<i32, u32>,
+        i2v_map: Vec<i32>,
     },
 }
 
@@ -128,14 +128,14 @@ impl Dictionary {
         let min = dict.iter().min().unwrap();
         let max = dict.iter().max().unwrap();
         if max - min + 1 == dict.len() as i32 && (dict.len() == 1 || *min != dict[0]) {
-            dict.sort();
+            dict.sort_unstable();
         }
         Ok(Self::from_dict_list(dict)?)
     }
 
     /// Create a dictioanry from the mapping vector
     pub fn from_dict_list(mapping: Vec<i32>) -> Result<Self> {
-        if mapping.len() == 0 {
+        if mapping.is_empty() {
             return Err(
                 std::io::Error::new(
                     std::io::ErrorKind::Other,
@@ -152,7 +152,7 @@ impl Dictionary {
         }
         let mut ret = Self::Dictionary {
             _v2i_map: Default::default(),
-            i2v_map: Box::new(mapping),
+            i2v_map: mapping,
         };
         ret.ensure_v2i_map();
         Ok(ret)

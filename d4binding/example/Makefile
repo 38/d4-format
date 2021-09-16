@@ -5,7 +5,7 @@ CONFIG:=$(if $(DETECTED_CONFIG),$(DETECTED_CONFIG),debug)
 BIND_BIN_DIR=../../target/$(CONFIG)
 OBJS=read create read-interval error mean-depth read_cpp
 
-all: print_config $(OBJS:%=bin/%) bin/libd4binding.so bin/sample.d4
+all: print_config $(OBJS:%=bin/%) bin/libd4binding.so #bin/sample.d4
 
 print_config:
 	@if [ "$(CONFIG)" != "$(DETECTED_CONFIG)" ]; then rm -f bin/*; fi
