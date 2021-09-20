@@ -44,7 +44,6 @@ async fn main(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
                     start,
                     end,
                 } => {
-                    let parts = d4file.split(Some(1000_0000)).unwrap();
                     let step = ((end - start + 999) / 1000).max(1);
                     let regions: Vec<_> = (0..)
                         .take_while(|x| step * x + start < end)
