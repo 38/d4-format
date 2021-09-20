@@ -10,9 +10,9 @@ use rayon::prelude::*;
 /// The dictionary (a.k.a encoding table)
 #[derive(Clone, Serialize, Deserialize)]
 pub enum Dictionary {
-    /// The dictionary for a consequtive range
+    /// The dictionary for a consecutive range
     SimpleRange { low: i32, high: i32 },
-    /// The dctionary described as a key-value map
+    /// The dictionary described as a key-value map
     Dictionary {
         #[serde(skip)]
         _v2i_map: HashMap<i32, u32>,
@@ -24,7 +24,7 @@ pub enum Dictionary {
 pub enum EncodeResult {
     /// The dictionary is successfully encoded the value
     DictionaryIndex(u32),
-    /// The dictionary can not encode the value, so that you need to sotre it elsewhere
+    /// The dictionary can not encode the value, so that you need to store it elsewhere
     OutOfRange(i32),
 }
 
@@ -133,7 +133,7 @@ impl Dictionary {
         Ok(Self::from_dict_list(dict)?)
     }
 
-    /// Create a dictioanry from the mapping vector
+    /// Create a dictionary from the mapping vector
     pub fn from_dict_list(mapping: Vec<i32>) -> Result<Self> {
         if mapping.is_empty() {
             return Err(
@@ -158,7 +158,7 @@ impl Dictionary {
         Ok(ret)
     }
 
-    /// Create a dictionary from a dictionay specification file.
+    /// Create a dictionary from a dictionary specification file.
     /// The dictionary has 2^K lines, the N-th lines contains the actual value that
     /// code N-1 encodes.
     pub fn new_dictionary_from_file<R: Read>(file: R) -> Result<Self> {

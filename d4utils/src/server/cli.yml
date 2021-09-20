@@ -1,0 +1,7 @@
+name: d4-serve - Start a D4 Server
+author: Hao Hou <haohou302@gmail.com>
+args:
+    - input-file:
+        required: true
+        help: Path to the input file 
+        index: 1

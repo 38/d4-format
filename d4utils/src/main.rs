@@ -1,6 +1,7 @@
 mod create;
 mod framedump;
 mod plot;
+mod server;
 mod show;
 mod stat;
 
@@ -17,6 +18,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Some("show") | Some("view") => show::entry_point(args),
         Some("stat") => stat::entry_point(args),
         Some("plot") => plot::entry_point(args),
+        Some("serve") => server::entry_point(args),
         _ => {
             eprintln!("D4 Utilities Program");
             eprintln!("Usage: d4tools <subcommnd> <args>");

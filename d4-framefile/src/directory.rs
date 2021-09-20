@@ -341,6 +341,9 @@ impl<'a, T: Read + Seek + 'a> Directory<'a, ReadOnly, T> {
         let path = path.as_ref();
         let n_comp = path.components().count();
         let mut cur_dir = self.clone();
+        if n_comp == 0 {
+            return Ok(OpenResult::SubDir(self.clone()));
+        }
         for (idx, comp) in path.components().enumerate() {
             let comp = match comp {
                 Component::Normal(name) => name.to_string_lossy().to_owned(),
