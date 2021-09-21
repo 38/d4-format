@@ -20,7 +20,7 @@ We provide a [Python API](https://github.com/38/pyd4) that allows users to read 
 
 ### Create a D4 file
 
-The `d4utils create` subcommand is used to convert BAM,CRAM,BigWig and BedGraph file to D4 file.
+The `d4tools create` subcommand is used to convert BAM,CRAM,BigWig and BedGraph file to D4 file.
 
 ```text
 USAGE:
@@ -54,19 +54,19 @@ ARGS:
 - From CRAM/BAM file
 
 ```bash
-  d4utils create -Azr hg19.fa.gz.fai hg002.cram hg002.d4
+  d4tools create -Azr hg19.fa.gz.fai hg002.cram hg002.d4
 ```
 
 - From BigWig file
 
 ```bash
-  d4utils create -z input.bw output.d4
+  d4tools create -z input.bw output.d4
 ```
 
 - From a BedGraph file
 
 ```bash
-  d4utils create -z -g hg19.genome input.bedgraph output.d4
+  d4tools create -z -g hg19.genome input.bedgraph output.d4
 ```
 
 ### View a D4 File
@@ -88,7 +88,7 @@ ARGS:
 - Convert a d4 file to a bedgraph file
 
 ```text
-$ d4utils view hg002.d4 | head -n 10
+$ d4tools view hg002.d4 | head -n 10
 chr1    0       9998    0
 chr1    9998    9999    6
 chr1    9999    10000   9
@@ -104,7 +104,7 @@ chr1    10006   10007   135
 - Print given regions
 
 ```text
-$ d4utils view hg002.d4 1:1234560-1234580 X:1234560-1234580
+$ d4tools view hg002.d4 1:1234560-1234580 X:1234560-1234580
 1       1234559 1234562 28
 1       1234562 1234565 29
 1       1234565 1234566 30
@@ -126,7 +126,7 @@ X       1234578 1234579 25
 - Print the genome layout
 
 ```text
-$ d4utils view -g hg002.d4 | head -n 10
+$ d4tools view -g hg002.d4 | head -n 10
 1       249250621
 2       243199373
 3       198022430
@@ -153,7 +153,7 @@ OPTIONS:
     -r, --region <bed_file_path>      A bed file that describes the region we want to run the stat
     -s, --stat <stat_type>            The type of statistics we want to perform, by default average. You can specify
                                       statistic methods: mean, median, hist, percentile=X% (If this is not speficied
-                                      d4utils will use mean by default)
+                                      d4tools will use mean by default)
     -t, --threads <num_of_threads>    Number of threads
 
 ARGS:
@@ -164,7 +164,7 @@ ARGS:
 - Mean cov for each Chrom
 
 ```text
-$ d4utils stat hg002.d4
+$ d4tools stat hg002.d4
 chr1    0       249250621       27.075065016588262
 chr10   0       135534747       31.59483947684648
 chr11   0       135006516       25.970025943044114
@@ -181,7 +181,7 @@ chr17   0       81195210        25.58382477242192
 - Median cov for each Chrom
 
 ```text
-$ d4utils stat -s median hg002.d4 | head -n 10
+$ d4tools stat -s median hg002.d4 | head -n 10
 1       0       249250621       25
 10      0       135534747       26
 11      0       135006516       26
@@ -197,7 +197,7 @@ $ d4utils stat -s median hg002.d4 | head -n 10
 - Top 5% for the given region defined in a bed file
 
 ```text
-$ d4utils stat -s percentile=95 -r region.bed hg002.d4
+$ d4tools stat -s percentile=95 -r region.bed hg002.d4
 1       2000000 3000000 33
 2       0       150000000       38
 ```
@@ -228,13 +228,13 @@ cargo build
 cargo build --release
 ```
 
-And it will produce the `d4utils` binary which you can find at either
-`target/debug/d4utils` or `target/release/d4utils` depends on which build mode
+And it will produce the `d4tools` binary which you can find at either
+`target/debug/d4tools` or `target/release/d4tools` depends on which build mode
 you choose.
 
 ### Installation (< 2 minutes)
 
-You can choose to install the d4utils binary by running
+You can choose to install the d4tools binary by running
 
 ```bash
 cargo install --path .
@@ -243,7 +243,7 @@ cargo install --path .
 Or you can choose install from crates.io:
 
 ```bash
-cargo install d4utils
+cargo install d4tools
 ```
 
 ### Sample Data
