@@ -34,6 +34,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             eprintln!("\tplot     \tPlot the specified region");
             eprintln!("\tserve    \tStart a D4 server");
             eprintln!("\tmerge    \tMerge existing D4 file as a multi-track D4 file");
+            eprintln!("\tls-track \tList all available tracks in the D4 file");
             eprintln!();
             eprintln!("Type 'd4tools <subcommand> --help' to learn more about each subcommands.");
             Ok(())
