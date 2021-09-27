@@ -1,9 +1,9 @@
 use clap::{load_yaml, App, ArgMatches};
 
-use d4::ptab::UncompressedReader;
-use d4::stab::{RangeRecord, SimpleKeyValueReader};
-use d4::task::{Histogram, Mean, Task, TaskContext, TaskPartition};
-use d4::D4FileReader;
+use d4::{
+    task::{Histogram, Mean, Task, TaskPartition},
+    D4FileReader,
+};
 
 use std::fs::File;
 use std::io::{BufRead, BufReader};
@@ -35,8 +35,7 @@ fn run_task<T: Task>(
 ) -> Result<Vec<(String, u32, u32, T::Output)>, Box<dyn std::error::Error>> {
     let d4_path = matches.value_of("input").unwrap();
 
-    let mut input =
-        D4FileReader::<UncompressedReader, SimpleKeyValueReader<RangeRecord>>::open(d4_path)?;
+    let mut input: D4FileReader = D4FileReader::open(d4_path)?;
 
     let region_spec: Vec<_> = if let Some(path) = matches.value_of("region") {
         parse_bed_file(path)?
@@ -51,7 +50,7 @@ fn run_task<T: Task>(
             .collect()
     };
 
-    let tc = TaskContext::<_, _, T>::new(&mut input, &region_spec, param)?;
+    let tc = T::create_task(&mut input, &region_spec, param)?;
 
     Ok(tc.run())
 }

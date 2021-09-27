@@ -3,10 +3,16 @@
 mod context;
 mod histogram;
 mod mean;
+mod value_range;
+
+use std::io::Result;
 
 pub use context::TaskContext;
 pub use histogram::Histogram;
 pub use mean::Mean;
+pub use value_range::ValueRange;
+
+use crate::{ptab::PTableReader, stab::STableReader, D4FileReader};
 
 /// An abstracted task
 pub trait Task {
@@ -20,6 +26,20 @@ pub trait Task {
     fn region(&self) -> (&str, u32, u32);
     /// Combine all the partitions and finalize the computation
     fn combine(&self, parts: &[<Self::Partition as TaskPartition>::ResultType]) -> Self::Output;
+
+    fn create_task<P: PTableReader, S: STableReader, C: AsRef<str>>(
+        reader: &mut D4FileReader<P, S>,
+        regions: &[(C, u32, u32)],
+        partition_param: <Self::Partition as TaskPartition>::PartitionParam,
+    ) -> Result<TaskContext<P, S, Self>>
+    where
+        Self: Sized,
+        P::Partition: Send,
+        S::Partition: Send,
+        Self::Partition: Send,
+    {
+        TaskContext::new(reader, regions, partition_param)
+    }
 }
 
 /// A partition of a task

@@ -1,0 +1,12 @@
+name: d4-merge - Merge multiple D4 files
+author: Hao Hou <haohou302@gmail.com>
+args:
+    - input-files:
+        required: true
+        multiple: true
+        help: Path to the input files
+        index: 1
+    - output-file:
+        required: true
+        help: Path to the output files
+        index: 2

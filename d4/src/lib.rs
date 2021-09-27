@@ -11,7 +11,7 @@ pub mod stab;
 pub mod task;
 
 pub use chrom::Chrom;
-pub use d4file::{D4FileBuilder, D4FileReader, D4FileWriter};
+pub use d4file::{find_tracks_in_file, D4FileBuilder, D4FileMerger, D4FileReader, D4FileWriter};
 pub use dict::Dictionary;
 
 pub use header::Header;

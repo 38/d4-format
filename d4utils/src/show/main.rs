@@ -1,7 +1,9 @@
 use clap::{load_yaml, App};
-use d4::ptab::{DecodeResult, PTablePartitionReader, UncompressedReader};
-use d4::stab::{RangeRecord, STablePartitionReader, SimpleKeyValueReader};
-use d4::D4FileReader;
+use d4::{
+    ptab::{DecodeResult, PTablePartitionReader},
+    stab::STablePartitionReader,
+    D4FileReader,
+};
 use regex::Regex;
 use std::io::{Result as IOResult, Write};
 fn write_bed_record_fast<W: Write>(
@@ -24,9 +26,7 @@ fn write_bed_record_fast<W: Write>(
 pub fn entry_point(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
     let yaml = load_yaml!("cli.yml");
     let matches = App::from_yaml(yaml).get_matches_from(args);
-    let mut d4file = D4FileReader::<UncompressedReader, SimpleKeyValueReader<RangeRecord>>::open(
-        matches.value_of("input-file").unwrap(),
-    )?;
+    let mut d4file: D4FileReader = D4FileReader::open(matches.value_of("input-file").unwrap())?;
 
     if matches.values_of("show-genome").is_some() {
         let hdr = d4file.header();

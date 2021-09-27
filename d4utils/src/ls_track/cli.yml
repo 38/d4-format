@@ -1,0 +1,7 @@
+name: d4-ls-track - List all data tracks lives in a D4 file
+author: Hao Hou <haohou302@gmail.com>
+args:
+    - input-file:
+        required: true
+        help: Path to the input file
+        index: 1

@@ -40,7 +40,7 @@ impl D4FileHandle {
     }
 
     pub fn new_for_read<P: AsRef<Path>>(path: P) -> Result<Box<D4FileHandle>> {
-        D4FileReader::open(path.as_ref())
+        D4FileReader::open_first_track(path.as_ref())
             .map(|reader| Box::new(D4FileHandle::Reader(Box::new(reader))))
     }
 

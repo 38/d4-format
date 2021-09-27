@@ -380,6 +380,34 @@ impl<'a, T: Read + Seek + 'a> Directory<'a, ReadOnly, T> {
         Err(Error::new(ErrorKind::Other, "Invalid path"))
     }
 
+    fn recurse_impl<Handle: FnMut(&Path, EntryKind) -> bool>(
+        &self,
+        handle: &mut Handle,
+        prefix: &mut PathBuf,
+    ) -> bool {
+        for Entry { name, kind, .. } in self.entries() {
+            prefix.push(&name);
+            if !handle(prefix.as_path(), kind) {
+                return false;
+            }
+
+            if kind == EntryKind::SubDir {
+                if let Ok(subdir) = self.open_directory(&name) {
+                    if subdir.recurse_impl(handle, prefix) {
+                        return true;
+                    }
+                }
+            }
+
+            prefix.pop();
+        }
+        true
+    }
+
+    pub fn recurse<Handle: FnMut(&Path, EntryKind) -> bool>(&self, mut handle: Handle) {
+        self.recurse_impl(&mut handle, &mut Default::default());
+    }
+
     fn find_first_object_impl(&self, name: &str, prefix: &mut PathBuf) -> bool {
         let entries = self.entries();
         if entries

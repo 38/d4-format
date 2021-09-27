@@ -1,7 +1,5 @@
 use clap::{load_yaml, App};
-use d4::ptab::UncompressedReader;
-use d4::stab::{RangeRecord, SimpleKeyValueReader};
-use d4::task::TaskContext;
+use d4::task::Task;
 use plotters::prelude::*;
 use regex::Regex;
 
@@ -11,8 +9,7 @@ fn downsample_data(
     mut range: (u32, u32),
     npoints: usize,
 ) -> Result<Vec<(u32, f64)>, Box<dyn std::error::Error>> {
-    let mut input: d4::D4FileReader<UncompressedReader, SimpleKeyValueReader<RangeRecord>> =
-        d4::D4FileReader::open(path)?;
+    let mut input: d4::D4FileReader = d4::D4FileReader::open(path)?;
 
     let target = input
         .header()
@@ -42,7 +39,7 @@ fn downsample_data(
             ret
         })
         .collect();
-    let tc = TaskContext::<_, _, d4::task::Mean>::new(&mut input, &stat_parts, ())?;
+    let tc = d4::task::Mean::create_task(&mut input, &stat_parts, ())?;
     Ok(tc
         .run()
         .into_iter()

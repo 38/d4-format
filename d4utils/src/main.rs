@@ -1,5 +1,7 @@
 mod create;
 mod framedump;
+mod ls_track;
+mod merge;
 mod plot;
 mod server;
 mod show;
@@ -19,15 +21,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Some("stat") => stat::entry_point(args),
         Some("plot") => plot::entry_point(args),
         Some("serve") => server::entry_point(args),
+        Some("merge") => merge::entry_point(args),
+        Some("ls-track") => ls_track::entry_point(args),
         _ => {
             eprintln!("D4 Utilities Program");
-            eprintln!("Usage: d4tools <subcommnd> <args>");
+            eprintln!("Usage: d4tools <subcommand> <args>");
             eprintln!("Possible subcommands are:");
             eprintln!("\tcreate   \tCreate a new D4 depth profile");
             eprintln!("\tframedump\tDump The container data");
             eprintln!("\tview     \tPrint the underlying depth profile");
             eprintln!("\tstat     \tRun statistics on the given file");
             eprintln!("\tplot     \tPlot the specified region");
+            eprintln!("\tserve    \tStart a D4 server");
+            eprintln!("\tmerge    \tMerge existing D4 file as a multi-track D4 file");
             eprintln!();
             eprintln!("Type 'd4tools <subcommand> --help' to learn more about each subcommands.");
             Ok(())

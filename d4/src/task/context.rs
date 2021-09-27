@@ -127,13 +127,16 @@ where
             .collect();
         regions.sort();
 
-        let mut task_assignment: Vec<Vec<(usize, T::Partition)>> =
-            (0..file_partition.len()).map(|_| vec![]).collect();
+        let mut task_assignment: Vec<Vec<(usize, T::Partition)>> = (0..file_partition.len())
+            .map(|_| Default::default())
+            .collect();
 
         // Now assign the d4 file partition to each task assignments
         let mut idx = 0;
-        for (part, fpid) in file_partition.iter().zip(0..) {
+        for (fpid, part) in file_partition.iter().enumerate() {
             let (chr, fpl, fpr) = part.0.region();
+
+            // first, skip all the regions that *before* this partition
             while idx < regions.len()
                 && (regions[idx].0.as_str() < chr
                     || (regions[idx].0.as_str() == chr && regions[idx].2 < fpl))

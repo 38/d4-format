@@ -32,7 +32,7 @@ impl<'a, R: Record> RecordBlock<'a, R> {
                 || (count >= 0 && decompressed.len() < unused + count as usize)
             {
                 // to avoid decompress the unused blocks again and again, if we see an unused block is here
-                // we always uncompress the entire block
+                // we always decompress the entire block
                 if *unused > 0 {
                     count = -1;
                 } else if count > 0 && decompressed.len() < unused + count as usize {

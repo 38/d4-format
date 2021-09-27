@@ -1,8 +1,8 @@
 use clap::{load_yaml, App};
 use serde_derive::Deserialize;
-use warp::{hyper::body::to_bytes, Filter};
+use warp::Filter;
 
-use d4::D4FileReader;
+use d4::{task::Task, D4FileReader};
 
 use std::io::Write;
 
@@ -51,16 +51,11 @@ async fn main(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
                             (
                                 chr.as_str(),
                                 (step * x + start) as u32,
-                                (step * x + start + 1).min(end) as u32,
+                                (step * x + start + step).min(end) as u32,
                             )
                         })
                         .collect();
-                    let task = d4::task::TaskContext::<_, _, d4::task::Mean>::new(
-                        &mut d4file,
-                        &regions[..],
-                        (),
-                    )
-                    .unwrap();
+                    let task = d4::task::Mean::create_task(&mut d4file, &regions, ()).unwrap();
                     let task_result = task.run();
                     let mut buffer = Vec::new();
                     buffer.write_all(&(start as u32).to_le_bytes()).unwrap();
@@ -86,6 +81,6 @@ pub fn entry_point(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> 
     tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()?
-        .block_on(async { main(args).await });
+        .block_on(async { main(args).await.expect("Server error") });
     Ok(())
 }
