@@ -388,6 +388,7 @@ impl<'a, T: Read + Seek + 'a> Directory<'a, ReadOnly, T> {
         for Entry { name, kind, .. } in self.entries() {
             prefix.push(&name);
             if !handle(prefix.as_path(), kind) {
+                prefix.pop();
                 return false;
             }
 
