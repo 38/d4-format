@@ -5,12 +5,7 @@ use d4::{
     D4TrackReader,
 };
 use regex::Regex;
-use std::{
-    borrow::Borrow,
-    collections::HashMap,
-    io::{Error, Result as IOResult, Write},
-    path::Path,
-};
+use std::{borrow::{Borrow, Cow}, collections::HashMap, io::{Error, Result as IOResult, Write}, path::Path};
 fn write_bed_record_fast<W: Write>(
     mut writer: W,
     chr: &str,
@@ -195,7 +190,7 @@ pub fn entry_point(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> 
             let pattern = regex::Regex::new(pattern)?;
             D4TrackReader::open_tracks(input_filename, |path| {
                 let stem = path
-                    .map(|what: &Path| what.file_name().unwrap().to_string_lossy())
+                    .map(|what: &Path| what.file_name().map(|x| x.to_string_lossy()).unwrap_or_else(|| Cow::<str>::Borrowed("")))
                     .unwrap_or_default();
                 data_path.push(stem.to_string());
                 pattern.is_match(stem.borrow())
@@ -203,7 +198,7 @@ pub fn entry_point(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> 
         } else {
             D4TrackReader::open_tracks(input_filename, |path| {
                 let stem = path
-                    .map(|what: &Path| what.file_name().unwrap().to_string_lossy())
+                    .map(|what: &Path| what.file_name().map(|x| x.to_string_lossy()).unwrap_or_else(|| Cow::<str>::Borrowed("")))
                     .unwrap_or_default();
                 data_path.push(stem.to_string());
                 true
