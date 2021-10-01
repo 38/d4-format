@@ -125,7 +125,7 @@ impl StreamReader {
             }
 
             if self.current_primary_decoder.is_none() {
-                self.current_primary_decoder = Some(current_part.0.as_decoder());
+                self.current_primary_decoder = Some(current_part.0.make_decoder());
             }
 
             let empty_ptab = current_part.0.bit_width() == 0;
@@ -186,7 +186,7 @@ impl StreamReader {
             return self.next(this_chrom);
         } else {
             if self.current_primary_decoder.is_none() {
-                self.current_primary_decoder = Some(current_part.0.as_decoder());
+                self.current_primary_decoder = Some(current_part.0.make_decoder());
             }
             let ret = match self
                 .current_primary_decoder

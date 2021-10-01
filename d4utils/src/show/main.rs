@@ -25,7 +25,7 @@ fn write_bed_record_fast<W: Write>(
 }
 pub fn entry_point(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
     let yaml = load_yaml!("cli.yml");
-    let matches = App::from_yaml(yaml).get_matches_from(args);
+    let matches = App::from_yaml(yaml).version(d4::VERSION).get_matches_from(args);
     let mut d4file: D4FileReader = D4FileReader::open(matches.value_of("input-file").unwrap())?;
 
     if matches.values_of("show-genome").is_some() {
@@ -82,7 +82,7 @@ pub fn entry_point(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> 
             all_region
         };
 
-        let decoder = ptab.as_decoder();
+        let decoder = ptab.make_decoder();
         for (mut from, mut to) in regions {
             to = to.min(te);
             let mut last = None;

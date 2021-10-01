@@ -5,6 +5,7 @@ use std::fs::File;
 use std::io::{Error, Read, Result};
 use std::path::Path;
 
+use crate::find_tracks_in_file;
 use crate::header::Header;
 use crate::ptab::{PTablePartitionReader, PTableReader, UncompressedReader};
 use crate::stab::{RangeRecord, STableReader, SimpleKeyValueReader};
@@ -85,6 +86,22 @@ impl<P: PTableReader, S: STableReader> D4FileReader<P, S> {
         } else {
             Self::open_first_track(track_spec)
         }
+    }
+
+    pub fn open_tracks<PathType : AsRef<Path>, Predict: FnMut(Option<&Path>) -> bool>(path: PathType, mut track_pattern: Predict) -> Result<Vec<Self>> {
+        let mut buf = Vec::new();
+        find_tracks_in_file(path.as_ref(), |_| true, &mut buf)?;
+        let mut ret = Vec::new();
+        let file = open_file_and_validate_header(path.as_ref())?;
+        let file_root = Directory::open_root(file, 8)?;
+        for track_path in buf.into_iter().filter(|p| track_pattern(Some(p.as_path()))) {
+            let track_root = match file_root.open(track_path)? {
+                OpenResult::SubDir(root) => root,
+                _ => continue
+            };
+            ret.push(Self::create_reader_for_root(track_root)?);
+        } 
+        Ok(ret)
     }
 
     pub fn open_track_with_path<PathType: AsRef<Path>, TrackType: AsRef<Path>>(

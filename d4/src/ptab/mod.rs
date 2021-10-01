@@ -35,7 +35,7 @@ pub trait PTablePartitionWriter: Send {
     /// The type describes how we encode
     type EncoderType: Encoder;
     /// Create encoder for current partition
-    fn as_encoder(&mut self) -> Self::EncoderType;
+    fn make_encoder(&mut self) -> Self::EncoderType;
     /// Report the genome range this partition is responsible to
     fn region(&self) -> (&str, u32, u32);
     /// Report if the primary table can encode the value
@@ -66,8 +66,8 @@ pub trait PTablePartitionReader: Send {
     /// The decoder type
     type DecoderType: Decoder;
     /// Create decoder for current chunk
-    fn as_decoder(&mut self) -> Self::DecoderType;
-    /// Report the resposbile region
+    fn make_decoder(&mut self) -> Self::DecoderType;
+    /// Report the responsible region
     fn region(&self) -> (&str, u32, u32);
     /// Report the bit width
     fn bit_width(&self) -> usize;
@@ -77,7 +77,7 @@ pub trait PTablePartitionReader: Send {
 pub trait Decoder {
     /// Decode the value at one location
     fn decode(&mut self, pos: usize) -> DecodeResult;
-    /// Decode a block of values - This is overriden for performance reasons
+    /// Decode a block of values - this is just a default implementation
     fn decode_block<F: FnMut(usize, DecodeResult)>(
         &mut self,
         pos: usize,

@@ -1,5 +1,4 @@
 name: d4-create - Create a D4 depth Dump
-version: 0.1.0
 author: Hao Hou <haohou302@gmail.com>
 args:
     - filter:

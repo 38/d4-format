@@ -25,7 +25,7 @@ impl<P: PTableReader, S: STableReader, T: Task> PartitionContext<P, S, T> {
     )> {
         let chr = self.primary.region().0.to_string();
         let per_base = self.primary.bit_width() > 0;
-        let mut decoder = self.primary.as_decoder();
+        let mut decoder = self.primary.make_decoder();
         let mut break_points: Vec<_> = self
             .tasks
             .iter()

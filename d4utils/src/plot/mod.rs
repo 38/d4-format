@@ -49,7 +49,7 @@ fn downsample_data(
 
 pub fn entry_point(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
     let yaml = load_yaml!("cli.yml");
-    let matches = App::from_yaml(yaml).get_matches_from(args);
+    let matches = App::from_yaml(yaml).version(d4::VERSION).get_matches_from(args);
 
     let input = matches.value_of("input-file").unwrap();
     let output = matches.value_of("output-file").unwrap();

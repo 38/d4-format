@@ -44,7 +44,7 @@ impl TaskHandle {
         let (stab, dec) = match self {
             TaskHandle::Read { context, encoder } => {
                 if encoder.is_none() {
-                    *encoder = Some(context.0.as_decoder());
+                    *encoder = Some(context.0.make_decoder());
                 }
                 (&mut context.1, encoder.as_mut().unwrap())
             }

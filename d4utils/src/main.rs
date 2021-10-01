@@ -8,11 +8,6 @@ mod show;
 mod stat;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    #[cfg(feature = "prof")]
-    cpuprofiler::PROFILER
-        .lock()
-        .unwrap()
-        .start("./d4utils.profile")?;
     let args: Vec<_> = std::env::args().skip(1).collect();
     let ret = match args.get(0).map(AsRef::as_ref) {
         Some("create") => create::entry_point(args),
@@ -24,7 +19,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Some("merge") => merge::entry_point(args),
         Some("ls-track") => ls_track::entry_point(args),
         _ => {
-            eprintln!("D4 Utilities Program");
+            eprintln!("D4 Utilities Program {}", d4::VERSION);
             eprintln!("Usage: d4tools <subcommand> <args>");
             eprintln!("Possible subcommands are:");
             eprintln!("\tcreate   \tCreate a new D4 depth profile");
@@ -40,8 +35,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             Ok(())
         }
     };
-    #[cfg(feature = "prof")]
-    cpuprofiler::PROFILER.lock().unwrap().stop()?;
 
     if let Some(io_error) = ret
         .as_ref()

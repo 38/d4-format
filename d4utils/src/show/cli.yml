@@ -1,5 +1,4 @@
 name: d4-view - View a D4 file 
-version: 0.1.0
 author: Hao Hou <haohou302@gmail.com>
 args:
     - show-genome:

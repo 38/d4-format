@@ -15,3 +15,5 @@ pub use d4file::{find_tracks_in_file, D4FileBuilder, D4FileMerger, D4FileReader,
 pub use dict::Dictionary;
 
 pub use header::Header;
+
+pub const VERSION : &'static str = env!("CARGO_PKG_VERSION");

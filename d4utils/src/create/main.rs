@@ -180,7 +180,7 @@ fn main_impl(matches: ArgMatches) -> Result<(), Box<dyn std::error::Error>> {
                     let range_iter = alignment
                         .range(&chr, al_from as usize, to as usize)
                         .unwrap();
-                    let mut p_encoder = p_table.as_encoder();
+                    let mut p_encoder = p_table.make_encoder();
                     for (_, pos, depth) in DepthIter::with_filter(range_iter, |r| {
                         r.map_qual() >= min_mq
                             && (bam_flags.is_none() || bam_flags.unwrap() == r.flag())
@@ -225,7 +225,7 @@ fn main_impl(matches: ArgMatches) -> Result<(), Box<dyn std::error::Error>> {
                 let (chrom, left, right) = pt.region();
                 let chrom = chrom.to_string();
                 let mut last = left;
-                let mut p_encoder = pt.as_encoder();
+                let mut p_encoder = pt.make_encoder();
 
                 let mut write_value = |pos: u32, value: i32| {
                     if !p_encoder.encode(pos as usize, value) {
@@ -282,7 +282,7 @@ fn main_impl(matches: ArgMatches) -> Result<(), Box<dyn std::error::Error>> {
                             continue;
                         }
                     }
-                    let mut encoder = partition[current].0.as_encoder();
+                    let mut encoder = partition[current].0.make_encoder();
                     if !encoder.encode(pos as usize, depth) {
                         partition[current].1.encode(pos, depth)?;
                     }
@@ -303,7 +303,7 @@ fn main_impl(matches: ArgMatches) -> Result<(), Box<dyn std::error::Error>> {
 pub fn entry_point(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
     env_logger::init();
     let yaml = load_yaml!("cli.yml");
-    let matches = App::from_yaml(yaml).get_matches_from(args);
+    let matches = App::from_yaml(yaml).version(d4::VERSION).get_matches_from(args);
 
     main_impl(matches)
 }

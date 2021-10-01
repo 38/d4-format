@@ -243,7 +243,7 @@ impl Encoder for PrimaryTableCodec<Writer> {
 }
 impl PTablePartitionWriter for PartialPrimaryTable<Writer> {
     type EncoderType = PrimaryTableCodec<Writer>;
-    fn as_encoder(&mut self) -> Self::EncoderType {
+    fn make_encoder(&mut self) -> Self::EncoderType {
         PartialPrimaryTable::as_codec(self)
     }
     fn region(&self) -> (&str, u32, u32) {
@@ -333,7 +333,7 @@ impl PTablePartitionReader for PartialPrimaryTable<Reader> {
     fn bit_width(&self) -> usize {
         self.bit_width
     }
-    fn as_decoder(&mut self) -> Self::DecoderType {
+    fn make_decoder(&mut self) -> Self::DecoderType {
         PartialPrimaryTable::as_codec(self)
     }
     fn region(&self) -> (&str, u32, u32) {
