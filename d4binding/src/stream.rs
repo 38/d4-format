@@ -9,12 +9,12 @@ use d4::stab::{
     SimpleKeyValuePartialReader, SimpleKeyValuePartialWriter, SimpleKeyValueReader,
     SimpleKeyValueWriter,
 };
-use d4::{D4FileReader, D4FileWriter};
+use d4::{D4FileWriter, D4TrackReader};
 
 use std::io::Result;
 use std::ops::Range;
 
-type D4Reader = D4FileReader<UncompressedReader, SimpleKeyValueReader<RangeRecord>>;
+type D4Reader = D4TrackReader<UncompressedReader, SimpleKeyValueReader<RangeRecord>>;
 type D4Writer = D4FileWriter<UncompressedWriter, SimpleKeyValueWriter<RangeRecord>>;
 type D4ReaderParts = (
     UncompressedPartReader,

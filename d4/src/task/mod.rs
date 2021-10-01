@@ -12,7 +12,7 @@ pub use histogram::Histogram;
 pub use mean::Mean;
 pub use value_range::ValueRange;
 
-use crate::{ptab::PTableReader, stab::STableReader, D4FileReader};
+use crate::{ptab::PTableReader, stab::STableReader, D4TrackReader};
 
 /// An abstracted task
 pub trait Task {
@@ -28,7 +28,7 @@ pub trait Task {
     fn combine(&self, parts: &[<Self::Partition as TaskPartition>::ResultType]) -> Self::Output;
 
     fn create_task<P: PTableReader, S: STableReader, C: AsRef<str>>(
-        reader: &mut D4FileReader<P, S>,
+        reader: &mut D4TrackReader<P, S>,
         regions: &[(C, u32, u32)],
         partition_param: <Self::Partition as TaskPartition>::PartitionParam,
     ) -> Result<TaskContext<P, S, Self>>

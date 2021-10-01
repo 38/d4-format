@@ -45,8 +45,8 @@ impl MappedStreamFrame {
         self.header.linked_frame.map(|offset| unsafe {
             std::mem::transmute((
                 (&self.header as *const FrameHeader as *const u8)
-                    .offset(i64::from(offset) as isize),
-                self.header.linked_frame_size - std::mem::size_of::<FrameHeader>() as u64,
+                    .offset(i64::from(offset).to_le() as isize),
+                self.header.linked_frame_size.to_le() - std::mem::size_of::<FrameHeader>() as u64,
             ))
         })
     }

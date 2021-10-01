@@ -5,11 +5,11 @@ use d4::ptab::{
 use d4::stab::{
     RangeRecord, STablePartitionReader, SimpleKeyValuePartialReader, SimpleKeyValueReader,
 };
-use d4::D4FileReader;
+use d4::D4TrackReader;
 
 use std::io::Result;
 
-type FileReader = D4FileReader<UncompressedReader, SimpleKeyValueReader<RangeRecord>>;
+type FileReader = D4TrackReader<UncompressedReader, SimpleKeyValueReader<RangeRecord>>;
 type ReaderTaskContext = (
     UncompressedPartReader,
     SimpleKeyValuePartialReader<RangeRecord>,

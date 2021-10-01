@@ -9,7 +9,7 @@ fn downsample_data(
     mut range: (u32, u32),
     npoints: usize,
 ) -> Result<Vec<(u32, f64)>, Box<dyn std::error::Error>> {
-    let mut input: d4::D4FileReader = d4::D4FileReader::open(path)?;
+    let mut input: d4::D4TrackReader = d4::D4TrackReader::open(path)?;
 
     let target = input
         .header()
@@ -49,7 +49,9 @@ fn downsample_data(
 
 pub fn entry_point(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
     let yaml = load_yaml!("cli.yml");
-    let matches = App::from_yaml(yaml).version(d4::VERSION).get_matches_from(args);
+    let matches = App::from_yaml(yaml)
+        .version(d4::VERSION)
+        .get_matches_from(args);
 
     let input = matches.value_of("input-file").unwrap();
     let output = matches.value_of("output-file").unwrap();

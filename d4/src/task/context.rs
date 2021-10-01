@@ -2,7 +2,7 @@ use rayon::prelude::*;
 use std::io::Result;
 
 use super::{Task, TaskPartition};
-use crate::d4file::D4FileReader;
+use crate::d4file::D4TrackReader;
 use crate::ptab::{DecodeResult, Decoder, PTablePartitionReader, PTableReader};
 use crate::stab::{STablePartitionReader, STableReader};
 
@@ -115,7 +115,7 @@ where
 {
     /// Create a new task that processing the given file
     pub fn new<Name: AsRef<str>>(
-        reader: &mut D4FileReader<P, S>,
+        reader: &mut D4TrackReader<P, S>,
         regions: &[(Name, u32, u32)],
         partition_param: <<T as Task>::Partition as TaskPartition>::PartitionParam,
     ) -> Result<TaskContext<P, S, T>> {

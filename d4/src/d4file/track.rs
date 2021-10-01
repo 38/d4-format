@@ -1,5 +1,8 @@
-use super::D4FileReader;
-use crate::{ptab::{DecodeResult, Decoder, PTablePartitionReader, PTableReader}, stab::{STablePartitionReader, STableReader}};
+use super::D4TrackReader;
+use crate::{
+    ptab::{DecodeResult, Decoder, PTablePartitionReader, PTableReader},
+    stab::{STablePartitionReader, STableReader},
+};
 
 use std::{io::Result, iter::Once};
 
@@ -10,15 +13,15 @@ pub struct TrackValue {
 }
 
 /// Row in multi-track data
-pub struct MultiTrackRow<T : Iterator<Item = TrackValue> + ExactSizeIterator> {
+pub struct MultiTrackRow<T: Iterator<Item = TrackValue> + ExactSizeIterator> {
     pub values: T,
     pub start: u32,
     pub end: u32,
 }
 
 /// Code that used to scan a multi-track D4 file
-pub trait DataScanner<RowType : Iterator<Item = TrackValue> + ExactSizeIterator> {
-    /// Get the range this data scanner want to scan. Please note all the data scanner doesn't across the chromosome boundary 
+pub trait DataScanner<RowType: Iterator<Item = TrackValue> + ExactSizeIterator> {
+    /// Get the range this data scanner want to scan. Please note all the data scanner doesn't across the chromosome boundary
     /// so we don't specify the chromosome, as it's implied by "current chromosome", which is defined by the MultiTrackPartitionReader
     fn get_range(&self) -> (u32, u32);
     fn feed(&mut self, row: MultiTrackRow<RowType>) -> bool;
@@ -27,7 +30,7 @@ pub trait DataScanner<RowType : Iterator<Item = TrackValue> + ExactSizeIterator>
 /// A reader that scans one partition within a chromosome
 pub trait MultiTrackPartitionReader {
     /// The type for each row
-    type RowType : Iterator<Item = TrackValue> + ExactSizeIterator;
+    type RowType: Iterator<Item = TrackValue> + ExactSizeIterator;
     /// Scan the partition with a group of scanners
     fn scan_partition<S: DataScanner<Self::RowType>>(&mut self, handles: &mut [S]);
 }
@@ -35,27 +38,31 @@ pub trait MultiTrackPartitionReader {
 /// Trait for any type that has ability to read multi-track data
 pub trait MultiTrackReader {
     /// The type for partition reader
-    type PartitionType : MultiTrackPartitionReader;
+    type PartitionType: MultiTrackPartitionReader;
     /// Split a multi track reader into different partitions
     fn split(&mut self, size_limit: Option<usize>) -> Result<Vec<Self::PartitionType>>;
 }
 
-pub struct D4FilePartition<P: PTableReader, S: STableReader>{
-    primary: P::Partition, 
-    secondary: S::Partition
+pub struct D4FilePartition<P: PTableReader, S: STableReader> {
+    primary: P::Partition,
+    secondary: S::Partition,
 }
 
-impl <P: PTableReader, S: STableReader> MultiTrackPartitionReader for D4FilePartition<P, S> {
+impl<P: PTableReader, S: STableReader> MultiTrackPartitionReader for D4FilePartition<P, S> {
     type RowType = Once<TrackValue>;
     fn scan_partition<DS: DataScanner<Self::RowType>>(&mut self, handles: &mut [DS]) {
         let per_base = self.primary.bit_width() > 0;
         let mut decoder = self.primary.make_decoder();
 
         // First, we need to determine all the break points defined by each scanner
-        let mut break_points: Vec<_> = handles.iter().map(|x| {
-            let (start, end) = x.get_range();
-            std::iter::once(start).chain(std::iter::once(end))
-        }).flatten().collect();
+        let mut break_points: Vec<_> = handles
+            .iter()
+            .map(|x| {
+                let (start, end) = x.get_range();
+                std::iter::once(start).chain(std::iter::once(end))
+            })
+            .flatten()
+            .collect();
         break_points.sort_unstable();
 
         if break_points.is_empty() {
@@ -97,10 +104,11 @@ impl <P: PTableReader, S: STableReader> MultiTrackPartitionReader for D4FilePart
                             }
                         };
                         for &id in active_handles.iter() {
-                            handles[id].feed(MultiTrackRow { values: std::iter::once(TrackValue { 
-                                value,
-                                tag_id: 0,
-                            }), start: pos as u32, end: pos as u32 + 1 });
+                            handles[id].feed(MultiTrackRow {
+                                values: std::iter::once(TrackValue { value, tag_id: 0 }),
+                                start: pos as u32,
+                                end: pos as u32 + 1,
+                            });
                         }
                     },
                 );
@@ -110,10 +118,11 @@ impl <P: PTableReader, S: STableReader> MultiTrackPartitionReader for D4FilePart
                     left = left.max(part_left);
                     right = right.min(part_right).max(left);
                     for &id in active_handles.iter() {
-                        handles[id].feed(MultiTrackRow { values:std::iter::once(TrackValue {
-                            value,
-                            tag_id: 0,
-                        }), start: left, end: right });
+                        handles[id].feed(MultiTrackRow {
+                            values: std::iter::once(TrackValue { value, tag_id: 0 }),
+                            start: left,
+                            end: right,
+                        });
                     }
                     if right == part_right {
                         break;
@@ -125,14 +134,13 @@ impl <P: PTableReader, S: STableReader> MultiTrackPartitionReader for D4FilePart
 }
 
 /// Of course single track reader can be unified here
-impl <P: PTableReader, S: STableReader> MultiTrackReader for D4FileReader<P, S> {
-    type PartitionType =  D4FilePartition<P, S>;
+impl<P: PTableReader, S: STableReader> MultiTrackReader for D4TrackReader<P, S> {
+    type PartitionType = D4FilePartition<P, S>;
     fn split(&mut self, size_limit: Option<usize>) -> Result<Vec<Self::PartitionType>> {
-        Ok(self.split(size_limit)?.into_iter().map(|(primary,secondary)| {
-            D4FilePartition {
-                primary,
-                secondary
-            }
-        }).collect())
+        Ok(self
+            .split(size_limit)?
+            .into_iter()
+            .map(|(primary, secondary)| D4FilePartition { primary, secondary })
+            .collect())
     }
 }

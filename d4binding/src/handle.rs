@@ -5,12 +5,12 @@ use std::path::Path;
 use d4::ptab::{UncompressedReader, UncompressedWriter};
 use d4::stab::{RangeRecord, SimpleKeyValueReader, SimpleKeyValueWriter};
 use d4::Header;
-use d4::{D4FileBuilder, D4FileReader, D4FileWriter};
+use d4::{D4FileBuilder, D4FileWriter, D4TrackReader};
 
 use crate::c_api::d4_file_t;
 use crate::stream::{StreamReader, StreamWriter};
 
-type ReaderType = D4FileReader<UncompressedReader, SimpleKeyValueReader<RangeRecord>>;
+type ReaderType = D4TrackReader<UncompressedReader, SimpleKeyValueReader<RangeRecord>>;
 type WriterType = D4FileWriter<UncompressedWriter, SimpleKeyValueWriter<RangeRecord>>;
 
 pub enum D4FileHandle {
@@ -40,7 +40,7 @@ impl D4FileHandle {
     }
 
     pub fn new_for_read<P: AsRef<Path>>(path: P) -> Result<Box<D4FileHandle>> {
-        D4FileReader::open_first_track(path.as_ref())
+        D4TrackReader::open_first_track(path.as_ref())
             .map(|reader| Box::new(D4FileHandle::Reader(Box::new(reader))))
     }
 

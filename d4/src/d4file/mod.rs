@@ -1,7 +1,7 @@
-mod reader;
-mod writer;
 mod merger;
+mod reader;
 mod track;
+mod writer;
 
 use std::{
     io::Result,
@@ -9,10 +9,10 @@ use std::{
 };
 
 use d4_framefile::{Directory, EntryKind};
-pub use reader::D4FileReader;
-pub use writer::{D4FileBuilder, D4FileWriter};
 pub use merger::D4FileMerger;
+pub use reader::D4TrackReader;
 pub use track::{MultiTrackPartitionReader, MultiTrackReader, MultiTrackRow};
+pub use writer::{D4FileBuilder, D4FileWriter};
 
 /// The D4 magic number
 pub const FILE_MAGIC_NUM: &[u8] = b"d4\xdd\xdd";

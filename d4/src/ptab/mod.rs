@@ -61,7 +61,7 @@ pub trait PTableReader: Sized {
         -> Result<Vec<Self::Partition>>;
 }
 
-/// The type that decodes one part of the primary table in paralell
+/// The type that decodes one part of the primary table in parallel
 pub trait PTablePartitionReader: Send {
     /// The decoder type
     type DecoderType: Decoder;
@@ -99,7 +99,7 @@ pub type UncompressedPartWriter = uncompressed::PartialPrimaryTable<uncompressed
 /// The partition reader for uncompressed bit-array backed primary table
 pub type UncompressedPartReader = uncompressed::PartialPrimaryTable<uncompressed::Reader>;
 
-/// The dceoder for bit-arrary primary table
+/// The decoder for bit-array primary table
 pub type UncompressedDecoder = uncompressed::PrimaryTableCodec<uncompressed::Reader>;
-/// The encoder for bit-arrray primary table
+/// The encoder for bit-array primary table
 pub type UncompressedEncoder = uncompressed::PrimaryTableCodec<uncompressed::Writer>;

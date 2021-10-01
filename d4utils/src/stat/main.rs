@@ -2,7 +2,7 @@ use clap::{load_yaml, App, ArgMatches};
 
 use d4::{
     task::{Histogram, Mean, Task, TaskPartition},
-    D4FileReader,
+    D4TrackReader,
 };
 
 use std::fs::File;
@@ -35,7 +35,7 @@ fn run_task<T: Task>(
 ) -> Result<Vec<(String, u32, u32, T::Output)>, Box<dyn std::error::Error>> {
     let d4_path = matches.value_of("input").unwrap();
 
-    let mut input: D4FileReader = D4FileReader::open(d4_path)?;
+    let mut input: D4TrackReader = D4TrackReader::open(d4_path)?;
 
     let region_spec: Vec<_> = if let Some(path) = matches.value_of("region") {
         parse_bed_file(path)?
@@ -95,7 +95,9 @@ fn hist_stat(matches: ArgMatches) -> Result<(), Box<dyn std::error::Error>> {
 
 pub fn entry_point(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
     let yaml = load_yaml!("cli.yml");
-    let matches = App::from_yaml(yaml).version(d4::VERSION).get_matches_from(&args);
+    let matches = App::from_yaml(yaml)
+        .version(d4::VERSION)
+        .get_matches_from(&args);
     if let Some(threads) = matches.value_of("threads") {
         let threads = threads.parse().unwrap();
         rayon::ThreadPoolBuilder::new()

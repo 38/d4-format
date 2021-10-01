@@ -18,7 +18,7 @@ args:
         help: Number of threads 
     - max-bin:
         long: max-bin
-        value_name: maxium bin
+        value_name: maximum bin
         help: "Set the upper bound of max bin (default: 1000)"
     - input:
         required: true

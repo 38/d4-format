@@ -11,9 +11,9 @@ pub mod stab;
 pub mod task;
 
 pub use chrom::Chrom;
-pub use d4file::{find_tracks_in_file, D4FileBuilder, D4FileMerger, D4FileReader, D4FileWriter};
+pub use d4file::{find_tracks_in_file, D4FileBuilder, D4FileMerger, D4FileWriter, D4TrackReader};
 pub use dict::Dictionary;
 
 pub use header::Header;
 
-pub const VERSION : &'static str = env!("CARGO_PKG_VERSION");
+pub const VERSION: &'static str = env!("CARGO_PKG_VERSION");

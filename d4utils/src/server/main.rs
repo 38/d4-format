@@ -2,7 +2,7 @@ use clap::{load_yaml, App};
 use serde_derive::Deserialize;
 use warp::Filter;
 
-use d4::{task::Task, D4FileReader};
+use d4::{task::Task, D4TrackReader};
 
 use std::io::Write;
 
@@ -20,12 +20,14 @@ struct D4ServerQuery {
 
 async fn main(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
     let yaml = load_yaml!("cli.yml");
-    let matches = App::from_yaml(yaml).version(d4::VERSION).get_matches_from(args);
+    let matches = App::from_yaml(yaml)
+        .version(d4::VERSION)
+        .get_matches_from(args);
     let path = matches.value_of("input-file").unwrap().to_string();
     let server_filter = warp::get()
         .and(warp::query::<D4ServerQuery>())
         .map(move |query| {
-            let mut d4file: D4FileReader = D4FileReader::open(&path).unwrap();
+            let mut d4file: D4TrackReader = D4TrackReader::open(&path).unwrap();
             match query {
                 D4ServerQuery { class, .. } if class == "header" => {
                     let header = d4file.header();

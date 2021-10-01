@@ -9,18 +9,19 @@ use std::num::NonZeroI64;
 #[derive(Default)]
 pub(crate) struct FrameHeader {
     pub(crate) linked_frame: Option<NonZeroI64>,
-    /// Since we have maximum frame size 4096 plus usize doesn't have same size for
-    /// different arch, so we just use a u32 for the size of the frame
     pub(crate) linked_frame_size: u64,
 }
 
-/// The frame describes a single block in each stream
+/// The frame is a consecutive data block in any variant length stream.
+/// Note this is the in-memory representation of a stream
+/// It also have mapped form, please see crate::mapped::MappedStream
 #[derive(Default)]
 struct Frame {
     header: FrameHeader,
-    /// The offset from the beginning of the file to the head of this frame
+    /// The offset from the beginning of the file to the head of this frame. If this frame haven't flushed to disk yet, this field is None
+    /// Once this frame is flushed, this field should be updated to the absolute offset of this frame
     offset: Option<u64>,
-    /// The offset for it's parent frame
+    /// The absolute offset for it's parent frame, if this is the first frame of stream, this should be None
     parent_frame: Option<u64>,
     /// The size of the current frame
     current_frame_size: usize,
@@ -349,7 +350,6 @@ impl<M: CanRead<T>, T: Read + Seek> Stream<'_, M, T> {
     }
 }
 impl<'a, T: Read + Seek> Stream<'a, ReadOnly, T> {
-    #[allow(dead_code)]
     pub(crate) fn open_ro(
         mut file: RandFile<'a, ReadOnly, T>,
         primary_frame: (u64, usize),

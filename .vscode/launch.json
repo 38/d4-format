@@ -7,134 +7,16 @@
 		{
 			"type": "lldb",
 			"request": "launch",
-			"name": "Debug unit tests in library 'd4-framefile'",
-			"cargo": {
-				"args": [
-					"test",
-					"--no-run",
-					"--lib",
-					"--package=d4-framefile"
-				],
-				"filter": {
-					"name": "d4-framefile",
-					"kind": "lib"
-				}
-			},
-			"args": [],
-			"cwd": "${workspaceFolder}"
-		},
-		{
-			"type": "lldb",
-			"request": "launch",
-			"name": "Debug unit tests in library 'd4-hts'",
-			"cargo": {
-				"args": [
-					"test",
-					"--no-run",
-					"--lib",
-					"--package=d4-hts"
-				],
-				"filter": {
-					"name": "d4-hts",
-					"kind": "lib"
-				}
-			},
-			"args": [],
-			"cwd": "${workspaceFolder}"
-		},
-		{
-			"type": "lldb",
-			"request": "launch",
-			"name": "Debug unit tests in library 'd4'",
-			"cargo": {
-				"args": [
-					"test",
-					"--no-run",
-					"--lib",
-					"--package=d4"
-				],
-				"filter": {
-					"name": "d4",
-					"kind": "lib"
-				}
-			},
-			"args": [],
-			"cwd": "${workspaceFolder}"
-		},
-		{
-			"type": "lldb",
-			"request": "launch",
-			"name": "Debug executable 'd4tools'",
+			"name": "Cargo launch",
 			"cargo": {
 				"args": [
 					"build",
-					"--bin=d4tools",
 					"--package=d4utils"
-				],
-				"filter": {
-					"name": "d4tools",
-					"kind": "bin"
-				}
+				]
 			},
-			"args": [],
-			"cwd": "${workspaceFolder}"
-		},
-		{
-			"type": "lldb",
-			"request": "launch",
-			"name": "Debug unit tests in executable 'd4tools'",
-			"cargo": {
-				"args": [
-					"test",
-					"--no-run",
-					"--bin=d4tools",
-					"--package=d4utils"
-				],
-				"filter": {
-					"name": "d4tools",
-					"kind": "bin"
-				}
-			},
-			"args": [],
-			"cwd": "${workspaceFolder}"
-		},
-		{
-			"type": "lldb",
-			"request": "launch",
-			"name": "Debug unit tests in library 'd4-bigwig'",
-			"cargo": {
-				"args": [
-					"test",
-					"--no-run",
-					"--lib",
-					"--package=d4-bigwig"
-				],
-				"filter": {
-					"name": "d4-bigwig",
-					"kind": "lib"
-				}
-			},
-			"args": [],
-			"cwd": "${workspaceFolder}"
-		},
-		{
-			"type": "lldb",
-			"request": "launch",
-			"name": "Debug unit tests in library 'd4binding'",
-			"cargo": {
-				"args": [
-					"test",
-					"--no-run",
-					"--lib",
-					"--package=d4binding"
-				],
-				"filter": {
-					"name": "d4binding",
-					"kind": "lib"
-				}
-			},
-			"args": [],
-			"cwd": "${workspaceFolder}"
+			"program": "target/debug/d4tools",
+			"args": ["merge", "1:~/base2/data/hg002.d4", "2:~/base2/data/hg002.d4", "/tmp/merged.d4"]
 		}
+
 	]
 }

@@ -24,7 +24,7 @@ pub(super) fn open_file_and_validate_header<P: AsRef<Path>>(path: P) -> Result<F
 }
 
 /// The reader that reads a D4 file
-pub struct D4FileReader<
+pub struct D4TrackReader<
     P: PTableReader = UncompressedReader,
     S: STableReader = SimpleKeyValueReader<RangeRecord>,
 > {
@@ -34,7 +34,7 @@ pub struct D4FileReader<
     s_table: S,
 }
 
-impl<P: PTableReader, S: STableReader> D4FileReader<P, S> {
+impl<P: PTableReader, S: STableReader> D4TrackReader<P, S> {
     /// Split the input D4 file into small chunks
     pub fn split(
         &mut self,
@@ -88,7 +88,10 @@ impl<P: PTableReader, S: STableReader> D4FileReader<P, S> {
         }
     }
 
-    pub fn open_tracks<PathType : AsRef<Path>, Predict: FnMut(Option<&Path>) -> bool>(path: PathType, mut track_pattern: Predict) -> Result<Vec<Self>> {
+    pub fn open_tracks<PathType: AsRef<Path>, Predict: FnMut(Option<&Path>) -> bool>(
+        path: PathType,
+        mut track_pattern: Predict,
+    ) -> Result<Vec<Self>> {
         let mut buf = Vec::new();
         find_tracks_in_file(path.as_ref(), |_| true, &mut buf)?;
         let mut ret = Vec::new();
@@ -97,10 +100,10 @@ impl<P: PTableReader, S: STableReader> D4FileReader<P, S> {
         for track_path in buf.into_iter().filter(|p| track_pattern(Some(p.as_path()))) {
             let track_root = match file_root.open(track_path)? {
                 OpenResult::SubDir(root) => root,
-                _ => continue
+                _ => continue,
             };
             ret.push(Self::create_reader_for_root(track_root)?);
-        } 
+        }
         Ok(ret)
     }
 
