@@ -12,19 +12,13 @@ pub struct TrackValue {
     pub value: i32,
 }
 
-/// Row in multi-track data
-pub struct MultiTrackRow<T: Iterator<Item = TrackValue> + ExactSizeIterator> {
-    pub values: T,
-    pub start: u32,
-    pub end: u32,
-}
-
 /// Code that used to scan a multi-track D4 file
 pub trait DataScanner<RowType: Iterator<Item = TrackValue> + ExactSizeIterator> {
     /// Get the range this data scanner want to scan. Please note all the data scanner doesn't across the chromosome boundary
     /// so we don't specify the chromosome, as it's implied by "current chromosome", which is defined by the MultiTrackPartitionReader
     fn get_range(&self) -> (u32, u32);
-    fn feed(&mut self, row: MultiTrackRow<RowType>) -> bool;
+    fn feed_row(&mut self, pos: u32, row: RowType) -> bool;
+    fn feed_rows(&mut self, begin: u32, end: u32, row: RowType) -> bool;
 }
 
 /// A reader that scans one partition within a chromosome
@@ -33,6 +27,9 @@ pub trait MultiTrackPartitionReader {
     type RowType: Iterator<Item = TrackValue> + ExactSizeIterator;
     /// Scan the partition with a group of scanners
     fn scan_partition<S: DataScanner<Self::RowType>>(&mut self, handles: &mut [S]);
+    fn chrom(&self) -> &str;
+    fn begin(&self) ->  u32;
+    fn end(&self) -> u32;
 }
 
 /// Trait for any type that has ability to read multi-track data
@@ -50,6 +47,7 @@ pub struct D4FilePartition<P: PTableReader, S: STableReader> {
 
 impl<P: PTableReader, S: STableReader> MultiTrackPartitionReader for D4FilePartition<P, S> {
     type RowType = Once<TrackValue>;
+
     fn scan_partition<DS: DataScanner<Self::RowType>>(&mut self, handles: &mut [DS]) {
         let per_base = self.primary.bit_width() > 0;
         let mut decoder = self.primary.make_decoder();
@@ -104,11 +102,7 @@ impl<P: PTableReader, S: STableReader> MultiTrackPartitionReader for D4FileParti
                             }
                         };
                         for &id in active_handles.iter() {
-                            handles[id].feed(MultiTrackRow {
-                                values: std::iter::once(TrackValue { value, tag_id: 0 }),
-                                start: pos as u32,
-                                end: pos as u32 + 1,
-                            });
+                            handles[id].feed_row(pos as u32, std::iter::once(TrackValue {value, tag_id: 0}));
                         }
                     },
                 );
@@ -118,11 +112,7 @@ impl<P: PTableReader, S: STableReader> MultiTrackPartitionReader for D4FileParti
                     left = left.max(part_left);
                     right = right.min(part_right).max(left);
                     for &id in active_handles.iter() {
-                        handles[id].feed(MultiTrackRow {
-                            values: std::iter::once(TrackValue { value, tag_id: 0 }),
-                            start: left,
-                            end: right,
-                        });
+                        handles[id].feed_rows(left, right, std::iter::once(TrackValue { value, tag_id: 0 }));
                     }
                     if right == part_right {
                         break;
@@ -130,6 +120,18 @@ impl<P: PTableReader, S: STableReader> MultiTrackPartitionReader for D4FileParti
                 }
             }
         }
+    }
+
+    fn chrom(&self) -> &str {
+       self.primary.region().0
+    }
+
+    fn begin(&self) ->  u32 {
+       self.primary.region().1
+    }
+
+    fn end(&self) -> u32 {
+       self.primary.region().2
     }
 }
 
