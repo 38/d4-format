@@ -41,7 +41,7 @@ pub use simple_kv::SimpleKeyValueWriter;
 
 /// Type usd as a secondary table reader
 pub trait STableReader: Sized {
-    /// The type used to read a single parallel parititoion
+    /// The type used to read a single parallel partition
     type Partition: STablePartitionReader;
     /// Create a new reader instance
     fn create(root: &mut Directory<'static, ReadOnly, File>, header: &Header) -> Result<Self>;
@@ -74,7 +74,7 @@ impl<'a, S: STablePartitionReader> RecordIterator<'a, S> {
     pub fn into_state(self) -> S::IteratorState {
         self.1
     }
-    /// Create new recrod iterator
+    /// Create new record iterator
     pub fn new(parent: &'a S, state: S::IteratorState) -> Self {
         Self(parent, state)
     }

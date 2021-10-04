@@ -53,7 +53,7 @@ pub trait Encoder {
 /// Type that reads a D4 primary table
 pub trait PTableReader: Sized {
     /// The type for parallel reading one of the partition
-    type Partition: PTablePartitionReader;
+    type Partition: PTablePartitionReader + Send;
     /// Create the reader instance
     fn create(directory: &mut Directory<'static, ReadOnly, File>, header: &Header) -> Result<Self>;
     /// Split the reader to parallel chunks

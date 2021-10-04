@@ -1,13 +1,13 @@
 use clap::{load_yaml, App, ArgMatches};
 
 use d4::{
-    task::{Histogram, Mean, Task, TaskPartition},
+    task::{Histogram, Mean, SimpleTask, Task},
     D4TrackReader,
 };
 
-use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::Path;
+use std::{fs::File, iter::Once};
 
 fn parse_bed_file<P: AsRef<Path>>(
     file: P,
@@ -28,14 +28,16 @@ fn parse_bed_file<P: AsRef<Path>>(
     }))
 }
 
-#[allow(clippy::type_complexity)]
-fn run_task<T: Task>(
+fn open_file_parse_region_and_then<T, F>(
     matches: ArgMatches,
-    param: <T::Partition as TaskPartition>::PartitionParam,
-) -> Result<Vec<(String, u32, u32, T::Output)>, Box<dyn std::error::Error>> {
+    func: F,
+) -> Result<T, Box<dyn std::error::Error>>
+where
+    F: FnOnce(D4TrackReader, Vec<(String, u32, u32)>) -> Result<T, Box<dyn std::error::Error>>,
+{
     let d4_path = matches.value_of("input").unwrap();
 
-    let mut input: D4TrackReader = D4TrackReader::open(d4_path)?;
+    let input: D4TrackReader = D4TrackReader::open(d4_path)?;
 
     let region_spec: Vec<_> = if let Some(path) = matches.value_of("region") {
         parse_bed_file(path)?
@@ -49,14 +51,19 @@ fn run_task<T: Task>(
             .map(|chrom| (chrom.name.clone(), 0u32, chrom.size as u32))
             .collect()
     };
-
-    let tc = T::create_task(&mut input, &region_spec, param)?;
-
-    Ok(tc.run())
+    func(input, region_spec)
+}
+#[allow(clippy::type_complexity)]
+fn run_task<T: Task<Once<i32>> + SimpleTask>(
+    matches: ArgMatches,
+) -> Result<Vec<(String, u32, u32, T::Output)>, Box<dyn std::error::Error>> {
+    open_file_parse_region_and_then(matches, |mut input, region_spec| {
+        Ok(T::create_task(&mut input, region_spec.as_slice())?.run())
+    })
 }
 
 fn percentile_stat(matches: ArgMatches, percentile: f64) -> Result<(), Box<dyn std::error::Error>> {
-    let histograms = run_task::<Histogram>(matches, 0..1000)?;
+    let histograms = run_task::<Histogram>(matches)?;
     for (chr, begin, end, (below, hist, above)) in histograms {
         let count: u32 = below + hist.iter().sum::<u32>() + above;
         let below_count = (count as f64 * percentile.min(1.0).max(0.0)).round() as u32;
@@ -73,7 +80,13 @@ fn percentile_stat(matches: ArgMatches, percentile: f64) -> Result<(), Box<dyn s
 
 fn hist_stat(matches: ArgMatches) -> Result<(), Box<dyn std::error::Error>> {
     let max_bin = matches.value_of("max-bin").unwrap_or("1000").parse()?;
-    let histograms = run_task::<Histogram>(matches, 0..max_bin)?;
+    let histograms = open_file_parse_region_and_then(matches, |mut input, regions| {
+        let tasks: Vec<_> = regions
+            .into_iter()
+            .map(|(chr, begin, end)| Histogram::with_bin_range(&chr, begin, end, 0..max_bin))
+            .collect();
+        Ok(Histogram::create_task(&mut input, tasks)?.run())
+    })?;
     let mut hist_result = vec![0; max_bin as usize + 1];
     let (mut below, mut above) = (0, 0);
     for (_, _, _, (b, hist, a)) in histograms {
@@ -106,7 +119,7 @@ pub fn entry_point(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> 
     }
     match matches.value_of("stat") {
         None | Some("mean") | Some("avg") => {
-            for result in run_task::<Mean>(matches, ())? {
+            for result in run_task::<Mean>(matches)? {
                 println!("{}\t{}\t{}\t{}", result.0, result.1, result.2, result.3);
             }
         }

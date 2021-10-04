@@ -1,84 +1,78 @@
 use rayon::prelude::*;
 use std::io::Result;
-use std::iter::Once;
 
 use super::{Task, TaskPartition};
-use crate::d4file::{D4FilePartition, D4TrackReader, DataScanner, MultiTrackPartitionReader, MultiTrackReader, TrackValue};
-use crate::{ptab::PTableReader, stab::STableReader};
+use crate::d4file::{DataScanner, MultiTrackPartitionReader, MultiTrackReader};
 
-struct PartitionExecutionResult<T : Task> {
+struct PartitionExecutionResult<RT: Iterator<Item = i32> + ExactSizeIterator, T: Task<RT>> {
     task_id: usize,
-    result: <T::Partition as TaskPartition>::ResultType,
+    result: <T::Partition as TaskPartition<RT>>::ResultType,
 }
 
-struct TaskScanner<P : TaskPartition> {
+struct TaskScanner<P> {
     task_id: usize,
     partition: P,
 }
 
-impl <P: TaskPartition> DataScanner<Once<TrackValue>> for TaskScanner<P> {
+impl<P: TaskPartition<RT>, RT: Iterator<Item = i32> + ExactSizeIterator> DataScanner<RT>
+    for TaskScanner<P>
+{
     fn get_range(&self) -> (u32, u32) {
         self.partition.scope()
     }
 
-    fn feed_row(&mut self, pos:u32, mut row: Once<TrackValue>) -> bool {
-        let TrackValue { value, ..}= row.next().unwrap();
-        self.partition.feed(pos, value)
+    fn feed_row(&mut self, pos: u32, row: RT) -> bool {
+        self.partition.feed(pos, row)
     }
 
-    fn feed_rows(&mut self, begin: u32, end: u32, mut row: Once<TrackValue>) -> bool {
-        let TrackValue { value, ..}= row.next().unwrap();
-        self.partition.feed_range(begin, end, value)
+    fn feed_rows(&mut self, begin: u32, end: u32, row: RT) -> bool {
+        self.partition.feed_range(begin, end, row)
     }
 }
 
-struct PartitionContext<R: MultiTrackPartitionReader, T: Task> {
+struct PartitionContext<R: MultiTrackPartitionReader, T: Task<R::RowType>> {
     reader: R,
     tasks: Vec<TaskScanner<T::Partition>>,
 }
 
-impl<R: MultiTrackPartitionReader<RowType = Once<TrackValue>>, T: Task> PartitionContext<R, T> {
-    #[allow(clippy::type_complexity)]
-    fn execute(
-        &mut self,
-    ) -> Vec<PartitionExecutionResult<T>> {
-
+impl<R: MultiTrackPartitionReader, T: Task<R::RowType>> PartitionContext<R, T> {
+    fn execute(&mut self) -> Vec<PartitionExecutionResult<R::RowType, T>> {
         self.reader.scan_partition(self.tasks.as_mut_slice());
-        
+
         std::mem::take(&mut self.tasks)
             .into_iter()
-            .map(|scanner| {
-                PartitionExecutionResult { task_id: scanner.task_id, result: scanner.partition.into_result() }
+            .map(|scanner| PartitionExecutionResult {
+                task_id: scanner.task_id,
+                result: scanner.partition.into_result(),
             })
             .collect()
     }
 }
 
 /// The context for a parallel task
-pub struct TaskContext<P: PTableReader, S: STableReader, T: Task> {
+pub struct TaskContext<R: MultiTrackReader, T>
+where
+    T: Task<<R::PartitionType as MultiTrackPartitionReader>::RowType>,
+{
     regions: Vec<T>,
-    partitions: Vec<PartitionContext<D4FilePartition<P, S>, T>>,
+    partitions: Vec<PartitionContext<R::PartitionType, T>>,
 }
 
-impl<P: PTableReader, S: STableReader, T: Task> TaskContext<P, S, T>
+impl<R: MultiTrackReader, T: Task<<R::PartitionType as MultiTrackPartitionReader>::RowType>>
+    TaskContext<R, T>
 where
-    P::Partition: Send,
-    S::Partition: Send,
     T::Partition: Send,
+    R::PartitionType: Send,
 {
     /// Create a new task that processing the given file
-    pub fn new<Name: AsRef<str>>(
-        reader: &mut D4TrackReader<P, S>,
-        regions: &[(Name, u32, u32)],
-        partition_param: <<T as Task>::Partition as TaskPartition>::PartitionParam,
-    ) -> Result<TaskContext<P, S, T>> {
+    pub fn new(reader: &mut R, mut tasks: Vec<T>) -> Result<Self> {
         let mut file_partition = MultiTrackReader::split(reader, Some(10_000_000))?;
         file_partition.sort_by_key(|p| (p.chrom().to_string(), p.begin(), p.end()));
-        let mut regions: Vec<_> = regions
-            .iter()
-            .map(|(c, b, e)| (c.as_ref().to_string(), *b, *e))
-            .collect();
-        regions.sort();
+
+        tasks.sort_unstable_by_key(|t| {
+            let (chr, begin, end) = t.region();
+            (chr.to_string(), begin, end)
+        });
 
         let mut task_assignment: Vec<Vec<_>> = (0..file_partition.len())
             .map(|_| Default::default())
@@ -92,30 +86,32 @@ where
             let fpr = part.end();
 
             // first, skip all the regions that *before* this partition
-            while idx < regions.len()
-                && (regions[idx].0.as_str() < chr
-                    || (regions[idx].0.as_str() == chr && regions[idx].2 < fpl))
-            {
-                idx += 1;
+            while idx < tasks.len() {
+                let (task_chr, _, task_right) = tasks[idx].region();
+                if task_chr < chr || (task_chr == chr && task_right < fpl) {
+                    idx += 1;
+                } else {
+                    break;
+                }
             }
 
             let mut overlapping_idx = idx;
 
-            while overlapping_idx < regions.len() {
-                let this = &regions[overlapping_idx];
-                let (c, l, r) = (&this.0, this.1, this.2);
+            while overlapping_idx < tasks.len() {
+                let this = &tasks[overlapping_idx];
+                let (c, l, r) = this.region();
                 if c != chr || fpr < l {
                     break;
                 }
                 let actual_left = fpl.max(l);
                 let actual_right = fpr.min(r);
 
-                task_assignment[fpid].push(TaskScanner{
+                task_assignment[fpid].push(TaskScanner {
                     task_id: overlapping_idx,
-                    partition: <<T as Task>::Partition as TaskPartition>::new(
+                    partition: <<T as Task<_>>::Partition as TaskPartition<_>>::new(
                         actual_left,
                         actual_right,
-                        partition_param.clone(),
+                        this,
                     ),
                 });
 
@@ -124,10 +120,7 @@ where
         }
 
         Ok(Self {
-            regions: regions
-                .into_iter()
-                .map(|r| T::new(&r.0, r.1, r.2))
-                .collect(),
+            regions: tasks,
             partitions: file_partition
                 .into_iter()
                 .zip(task_assignment.into_iter())
@@ -140,11 +133,9 @@ where
     }
 
     /// Run the task in parallel
-    pub fn run(mut self) -> Vec<(String, u32, u32, T::Output)> {
-        let mut tasks = vec![];
-        std::mem::swap(&mut tasks, &mut self.partitions);
-
-        let mut task_result: Vec<_> = tasks
+    pub fn run(self) -> Vec<(String, u32, u32, T::Output)> {
+        let mut task_result: Vec<_> = self
+            .partitions
             .into_par_iter()
             .map(|mut partition| partition.execute())
             .flatten()
@@ -157,7 +148,8 @@ where
         for (id, region_ctx) in self.regions.into_iter().enumerate() {
             let region = region_ctx.region();
             let mut region_partition_results = vec![];
-            while task_result_idx < task_result.len() && task_result[task_result_idx].task_id <= id {
+            while task_result_idx < task_result.len() && task_result[task_result_idx].task_id <= id
+            {
                 if task_result[task_result_idx].task_id == id {
                     region_partition_results.push(task_result[task_result_idx].result.clone());
                 }

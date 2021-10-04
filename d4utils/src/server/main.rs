@@ -57,7 +57,7 @@ async fn main(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
                             )
                         })
                         .collect();
-                    let task = d4::task::Mean::create_task(&mut d4file, &regions, ()).unwrap();
+                    let task = d4::task::Mean::create_task(&mut d4file, &regions).unwrap();
                     let task_result = task.run();
                     let mut buffer = Vec::new();
                     buffer.write_all(&(start as u32).to_le_bytes()).unwrap();

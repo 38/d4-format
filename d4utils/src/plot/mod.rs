@@ -39,7 +39,7 @@ fn downsample_data(
             ret
         })
         .collect();
-    let tc = d4::task::Mean::create_task(&mut input, &stat_parts, ())?;
+    let tc = d4::task::Mean::create_task(&mut input, &stat_parts)?;
     Ok(tc
         .run()
         .into_iter()

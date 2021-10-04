@@ -1,6 +1,14 @@
-use super::{Task, TaskPartition};
+use std::iter::Once;
+
+use super::{SimpleTask, Task, TaskPartition};
 
 pub struct ValueRange(String, u32, u32);
+
+impl SimpleTask for ValueRange {
+    fn new(chr: &str, start: u32, end: u32) -> Self {
+        Self(chr.to_string(), start, end)
+    }
+}
 
 pub struct ValueRangePartition {
     task_range: (u32, u32),
@@ -8,10 +16,10 @@ pub struct ValueRangePartition {
     max_value: i32,
 }
 
-impl TaskPartition for ValueRangePartition {
-    type PartitionParam = ();
+impl TaskPartition<Once<i32>> for ValueRangePartition {
+    type ParentType = ValueRange;
     type ResultType = (i32, i32);
-    fn new(left: u32, right: u32, _: Self::PartitionParam) -> Self {
+    fn new(left: u32, right: u32, _: &Self::ParentType) -> Self {
         Self {
             task_range: (left, right),
             min_value: i32::MAX,
@@ -22,13 +30,14 @@ impl TaskPartition for ValueRangePartition {
         self.task_range
     }
     #[inline(always)]
-    fn feed(&mut self, _: u32, value: i32) -> bool {
+    fn feed(&mut self, _: u32, mut value: Once<i32>) -> bool {
+        let value = value.next().unwrap();
         self.min_value = self.min_value.min(value);
         self.max_value = self.max_value.max(value);
         true
     }
     #[inline(always)]
-    fn feed_range(&mut self, _: u32, _: u32, value: i32) -> bool {
+    fn feed_range(&mut self, _: u32, _: u32, value: Once<i32>) -> bool {
         self.feed(0, value)
     }
     fn into_result(self) -> Self::ResultType {
@@ -36,13 +45,9 @@ impl TaskPartition for ValueRangePartition {
     }
 }
 
-impl Task for ValueRange {
+impl Task<Once<i32>> for ValueRange {
     type Partition = ValueRangePartition;
     type Output = (i32, i32);
-
-    fn new(chr: &str, start: u32, end: u32) -> Self {
-        Self(chr.to_string(), start, end)
-    }
 
     fn region(&self) -> (&str, u32, u32) {
         (self.0.as_ref(), self.1, self.2)
