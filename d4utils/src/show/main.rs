@@ -192,8 +192,12 @@ pub fn entry_point(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> 
                 let stem = path
                     .map(|what: &Path| what.file_name().map(|x| x.to_string_lossy()).unwrap_or_else(|| Cow::<str>::Borrowed("")))
                     .unwrap_or_default();
-                data_path.push(stem.to_string());
-                pattern.is_match(stem.borrow())
+                if pattern.is_match(stem.borrow()) {
+                    data_path.push(stem.to_string());
+                    true
+                } else {
+                    false
+                }
             })?
         } else {
             D4TrackReader::open_tracks(input_filename, |path| {
