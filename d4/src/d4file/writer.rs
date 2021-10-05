@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 use crate::chrom::Chrom;
 use crate::dict::Dictionary;
 use crate::header::Header;
-use crate::ptab::{PTablePartitionWriter, PTableWriter, UncompressedWriter};
+use crate::ptab::{BitArrayWriter, PTablePartitionWriter, PTableWriter};
 use crate::stab::{RangeRecord, STableWriter, SimpleKeyValueWriter};
 
 use super::FILE_MAGIC_NUM;
@@ -16,7 +16,7 @@ use super::FILE_MAGIC_NUM;
 /// Create a D4 file
 #[allow(dead_code)]
 pub struct D4FileWriter<
-    PT: PTableWriter = UncompressedWriter,
+    PT: PTableWriter = BitArrayWriter,
     ST: STableWriter = SimpleKeyValueWriter<RangeRecord>,
 > {
     file_root: Directory<'static, ReadWrite, File>,

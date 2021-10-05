@@ -266,17 +266,23 @@ pub mod mapping {
     }
 
     #[derive(Clone)]
-    pub struct MappingHandleMut(Arc<SyncGuard>, usize, usize);
+    pub struct MappingHandleMut {
+        handle: Arc<SyncGuard>,
+        base_addr: usize,
+        size: usize,
+    }
 
     impl AsRef<[u8]> for MappingHandleMut {
         fn as_ref(&self) -> &[u8] {
-            unsafe { std::slice::from_raw_parts(std::mem::transmute(self.1), self.2) }
+            unsafe { std::slice::from_raw_parts(std::mem::transmute(self.base_addr), self.size) }
         }
     }
 
     impl AsMut<[u8]> for MappingHandleMut {
         fn as_mut(&mut self) -> &mut [u8] {
-            unsafe { std::slice::from_raw_parts_mut(std::mem::transmute(self.1), self.2) }
+            unsafe {
+                std::slice::from_raw_parts_mut(std::mem::transmute(self.base_addr), self.size)
+            }
         }
     }
 
@@ -297,12 +303,12 @@ pub mod mapping {
                     .map_mut(&*inner)?
             };
             drop(inner);
-            let addr = mapped.as_mut().as_mut_ptr();
-            Ok(MappingHandleMut(
-                Arc::new(SyncGuard(mapped)),
-                addr as usize,
+            let base_addr = mapped.as_mut().as_mut_ptr() as usize;
+            Ok(MappingHandleMut {
+                handle: Arc::new(SyncGuard(mapped)),
+                base_addr,
                 size,
-            ))
+            })
         }
     }
 }

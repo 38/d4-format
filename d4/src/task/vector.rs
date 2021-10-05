@@ -1,12 +1,30 @@
 use std::iter::Once;
 
-use super::{Task, TaskPartition};
+use super::{SimpleTask, Task, TaskPartition};
 
 pub struct VectorStat<T: Task<Once<i32>>> {
     scalar_tasks: Vec<T>,
 }
 
 //TODO: think about how to create the vector stat efficiently
+impl<T: Task<Once<i32>>> VectorStat<T> {
+    pub fn create_vector_task_for_region(size: usize, chr: &str, begin: u32, end: u32) -> Self
+    where
+        T: SimpleTask,
+    {
+        Self {
+            scalar_tasks: (0..size).map(|_| T::new(chr, begin, end)).collect(),
+        }
+    }
+    pub fn create_vector_task(size: usize, task: T) -> Self
+    where
+        T: Clone,
+    {
+        Self {
+            scalar_tasks: (0..size).map(move |_| task.clone()).collect(),
+        }
+    }
+}
 
 pub struct VectorStatPartition<T: Task<Once<i32>>> {
     scalar_parts: Vec<T::Partition>,
@@ -32,16 +50,16 @@ impl<R: Iterator<Item = i32> + ExactSizeIterator, T: Task<Once<i32>>> TaskPartit
         self.scalar_parts[0].scope()
     }
 
-    fn feed(&mut self, pos: u32, value: R) -> bool {
+    fn feed(&mut self, pos: u32, value: &mut R) -> bool {
         for (task, value) in self.scalar_parts.iter_mut().zip(value) {
-            task.feed(pos, std::iter::once(value));
+            task.feed(pos, &mut std::iter::once(value));
         }
         true
     }
 
-    fn feed_range(&mut self, left: u32, right: u32, value: R) -> bool {
+    fn feed_range(&mut self, left: u32, right: u32, value: &mut R) -> bool {
         for (task, value) in self.scalar_parts.iter_mut().zip(value) {
-            task.feed_range(left, right, std::iter::once(value));
+            task.feed_range(left, right, &mut std::iter::once(value));
         }
         true
     }

@@ -91,9 +91,9 @@ pub trait TaskPartition<RowType: Iterator<Item = i32> + ExactSizeIterator>: Send
     /// Query the scope for current task partition
     fn scope(&self) -> (u32, u32);
     /// Feed one value to the task
-    fn feed(&mut self, pos: u32, value: RowType) -> bool;
+    fn feed(&mut self, pos: u32, value: &mut RowType) -> bool;
     /// Feed a range of position that has the same value
-    fn feed_range(&mut self, left: u32, right: u32, value: RowType) -> bool;
+    fn feed_range(&mut self, left: u32, right: u32, value: &mut RowType) -> bool;
     /// Convert the task into the result
     fn into_result(self) -> Self::ResultType;
 }

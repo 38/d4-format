@@ -84,10 +84,13 @@ impl<M: PrimaryTableMode> PartialPrimaryTable<M> {
     pub fn region(&self) -> (&str, u32, u32) {
         (&self.name, self.start, self.end)
     }
+    pub fn dict(&self) -> &Dictionary {
+        &self.dictionary
+    }
 }
 
 impl<M: PrimaryTableMode> PartialPrimaryTable<M> {
-    pub fn as_codec(&mut self) -> PrimaryTableCodec<M> {
+    pub fn to_codec(&mut self) -> PrimaryTableCodec<M> {
         let base_offset = self.start as usize;
         let bit_width = self.bit_width;
         let dict = self.dictionary.clone();
@@ -191,6 +194,80 @@ pub struct PrimaryTableCodec<M: PrimaryTableMode> {
     dict: Dictionary,
 }
 
+pub struct MatrixDecoder {
+    encoders: Vec<PrimaryTableCodec<Reader>>,
+    shift: Vec<usize>,
+    addr_diff: Vec<usize>,
+}
+
+impl MatrixDecoder {
+    pub fn is_zero_sized(&self) -> bool {
+        self.encoders.iter().all(|enc| enc.bit_width == 0)
+    }
+    pub fn new<'a, T: IntoIterator<Item = &'a mut PartialPrimaryTable<Reader>>>(
+        encoders: T,
+    ) -> Self {
+        let encoders: Vec<_> = encoders.into_iter().map(|p| p.make_decoder()).collect();
+        assert!(!encoders.is_empty());
+        let mut shift: Vec<usize> = vec![];
+        let mut addr_diff: Vec<usize> = vec![];
+        for encoder in encoders.iter() {
+            for idx in 0..8 {
+                addr_diff.push((idx + 1) * encoder.bit_width / 8 - idx * encoder.bit_width / 8);
+                shift.push((idx * encoder.bit_width) % 8);
+            }
+        }
+        Self {
+            encoders,
+            shift,
+            addr_diff,
+        }
+    }
+    pub fn decode_block<H: FnMut(u32, &[DecodeResult]) -> bool>(
+        &self,
+        left: u32,
+        right: u32,
+        mut handle: H,
+    ) {
+        let mut states = self
+            .encoders
+            .iter()
+            .map(|enc| {
+                let offset = left as usize - enc.base_offset;
+                let base_addr = &enc.memory[offset * enc.bit_width / 8] as *const u8;
+                let idx = offset % 8;
+                (base_addr, idx)
+            })
+            .collect::<Vec<_>>();
+
+        let mut result_buf = Vec::with_capacity(states.len());
+
+        for pos in left..right {
+            result_buf.clear();
+            for (idx, (enc, (mem, s))) in self.encoders.iter().zip(&mut states).enumerate() {
+                let shift = self.shift[idx * 8 + *s];
+                let data: &u32 = unsafe { std::mem::transmute(*mem) };
+                let code = (*data >> shift) & enc.mask;
+                let result = if let Some(value) = enc.dict.decode_value(code) {
+                    if code == enc.mask {
+                        DecodeResult::Maybe(value)
+                    } else {
+                        DecodeResult::Definitely(value)
+                    }
+                } else {
+                    DecodeResult::Maybe(0)
+                };
+                result_buf.push(result);
+                *mem = unsafe { mem.add(self.addr_diff[idx * 8 + *s]) };
+                *s = (*s + 1) % 8;
+            }
+            if !handle(pos, &result_buf) {
+                return;
+            }
+        }
+    }
+}
+
 impl PrimaryTableCodec<Reader> {
     #[inline(always)]
     pub fn decode(&self, offset: usize) -> DecodeResult {
@@ -244,7 +321,7 @@ impl Encoder for PrimaryTableCodec<Writer> {
 impl PTablePartitionWriter for PartialPrimaryTable<Writer> {
     type EncoderType = PrimaryTableCodec<Writer>;
     fn make_encoder(&mut self) -> Self::EncoderType {
-        PartialPrimaryTable::as_codec(self)
+        PartialPrimaryTable::to_codec(self)
     }
     fn region(&self) -> (&str, u32, u32) {
         PartialPrimaryTable::region(self)
@@ -334,7 +411,7 @@ impl PTablePartitionReader for PartialPrimaryTable<Reader> {
         self.bit_width
     }
     fn make_decoder(&mut self) -> Self::DecoderType {
-        PartialPrimaryTable::as_codec(self)
+        PartialPrimaryTable::to_codec(self)
     }
     fn region(&self) -> (&str, u32, u32) {
         PartialPrimaryTable::region(self)

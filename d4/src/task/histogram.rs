@@ -1,6 +1,7 @@
 use super::{SimpleTask, Task, TaskPartition};
 use std::{iter::Once, ops::Range};
 
+#[derive(Clone)]
 pub struct Histogram(String, u32, u32, Range<i32>);
 
 impl Histogram {
@@ -42,12 +43,12 @@ impl TaskPartition<Once<i32>> for Partition {
         self.range
     }
     #[inline(always)]
-    fn feed(&mut self, _: u32, value: Once<i32>) -> bool {
+    fn feed(&mut self, _: u32, value: &mut Once<i32>) -> bool {
         self.feed_range(0, 1, value)
     }
 
     #[inline(always)]
-    fn feed_range(&mut self, left: u32, right: u32, mut value: Once<i32>) -> bool {
+    fn feed_range(&mut self, left: u32, right: u32, value: &mut Once<i32>) -> bool {
         let value = value.next().unwrap();
         let offset = value - self.base;
         if offset < 0 {

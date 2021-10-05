@@ -11,7 +11,9 @@ use std::{
 use d4_framefile::{Directory, EntryKind};
 pub use merger::D4FileMerger;
 pub use reader::D4TrackReader;
-pub use track::{D4FilePartition, DataScanner, MultiTrackPartitionReader, MultiTrackReader};
+pub use track::{
+    D4FilePartition, D4MatrixReader, DataScanner, MultiTrackPartitionReader, MultiTrackReader,
+};
 pub use writer::{D4FileBuilder, D4FileWriter};
 
 /// The D4 magic number

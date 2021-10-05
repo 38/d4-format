@@ -1,8 +1,8 @@
 use d4::ptab::DecodeResult;
 use d4::ptab::PTablePartitionReader;
 use d4::ptab::{
-    PTablePartitionWriter, UncompressedDecoder, UncompressedEncoder, UncompressedPartReader,
-    UncompressedPartWriter, UncompressedReader, UncompressedWriter,
+    BitArrayDecoder, BitArrayEncoder, BitArrayPartReader, BitArrayPartWriter, BitArrayReader,
+    BitArrayWriter, PTablePartitionWriter,
 };
 use d4::stab::{
     RangeRecord, RecordIterator, STablePartitionReader, STablePartitionWriter,
@@ -14,22 +14,16 @@ use d4::{D4FileWriter, D4TrackReader};
 use std::io::Result;
 use std::ops::Range;
 
-type D4Reader = D4TrackReader<UncompressedReader, SimpleKeyValueReader<RangeRecord>>;
-type D4Writer = D4FileWriter<UncompressedWriter, SimpleKeyValueWriter<RangeRecord>>;
-type D4ReaderParts = (
-    UncompressedPartReader,
-    SimpleKeyValuePartialReader<RangeRecord>,
-);
+type D4Reader = D4TrackReader<BitArrayReader, SimpleKeyValueReader<RangeRecord>>;
+type D4Writer = D4FileWriter<BitArrayWriter, SimpleKeyValueWriter<RangeRecord>>;
+type D4ReaderParts = (BitArrayPartReader, SimpleKeyValuePartialReader<RangeRecord>);
 
-type D4WriterParts = (
-    UncompressedPartWriter,
-    SimpleKeyValuePartialWriter<RangeRecord>,
-);
+type D4WriterParts = (BitArrayPartWriter, SimpleKeyValuePartialWriter<RangeRecord>);
 
 pub struct StreamReader {
     _inner: D4Reader,
     parts: Vec<D4ReaderParts>,
-    current_primary_decoder: Option<UncompressedDecoder>,
+    current_primary_decoder: Option<BitArrayDecoder>,
     current_part_id: usize,
     current_chr: String,
     current_pos: u32,
@@ -213,7 +207,7 @@ pub struct StreamWriter {
     _inner: D4Writer,
     parts: Vec<D4WriterParts>,
     last_part_pos: Vec<u32>,
-    current_primary_encoder: Option<UncompressedEncoder>,
+    current_primary_encoder: Option<BitArrayEncoder>,
     current_part_id: usize,
     current_chr: String,
     current_pos: u32,
@@ -279,7 +273,7 @@ impl StreamWriter {
             self.write_value(value, same_chrom)
         } else {
             if self.current_primary_encoder.is_none() {
-                self.current_primary_encoder = Some(current_part.0.as_codec());
+                self.current_primary_encoder = Some(current_part.0.to_codec());
             }
             if !self
                 .current_primary_encoder
@@ -324,7 +318,7 @@ impl StreamWriter {
         let should_iterate = current_part.0.bit_width() != 0;
 
         if self.current_primary_encoder.is_none() {
-            self.current_primary_encoder = Some(current_part.0.as_codec());
+            self.current_primary_encoder = Some(current_part.0.to_codec());
         }
         let stab = &mut current_part.1;
 

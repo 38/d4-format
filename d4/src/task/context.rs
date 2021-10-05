@@ -21,11 +21,11 @@ impl<P: TaskPartition<RT>, RT: Iterator<Item = i32> + ExactSizeIterator> DataSca
         self.partition.scope()
     }
 
-    fn feed_row(&mut self, pos: u32, row: RT) -> bool {
+    fn feed_row(&mut self, pos: u32, row: &mut RT) -> bool {
         self.partition.feed(pos, row)
     }
 
-    fn feed_rows(&mut self, begin: u32, end: u32, row: RT) -> bool {
+    fn feed_rows(&mut self, begin: u32, end: u32, row: &mut RT) -> bool {
         self.partition.feed_range(begin, end, row)
     }
 }

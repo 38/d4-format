@@ -8,7 +8,7 @@ use d4_framefile::Directory;
 use std::fs::File;
 use std::io::Result;
 
-mod uncompressed;
+mod bit_array;
 
 /// The result of decoding a value from a primary table
 pub enum DecodeResult {
@@ -90,16 +90,18 @@ pub trait Decoder {
     }
 }
 
-/// The writer for uncompressed bit-array backed primary table
-pub type UncompressedWriter = uncompressed::PrimaryTable<uncompressed::Writer>;
-/// The reader for uncompressed bit-array backed primary table
-pub type UncompressedReader = uncompressed::PrimaryTable<uncompressed::Reader>;
-/// The partition writer for uncompressed bit-array backed primary table
-pub type UncompressedPartWriter = uncompressed::PartialPrimaryTable<uncompressed::Writer>;
-/// The partition reader for uncompressed bit-array backed primary table
-pub type UncompressedPartReader = uncompressed::PartialPrimaryTable<uncompressed::Reader>;
+/// The writer for bit-array backed primary table
+pub type BitArrayWriter = bit_array::PrimaryTable<bit_array::Writer>;
+/// The reader for bit-array backed primary table
+pub type BitArrayReader = bit_array::PrimaryTable<bit_array::Reader>;
+/// The partition writer for bit-array backed primary table
+pub type BitArrayPartWriter = bit_array::PartialPrimaryTable<bit_array::Writer>;
+/// The partition reader for bit-array backed primary table
+pub type BitArrayPartReader = bit_array::PartialPrimaryTable<bit_array::Reader>;
 
 /// The decoder for bit-array primary table
-pub type UncompressedDecoder = uncompressed::PrimaryTableCodec<uncompressed::Reader>;
+pub type BitArrayDecoder = bit_array::PrimaryTableCodec<bit_array::Reader>;
 /// The encoder for bit-array primary table
-pub type UncompressedEncoder = uncompressed::PrimaryTableCodec<uncompressed::Writer>;
+pub type BitArrayEncoder = bit_array::PrimaryTableCodec<bit_array::Writer>;
+
+pub use bit_array::MatrixDecoder;

@@ -7,7 +7,7 @@ use std::path::Path;
 
 use crate::find_tracks_in_file;
 use crate::header::Header;
-use crate::ptab::{PTablePartitionReader, PTableReader, UncompressedReader};
+use crate::ptab::{BitArrayReader, PTablePartitionReader, PTableReader};
 use crate::stab::{RangeRecord, STableReader, SimpleKeyValueReader};
 
 pub(super) fn open_file_and_validate_header<P: AsRef<Path>>(path: P) -> Result<File> {
@@ -25,7 +25,7 @@ pub(super) fn open_file_and_validate_header<P: AsRef<Path>>(path: P) -> Result<F
 
 /// The reader that reads a D4 file
 pub struct D4TrackReader<
-    P: PTableReader = UncompressedReader,
+    P: PTableReader = BitArrayReader,
     S: STableReader = SimpleKeyValueReader<RangeRecord>,
 > {
     _root: Directory<'static, ReadOnly, File>,

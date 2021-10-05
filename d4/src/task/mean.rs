@@ -2,6 +2,7 @@ use std::iter::Once;
 
 use super::{SimpleTask, Task, TaskPartition};
 
+#[derive(Clone)]
 pub struct Mean(String, u32, u32);
 
 impl SimpleTask for Mean {
@@ -28,13 +29,13 @@ impl TaskPartition<Once<i32>> for MeanPartition {
         self.range
     }
     #[inline(always)]
-    fn feed(&mut self, _: u32, mut value: Once<i32>) -> bool {
+    fn feed(&mut self, _: u32, value: &mut Once<i32>) -> bool {
         let value = value.next().unwrap();
         self.sum += value as i64;
         true
     }
     #[inline(always)]
-    fn feed_range(&mut self, left: u32, right: u32, mut value: Once<i32>) -> bool {
+    fn feed_range(&mut self, left: u32, right: u32, value: &mut Once<i32>) -> bool {
         let value = value.next().unwrap();
         self.sum += value as i64 * (right - left) as i64;
         true

@@ -2,7 +2,7 @@ use std::fs::File;
 use std::io::Result;
 use std::path::Path;
 
-use d4::ptab::{UncompressedReader, UncompressedWriter};
+use d4::ptab::{BitArrayReader, BitArrayWriter};
 use d4::stab::{RangeRecord, SimpleKeyValueReader, SimpleKeyValueWriter};
 use d4::Header;
 use d4::{D4FileBuilder, D4FileWriter, D4TrackReader};
@@ -10,8 +10,8 @@ use d4::{D4FileBuilder, D4FileWriter, D4TrackReader};
 use crate::c_api::d4_file_t;
 use crate::stream::{StreamReader, StreamWriter};
 
-type ReaderType = D4TrackReader<UncompressedReader, SimpleKeyValueReader<RangeRecord>>;
-type WriterType = D4FileWriter<UncompressedWriter, SimpleKeyValueWriter<RangeRecord>>;
+type ReaderType = D4TrackReader<BitArrayReader, SimpleKeyValueReader<RangeRecord>>;
+type WriterType = D4FileWriter<BitArrayWriter, SimpleKeyValueWriter<RangeRecord>>;
 
 pub enum D4FileHandle {
     Empty,

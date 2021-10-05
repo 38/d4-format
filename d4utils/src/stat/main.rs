@@ -1,12 +1,15 @@
 use clap::{load_yaml, App, ArgMatches};
 
 use d4::{
-    task::{Histogram, Mean, SimpleTask, Task},
-    D4TrackReader,
+    task::{Histogram, Mean, SimpleTask, Task, TaskContext, VectorStat},
+    D4MatrixReader, D4TrackReader,
 };
 
-use std::io::{BufRead, BufReader};
 use std::path::Path;
+use std::{
+    borrow::{Borrow, Cow},
+    io::{BufRead, BufReader},
+};
 use std::{fs::File, iter::Once};
 
 fn parse_bed_file<P: AsRef<Path>>(
@@ -33,47 +36,98 @@ fn open_file_parse_region_and_then<T, F>(
     func: F,
 ) -> Result<T, Box<dyn std::error::Error>>
 where
-    F: FnOnce(D4TrackReader, Vec<(String, u32, u32)>) -> Result<T, Box<dyn std::error::Error>>,
+    F: FnOnce(Vec<D4TrackReader>, Vec<(String, u32, u32)>) -> Result<T, Box<dyn std::error::Error>>,
 {
-    let d4_path = matches.value_of("input").unwrap();
+    let input_filename = matches.value_of("input").unwrap();
+    let mut data_path = vec![];
 
-    let input: D4TrackReader = D4TrackReader::open(d4_path)?;
+    let d4files: Vec<D4TrackReader> =
+        if matches.is_present("first") || input_filename.contains(':') {
+            data_path.push("<default>".to_string());
+            vec![D4TrackReader::open(input_filename)?]
+        } else if let Some(pattern) = matches.value_of("filter") {
+            let pattern = regex::Regex::new(pattern)?;
+            D4TrackReader::open_tracks(input_filename, |path| {
+                let stem = path
+                    .map(|what: &Path| {
+                        what.file_name()
+                            .map(|x| x.to_string_lossy())
+                            .unwrap_or_else(|| Cow::<str>::Borrowed(""))
+                    })
+                    .unwrap_or_default();
+                if pattern.is_match(stem.borrow()) {
+                    data_path.push(stem.to_string());
+                    true
+                } else {
+                    false
+                }
+            })?
+        } else {
+            D4TrackReader::open_tracks(input_filename, |path| {
+                let stem = path
+                    .map(|what: &Path| {
+                        what.file_name()
+                            .map(|x| x.to_string_lossy())
+                            .unwrap_or_else(|| Cow::<str>::Borrowed(""))
+                    })
+                    .unwrap_or_default();
+                data_path.push(stem.to_string());
+                true
+            })?
+        };
 
     let region_spec: Vec<_> = if let Some(path) = matches.value_of("region") {
         parse_bed_file(path)?
             .map(|(chr, left, right)| (chr, left, right))
             .collect()
     } else {
-        input
+        d4files[0]
             .header()
             .chrom_list()
             .iter()
             .map(|chrom| (chrom.name.clone(), 0u32, chrom.size as u32))
             .collect()
     };
-    func(input, region_spec)
+    func(d4files, region_spec)
 }
 #[allow(clippy::type_complexity)]
-fn run_task<T: Task<Once<i32>> + SimpleTask>(
+fn run_task<T: Task<Once<i32>> + SimpleTask + Clone>(
     matches: ArgMatches,
-) -> Result<Vec<(String, u32, u32, T::Output)>, Box<dyn std::error::Error>> {
-    open_file_parse_region_and_then(matches, |mut input, region_spec| {
-        Ok(T::create_task(&mut input, region_spec.as_slice())?.run())
+) -> Result<Vec<(String, u32, u32, Vec<T::Output>)>, Box<dyn std::error::Error>> {
+    open_file_parse_region_and_then(matches, |mut inputs, region_spec| {
+        if inputs.len() > 1 {
+            let tasks: Vec<_> = region_spec
+                .iter()
+                .map(|(chr, begin, end)| {
+                    VectorStat::create_vector_task(inputs.len(), T::new(chr, *begin, *end))
+                })
+                .collect();
+            let mut inputs = D4MatrixReader::new(inputs)?;
+            Ok(TaskContext::new(&mut inputs, tasks)?.run())
+        } else {
+            Ok(T::create_task(&mut inputs[0], &region_spec)?.run().into_iter().map(|(chr, beg, end, value)| {
+                (chr, beg, end, vec![value])
+            }).collect())
+        }
     })
 }
 
 fn percentile_stat(matches: ArgMatches, percentile: f64) -> Result<(), Box<dyn std::error::Error>> {
     let histograms = run_task::<Histogram>(matches)?;
-    for (chr, begin, end, (below, hist, above)) in histograms {
-        let count: u32 = below + hist.iter().sum::<u32>() + above;
-        let below_count = (count as f64 * percentile.min(1.0).max(0.0)).round() as u32;
-        let mut current = below;
-        let mut idx = 0;
-        while current < below_count && (idx as usize) < hist.len() {
-            current += hist[idx];
-            idx += 1;
+    for (chr, begin, end, results) in histograms {
+        print!("{}\t{}\t{}", chr, begin, end);
+        for (below, hist, above) in results {
+            let count: u32 = below + hist.iter().sum::<u32>() + above;
+            let below_count = (count as f64 * percentile.min(1.0).max(0.0)).round() as u32;
+            let mut current = below;
+            let mut idx = 0;
+            while current < below_count && (idx as usize) < hist.len() {
+                current += hist[idx];
+                idx += 1;
+            }
+            println!("\t{}", idx);
         }
-        println!("{}\t{}\t{}\t{}", chr, begin, end, idx);
+        println!();
     }
     Ok(())
 }
@@ -85,7 +139,7 @@ fn hist_stat(matches: ArgMatches) -> Result<(), Box<dyn std::error::Error>> {
             .into_iter()
             .map(|(chr, begin, end)| Histogram::with_bin_range(&chr, begin, end, 0..max_bin))
             .collect();
-        Ok(Histogram::create_task(&mut input, tasks)?.run())
+        Ok(Histogram::create_task(&mut input[0], tasks)?.run())
     })?;
     let mut hist_result = vec![0; max_bin as usize + 1];
     let (mut below, mut above) = (0, 0);
@@ -120,7 +174,11 @@ pub fn entry_point(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> 
     match matches.value_of("stat") {
         None | Some("mean") | Some("avg") => {
             for result in run_task::<Mean>(matches)? {
-                println!("{}\t{}\t{}\t{}", result.0, result.1, result.2, result.3);
+                print!("{}\t{}\t{}", result.0, result.1, result.2);
+                for value in result.3 {
+                    print!("\t{}", value)
+                }
+                println!();
             }
         }
         Some("median") => {

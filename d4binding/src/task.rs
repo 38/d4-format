@@ -1,6 +1,5 @@
 use d4::ptab::{
-    DecodeResult, PTablePartitionReader, UncompressedDecoder, UncompressedPartReader,
-    UncompressedReader,
+    BitArrayDecoder, BitArrayPartReader, BitArrayReader, DecodeResult, PTablePartitionReader,
 };
 use d4::stab::{
     RangeRecord, STablePartitionReader, SimpleKeyValuePartialReader, SimpleKeyValueReader,
@@ -9,16 +8,13 @@ use d4::D4TrackReader;
 
 use std::io::Result;
 
-type FileReader = D4TrackReader<UncompressedReader, SimpleKeyValueReader<RangeRecord>>;
-type ReaderTaskContext = (
-    UncompressedPartReader,
-    SimpleKeyValuePartialReader<RangeRecord>,
-);
+type FileReader = D4TrackReader<BitArrayReader, SimpleKeyValueReader<RangeRecord>>;
+type ReaderTaskContext = (BitArrayPartReader, SimpleKeyValuePartialReader<RangeRecord>);
 
 pub enum TaskHandle {
     Read {
         context: ReaderTaskContext,
-        encoder: Option<UncompressedDecoder>,
+        encoder: Option<BitArrayDecoder>,
     },
 }
 

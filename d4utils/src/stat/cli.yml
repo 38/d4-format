@@ -23,4 +23,13 @@ args:
     - input:
         required: true
         value_name: input_d4_file
+    - first:
+        short: f
+        long: first
+        help: "Show first data track from the given file"
+    - filter:
+        short: F
+        long: filter
+        value_name: 'TRACK-PATTERN'
+        help: "A regex that matches all the track labels to be printed"
         
