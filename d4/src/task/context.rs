@@ -136,6 +136,7 @@ where
     pub fn run(self) -> Vec<(String, u32, u32, T::Output)> {
         let mut task_result: Vec<_> = self
             .partitions
+            //.into_iter()
             .into_par_iter()
             .map(|mut partition| partition.execute())
             .flatten()

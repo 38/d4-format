@@ -196,8 +196,6 @@ pub struct PrimaryTableCodec<M: PrimaryTableMode> {
 
 pub struct MatrixDecoder {
     encoders: Vec<PrimaryTableCodec<Reader>>,
-    shift: Vec<usize>,
-    addr_diff: Vec<usize>,
 }
 
 impl MatrixDecoder {
@@ -209,18 +207,8 @@ impl MatrixDecoder {
     ) -> Self {
         let encoders: Vec<_> = encoders.into_iter().map(|p| p.make_decoder()).collect();
         assert!(!encoders.is_empty());
-        let mut shift: Vec<usize> = vec![];
-        let mut addr_diff: Vec<usize> = vec![];
-        for encoder in encoders.iter() {
-            for idx in 0..8 {
-                addr_diff.push((idx + 1) * encoder.bit_width / 8 - idx * encoder.bit_width / 8);
-                shift.push((idx * encoder.bit_width) % 8);
-            }
-        }
         Self {
             encoders,
-            shift,
-            addr_diff,
         }
     }
     pub fn decode_block<H: FnMut(u32, &[DecodeResult]) -> bool>(
@@ -235,17 +223,30 @@ impl MatrixDecoder {
             .map(|enc| {
                 let offset = left as usize - enc.base_offset;
                 let base_addr = &enc.memory[offset * enc.bit_width / 8] as *const u8;
-                let idx = offset % 8;
-                (base_addr, idx)
+                base_addr
             })
             .collect::<Vec<_>>();
+        
+        let mut shift: Vec<usize> = vec![];
+        let mut addr_diff: Vec<usize> = vec![];
+
+        for idx in 0..8 {
+            for encoder in self.encoders.iter() {
+                let offset = left as usize - encoder.base_offset + idx;
+                addr_diff.push((offset + 1) * encoder.bit_width / 8 - offset * encoder.bit_width / 8);
+                shift.push((offset * encoder.bit_width) % 8);
+            }
+        }
 
         let mut result_buf = Vec::with_capacity(states.len());
+        let n_inputs = states.len();
+        let rule_cap = n_inputs * 8;
+        let mut rule_base = 0;
 
         for pos in left..right {
             result_buf.clear();
-            for (idx, (enc, (mem, s))) in self.encoders.iter().zip(&mut states).enumerate() {
-                let shift = self.shift[idx * 8 + *s];
+            for (idx, (enc, mem)) in self.encoders.iter().zip(&mut states).enumerate() {
+                let shift = shift[rule_base + idx];
                 let data: &u32 = unsafe { std::mem::transmute(*mem) };
                 let code = (*data >> shift) & enc.mask;
                 let result = if let Some(value) = enc.dict.decode_value(code) {
@@ -258,11 +259,14 @@ impl MatrixDecoder {
                     DecodeResult::Maybe(0)
                 };
                 result_buf.push(result);
-                *mem = unsafe { mem.add(self.addr_diff[idx * 8 + *s]) };
-                *s = (*s + 1) % 8;
+                *mem = unsafe { mem.add(addr_diff[rule_base + idx]) };
             }
             if !handle(pos, &result_buf) {
                 return;
+            }
+            rule_base += n_inputs;
+            if rule_base >= rule_cap {
+                rule_base = 0;
             }
         }
     }

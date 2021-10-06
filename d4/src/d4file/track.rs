@@ -165,12 +165,14 @@ pub struct MatrixRow {
 
 impl Deref for MatrixRow {
     type Target = Vec<i32>;
+    #[inline(always)]
     fn deref(&self) -> &Self::Target {
         &self.data_buf
     }
 }
 
 impl DerefMut for MatrixRow {
+    #[inline(always)]
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.data_buf
     }
@@ -178,6 +180,7 @@ impl DerefMut for MatrixRow {
 
 impl Iterator for MatrixRow {
     type Item = i32;
+    #[inline(always)]
     fn next(&mut self) -> Option<Self::Item> {
         let idx = self.read_idx;
         self.read_idx += 1;
@@ -190,7 +193,28 @@ impl Iterator for MatrixRow {
 }
 
 impl ExactSizeIterator for MatrixRow {}
-
+impl <S:STableReader> D4MatrixReaderPartition<S> {
+    fn decode_block_impl<H: FnMut(u32, &mut MatrixRow)>(&mut self, mut handle: H, ncols: usize, part_left: u32, part_right: u32, decoder: &MatrixDecoder) {
+        let mut decode_buf = MatrixRow::default();
+        decode_buf.resize(ncols, 0);
+        decoder.decode_block(part_left, part_right, |pos, data| {
+            for i in  0..ncols {
+                decode_buf[i] = match data[i] {
+                    DecodeResult::Definitely(value) => value,
+                    DecodeResult::Maybe(value_from_1st) => {
+                        if let Some(value_from_2nd) = self.secondary[i].decode(pos) {
+                            value_from_2nd
+                        } else {
+                            value_from_1st
+                        }
+                    }
+                };
+            }
+            handle(pos, &mut decode_buf);
+            true
+        });
+    }
+}
 impl<S: STableReader> MultiTrackPartitionReader for D4MatrixReaderPartition<S> {
     type RowType = MatrixRow;
 
@@ -232,29 +256,36 @@ impl<S: STableReader> MultiTrackPartitionReader for D4MatrixReaderPartition<S> {
                 continue;
             }
 
+
             if !per_base {
-                let mut decode_buf = MatrixRow::default();
-                decoder.decode_block(part_left, part_right, |pos, data| {
-                    decode_buf.clear();
-                    for (st, data) in self.secondary.iter_mut().zip(data) {
-                        let value = match *data {
-                            DecodeResult::Definitely(value) => value,
-                            DecodeResult::Maybe(value_from_1st) => {
-                                if let Some(value_from_2nd) = st.decode(pos) {
-                                    value_from_2nd
-                                } else {
-                                    value_from_1st
-                                }
+                match active_handles.len() {
+                    1 => {
+                        let h0 = &mut handles[active_handles[0]];
+                        self.decode_block_impl(|pos, buf| {
+                            buf.read_idx = 0;
+                            h0.feed_row(pos, buf);
+                        }, self.secondary.len(), part_left, part_right, &decoder);
+                    },
+                    2 => {
+                        let (head, tail) = handles.split_at_mut(1);
+                        let h0 = &mut head[0];
+                        let h1 = &mut tail[0];
+                        self.decode_block_impl(|pos, buf| {
+                            buf.read_idx = 0;
+                            h0.feed_row(pos, buf);
+                            buf.read_idx = 0;
+                            h1.feed_row(pos, buf);
+                        }, self.secondary.len(), part_left, part_right, &decoder);
+                    },
+                    _=> {
+                        self.decode_block_impl(|pos, buf| {
+                            for &handle_id in active_handles.iter() {
+                                buf.read_idx = 0;
+                                handles[handle_id].feed_row(pos, buf);
                             }
-                        };
-                        decode_buf.push(value);
+                        }, self.secondary.len(), part_left, part_right, &decoder);
                     }
-                    for &handle_id in active_handles.iter() {
-                        decode_buf.read_idx = 0;
-                        handles[handle_id].feed_row(pos, &mut decode_buf);
-                    }
-                    true
-                });
+                }
             } else {
                 let default_values: Vec<_> = self
                     .primary

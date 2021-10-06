@@ -1,8 +1,7 @@
 use clap::{load_yaml, App, ArgMatches};
 
 use d4::{
-    task::{Histogram, Mean, SimpleTask, Task, TaskContext, VectorStat},
-    D4MatrixReader, D4TrackReader,
+    task::{Histogram, Mean, SimpleTask, Task}, D4TrackReader,
 };
 
 use std::path::Path;
@@ -94,9 +93,9 @@ where
 fn run_task<T: Task<Once<i32>> + SimpleTask + Clone>(
     matches: ArgMatches,
 ) -> Result<Vec<(String, u32, u32, Vec<T::Output>)>, Box<dyn std::error::Error>> {
-    open_file_parse_region_and_then(matches, |mut inputs, region_spec| {
-        if inputs.len() > 1 {
-            let tasks: Vec<_> = region_spec
+    open_file_parse_region_and_then(matches, |inputs, region_spec| {
+        /*
+          let tasks: Vec<_> = region_spec
                 .iter()
                 .map(|(chr, begin, end)| {
                     VectorStat::create_vector_task(inputs.len(), T::new(chr, *begin, *end))
@@ -104,11 +103,19 @@ fn run_task<T: Task<Once<i32>> + SimpleTask + Clone>(
                 .collect();
             let mut inputs = D4MatrixReader::new(inputs)?;
             Ok(TaskContext::new(&mut inputs, tasks)?.run())
-        } else {
-            Ok(T::create_task(&mut inputs[0], &region_spec)?.run().into_iter().map(|(chr, beg, end, value)| {
-                (chr, beg, end, vec![value])
-            }).collect())
+        */
+        let mut ret = vec![];
+        for mut input in inputs {
+            let result = T::create_task(&mut input, &region_spec)?.run();
+            for (idx, result) in result.into_iter().enumerate() {
+                if ret.len() <= idx {
+                    ret.push((result.0, result.1, result.2, vec![result.3]));
+                } else {
+                    ret[idx].3.push(result.3);
+                }
+            }
         }
+        Ok(ret)
     })
 }
 
