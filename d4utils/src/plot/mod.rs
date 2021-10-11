@@ -1,5 +1,5 @@
 use clap::{load_yaml, App};
-use d4::task::Task;
+use d4::task::{Task, TaskOutput};
 use plotters::prelude::*;
 use regex::Regex;
 
@@ -43,7 +43,14 @@ fn downsample_data(
     Ok(tc
         .run()
         .into_iter()
-        .map(|(_, l, r, b)| ((l + r) / 2, b))
+        .map(
+            |TaskOutput {
+                 begin: l,
+                 end: r,
+                 output: b,
+                 ..
+             }| ((l + r) / 2, b),
+        )
         .collect())
 }
 

@@ -1,7 +1,8 @@
 use clap::{load_yaml, App, ArgMatches};
 
 use d4::{
-    task::{Histogram, Mean, SimpleTask, Task}, D4TrackReader,
+    task::{Histogram, Mean, SimpleTask, Task, TaskOutput},
+    D4TrackReader,
 };
 
 use std::path::Path;
@@ -40,40 +41,40 @@ where
     let input_filename = matches.value_of("input").unwrap();
     let mut data_path = vec![];
 
-    let d4files: Vec<D4TrackReader> =
-        if matches.is_present("first") || input_filename.contains(':') {
-            data_path.push("<default>".to_string());
-            vec![D4TrackReader::open(input_filename)?]
-        } else if let Some(pattern) = matches.value_of("filter") {
-            let pattern = regex::Regex::new(pattern)?;
-            D4TrackReader::open_tracks(input_filename, |path| {
-                let stem = path
-                    .map(|what: &Path| {
-                        what.file_name()
-                            .map(|x| x.to_string_lossy())
-                            .unwrap_or_else(|| Cow::<str>::Borrowed(""))
-                    })
-                    .unwrap_or_default();
-                if pattern.is_match(stem.borrow()) {
-                    data_path.push(stem.to_string());
-                    true
-                } else {
-                    false
-                }
-            })?
-        } else {
-            D4TrackReader::open_tracks(input_filename, |path| {
-                let stem = path
-                    .map(|what: &Path| {
-                        what.file_name()
-                            .map(|x| x.to_string_lossy())
-                            .unwrap_or_else(|| Cow::<str>::Borrowed(""))
-                    })
-                    .unwrap_or_default();
+    let d4files: Vec<D4TrackReader> = if matches.is_present("first") || input_filename.contains(':')
+    {
+        data_path.push("<default>".to_string());
+        vec![D4TrackReader::open(input_filename)?]
+    } else if let Some(pattern) = matches.value_of("filter") {
+        let pattern = regex::Regex::new(pattern)?;
+        D4TrackReader::open_tracks(input_filename, |path| {
+            let stem = path
+                .map(|what: &Path| {
+                    what.file_name()
+                        .map(|x| x.to_string_lossy())
+                        .unwrap_or_else(|| Cow::<str>::Borrowed(""))
+                })
+                .unwrap_or_default();
+            if pattern.is_match(stem.borrow()) {
                 data_path.push(stem.to_string());
                 true
-            })?
-        };
+            } else {
+                false
+            }
+        })?
+    } else {
+        D4TrackReader::open_tracks(input_filename, |path| {
+            let stem = path
+                .map(|what: &Path| {
+                    what.file_name()
+                        .map(|x| x.to_string_lossy())
+                        .unwrap_or_else(|| Cow::<str>::Borrowed(""))
+                })
+                .unwrap_or_default();
+            data_path.push(stem.to_string());
+            true
+        })?
+    };
 
     let region_spec: Vec<_> = if let Some(path) = matches.value_of("region") {
         parse_bed_file(path)?
@@ -92,7 +93,7 @@ where
 #[allow(clippy::type_complexity)]
 fn run_task<T: Task<Once<i32>> + SimpleTask + Clone>(
     matches: ArgMatches,
-) -> Result<Vec<(String, u32, u32, Vec<T::Output>)>, Box<dyn std::error::Error>> {
+) -> Result<Vec<TaskOutput<Vec<T::Output>>>, Box<dyn std::error::Error>> {
     open_file_parse_region_and_then(matches, |inputs, region_spec| {
         /*
           let tasks: Vec<_> = region_spec
@@ -109,9 +110,14 @@ fn run_task<T: Task<Once<i32>> + SimpleTask + Clone>(
             let result = T::create_task(&mut input, &region_spec)?.run();
             for (idx, result) in result.into_iter().enumerate() {
                 if ret.len() <= idx {
-                    ret.push((result.0, result.1, result.2, vec![result.3]));
+                    ret.push(TaskOutput {
+                        output: vec![result.output],
+                        begin: result.begin,
+                        end: result.end,
+                        chrom: result.chrom,
+                    });
                 } else {
-                    ret[idx].3.push(result.3);
+                    ret[idx].output.push(result.output);
                 }
             }
         }
@@ -121,7 +127,13 @@ fn run_task<T: Task<Once<i32>> + SimpleTask + Clone>(
 
 fn percentile_stat(matches: ArgMatches, percentile: f64) -> Result<(), Box<dyn std::error::Error>> {
     let histograms = run_task::<Histogram>(matches)?;
-    for (chr, begin, end, results) in histograms {
+    for TaskOutput {
+        chrom: chr,
+        begin,
+        end,
+        output: results,
+    } in histograms
+    {
         print!("{}\t{}\t{}", chr, begin, end);
         for (below, hist, above) in results {
             let count: u32 = below + hist.iter().sum::<u32>() + above;
@@ -150,7 +162,11 @@ fn hist_stat(matches: ArgMatches) -> Result<(), Box<dyn std::error::Error>> {
     })?;
     let mut hist_result = vec![0; max_bin as usize + 1];
     let (mut below, mut above) = (0, 0);
-    for (_, _, _, (b, hist, a)) in histograms {
+    for TaskOutput {
+        output: (b, hist, a),
+        ..
+    } in histograms
+    {
         below += b;
         above += a;
         for (id, val) in hist.iter().enumerate() {
@@ -181,8 +197,8 @@ pub fn entry_point(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> 
     match matches.value_of("stat") {
         None | Some("mean") | Some("avg") => {
             for result in run_task::<Mean>(matches)? {
-                print!("{}\t{}\t{}", result.0, result.1, result.2);
-                for value in result.3 {
+                print!("{}\t{}\t{}", result.chrom, result.begin, result.end);
+                for value in result.output {
                     print!("\t{}", value)
                 }
                 println!();

@@ -45,6 +45,13 @@ impl<P: PTableReader, S: STableReader> D4TrackReader<P, S> {
         let s_parts = self.s_table.split(partition.as_ref())?;
         Ok(p_parts.into_iter().zip(s_parts.into_iter()).collect())
     }
+    pub fn chrom_regions(&self) -> Vec<(&str, u32, u32)> {
+        self.header
+            .chrom_list()
+            .iter()
+            .map(|x| (x.name.as_str(), 0, x.size as u32))
+            .collect()
+    }
     /// Get the header of the input D4 file
     pub fn header(&self) -> &Header {
         &self.header

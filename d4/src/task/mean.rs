@@ -25,9 +25,6 @@ impl TaskPartition<Once<i32>> for MeanPartition {
             sum: 0,
         }
     }
-    fn scope(&self) -> (u32, u32) {
-        self.range
-    }
     #[inline(always)]
     fn feed(&mut self, _: u32, value: &mut Once<i32>) -> bool {
         let value = value.next().unwrap();

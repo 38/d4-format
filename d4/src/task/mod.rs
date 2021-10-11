@@ -44,12 +44,17 @@ impl<T: SimpleTask + Task<R>, R: Iterator<Item = i32> + ExactSizeIterator, N: As
     }
 }
 
-impl<T: SimpleTask + Task<R>, R: Iterator<Item = i32> + ExactSizeIterator> IntoTaskVec<R, T>
-    for Vec<T>
-{
+impl<T: Task<R>, R: Iterator<Item = i32> + ExactSizeIterator> IntoTaskVec<R, T> for Vec<T> {
     fn into_task_vec(self) -> Vec<T> {
         self
     }
+}
+
+pub struct TaskOutput<T> {
+    pub chrom: String,
+    pub begin: u32,
+    pub end: u32,
+    pub output: T,
 }
 
 /// An abstracted task
@@ -88,10 +93,11 @@ pub trait TaskPartition<RowType: Iterator<Item = i32> + ExactSizeIterator>: Send
     type ResultType: Send + Clone;
     /// The type for a single row
     fn new(left: u32, right: u32, parent: &Self::ParentType) -> Self;
-    /// Query the scope for current task partition
-    fn scope(&self) -> (u32, u32);
     /// Feed one value to the task
-    fn feed(&mut self, pos: u32, value: &mut RowType) -> bool;
+    #[inline(always)]
+    fn feed(&mut self, pos: u32, value: &mut RowType) -> bool {
+        self.feed_range(pos, pos + 1, value)
+    }
     /// Feed a range of position that has the same value
     fn feed_range(&mut self, left: u32, right: u32, value: &mut RowType) -> bool;
     /// Convert the task into the result

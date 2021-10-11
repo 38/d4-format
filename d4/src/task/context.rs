@@ -1,7 +1,7 @@
 use rayon::prelude::*;
 use std::io::Result;
 
-use super::{Task, TaskPartition};
+use super::{Task, TaskOutput, TaskPartition};
 use crate::d4file::{DataScanner, MultiTrackPartitionReader, MultiTrackReader};
 
 struct PartitionExecutionResult<RT: Iterator<Item = i32> + ExactSizeIterator, T: Task<RT>> {
@@ -11,6 +11,7 @@ struct PartitionExecutionResult<RT: Iterator<Item = i32> + ExactSizeIterator, T:
 
 struct TaskScanner<P> {
     task_id: usize,
+    range: (u32, u32),
     partition: P,
 }
 
@@ -18,7 +19,7 @@ impl<P: TaskPartition<RT>, RT: Iterator<Item = i32> + ExactSizeIterator> DataSca
     for TaskScanner<P>
 {
     fn get_range(&self) -> (u32, u32) {
-        self.partition.scope()
+        self.range
     }
 
     fn feed_row(&mut self, pos: u32, row: &mut RT) -> bool {
@@ -108,6 +109,7 @@ where
 
                 task_assignment[fpid].push(TaskScanner {
                     task_id: overlapping_idx,
+                    range: (actual_left, actual_right),
                     partition: <<T as Task<_>>::Partition as TaskPartition<_>>::new(
                         actual_left,
                         actual_right,
@@ -133,7 +135,7 @@ where
     }
 
     /// Run the task in parallel
-    pub fn run(self) -> Vec<(String, u32, u32, T::Output)> {
+    pub fn run(self) -> Vec<TaskOutput<T::Output>> {
         let mut task_result: Vec<_> = self
             .partitions
             //.into_iter()
@@ -157,7 +159,12 @@ where
                 task_result_idx += 1;
             }
             let final_result = region_ctx.combine(&region_partition_results);
-            result.push((region.0.to_string(), region.1, region.2, final_result));
+            result.push(TaskOutput {
+                chrom: region.0.to_string(),
+                begin: region.1,
+                end: region.2,
+                output: final_result,
+            });
         }
         result
     }

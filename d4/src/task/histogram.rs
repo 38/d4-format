@@ -17,7 +17,6 @@ impl SimpleTask for Histogram {
 }
 
 pub struct Partition {
-    range: (u32, u32),
     base: i32,
     histogram: Vec<u32>,
     below: u32,
@@ -27,24 +26,16 @@ pub struct Partition {
 impl TaskPartition<Once<i32>> for Partition {
     type ParentType = Histogram;
     type ResultType = (u32, Vec<u32>, u32);
-    fn new(left: u32, right: u32, parent: &Histogram) -> Self {
+    fn new(_: u32, _: u32, parent: &Histogram) -> Self {
         let param = &parent.3;
         let base = param.start;
         let size = (param.end - param.start).max(0) as usize;
         Self {
             base,
-            range: (left, right),
             histogram: vec![0; size],
             below: 0,
             above: 0,
         }
-    }
-    fn scope(&self) -> (u32, u32) {
-        self.range
-    }
-    #[inline(always)]
-    fn feed(&mut self, _: u32, value: &mut Once<i32>) -> bool {
-        self.feed_range(0, 1, value)
     }
 
     #[inline(always)]

@@ -5,6 +5,7 @@ use crate::{
         PTablePartitionReader, PTableReader,
     },
     stab::{STablePartitionReader, STableReader},
+    task::{IntoTaskVec, Task, TaskContext, TaskOutput},
 };
 
 use std::{
@@ -40,6 +41,16 @@ pub trait MultiTrackReader {
     type PartitionType: MultiTrackPartitionReader;
     /// Split a multi track reader into different partitions
     fn split(&mut self, size_limit: Option<usize>) -> Result<Vec<Self::PartitionType>>;
+    /// Create a task on this reader
+    fn run_tasks<RS, T>(&mut self, tasks: RS) -> Result<Vec<TaskOutput<T::Output>>>
+    where
+        Self: Sized,
+        T: Task<<Self::PartitionType as MultiTrackPartitionReader>::RowType>,
+        RS: IntoTaskVec<<Self::PartitionType as MultiTrackPartitionReader>::RowType, T>,
+        Self::PartitionType: Send,
+    {
+        Ok(TaskContext::new(self, tasks.into_task_vec())?.run())
+    }
 }
 
 pub struct D4FilePartition<P: PTableReader, S: STableReader> {
@@ -193,12 +204,19 @@ impl Iterator for MatrixRow {
 }
 
 impl ExactSizeIterator for MatrixRow {}
-impl <S:STableReader> D4MatrixReaderPartition<S> {
-    fn decode_block_impl<H: FnMut(u32, &mut MatrixRow)>(&mut self, mut handle: H, ncols: usize, part_left: u32, part_right: u32, decoder: &MatrixDecoder) {
+impl<S: STableReader> D4MatrixReaderPartition<S> {
+    fn decode_block_impl<H: FnMut(u32, &mut MatrixRow)>(
+        &mut self,
+        mut handle: H,
+        ncols: usize,
+        part_left: u32,
+        part_right: u32,
+        decoder: &MatrixDecoder,
+    ) {
         let mut decode_buf = MatrixRow::default();
         decode_buf.resize(ncols, 0);
         decoder.decode_block(part_left, part_right, |pos, data| {
-            for i in  0..ncols {
+            for i in 0..ncols {
                 decode_buf[i] = match data[i] {
                     DecodeResult::Definitely(value) => value,
                     DecodeResult::Maybe(value_from_1st) => {
@@ -256,34 +274,51 @@ impl<S: STableReader> MultiTrackPartitionReader for D4MatrixReaderPartition<S> {
                 continue;
             }
 
-
             if !per_base {
                 match active_handles.len() {
                     1 => {
                         let h0 = &mut handles[active_handles[0]];
-                        self.decode_block_impl(|pos, buf| {
-                            buf.read_idx = 0;
-                            h0.feed_row(pos, buf);
-                        }, self.secondary.len(), part_left, part_right, &decoder);
-                    },
+                        self.decode_block_impl(
+                            |pos, buf| {
+                                buf.read_idx = 0;
+                                h0.feed_row(pos, buf);
+                            },
+                            self.secondary.len(),
+                            part_left,
+                            part_right,
+                            &decoder,
+                        );
+                    }
                     2 => {
                         let (head, tail) = handles.split_at_mut(1);
                         let h0 = &mut head[0];
                         let h1 = &mut tail[0];
-                        self.decode_block_impl(|pos, buf| {
-                            buf.read_idx = 0;
-                            h0.feed_row(pos, buf);
-                            buf.read_idx = 0;
-                            h1.feed_row(pos, buf);
-                        }, self.secondary.len(), part_left, part_right, &decoder);
-                    },
-                    _=> {
-                        self.decode_block_impl(|pos, buf| {
-                            for &handle_id in active_handles.iter() {
+                        self.decode_block_impl(
+                            |pos, buf| {
                                 buf.read_idx = 0;
-                                handles[handle_id].feed_row(pos, buf);
-                            }
-                        }, self.secondary.len(), part_left, part_right, &decoder);
+                                h0.feed_row(pos, buf);
+                                buf.read_idx = 0;
+                                h1.feed_row(pos, buf);
+                            },
+                            self.secondary.len(),
+                            part_left,
+                            part_right,
+                            &decoder,
+                        );
+                    }
+                    _ => {
+                        self.decode_block_impl(
+                            |pos, buf| {
+                                for &handle_id in active_handles.iter() {
+                                    buf.read_idx = 0;
+                                    handles[handle_id].feed_row(pos, buf);
+                                }
+                            },
+                            self.secondary.len(),
+                            part_left,
+                            part_right,
+                            &decoder,
+                        );
                     }
                 }
             } else {
@@ -365,6 +400,9 @@ impl<S: STableReader> MultiTrackPartitionReader for D4MatrixReaderPartition<S> {
 }
 
 impl<S: STableReader> D4MatrixReader<S> {
+    pub fn chrom_regions(&self) -> Vec<(&str, u32, u32)> {
+        self.tracks[0].chrom_regions()
+    }
     pub fn new<T: IntoIterator<Item = D4TrackReader<BitArrayReader, S>>>(
         tracks: T,
     ) -> Result<Self> {

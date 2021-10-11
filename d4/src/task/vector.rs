@@ -46,10 +46,6 @@ impl<R: Iterator<Item = i32> + ExactSizeIterator, T: Task<Once<i32>>> TaskPartit
         }
     }
 
-    fn scope(&self) -> (u32, u32) {
-        self.scalar_parts[0].scope()
-    }
-
     fn feed(&mut self, pos: u32, value: &mut R) -> bool {
         for (task, value) in self.scalar_parts.iter_mut().zip(value) {
             task.feed(pos, &mut std::iter::once(value));

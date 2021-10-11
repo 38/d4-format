@@ -207,9 +207,7 @@ impl MatrixDecoder {
     ) -> Self {
         let encoders: Vec<_> = encoders.into_iter().map(|p| p.make_decoder()).collect();
         assert!(!encoders.is_empty());
-        Self {
-            encoders,
-        }
+        Self { encoders }
     }
     pub fn decode_block<H: FnMut(u32, &[DecodeResult]) -> bool>(
         &self,
@@ -226,14 +224,15 @@ impl MatrixDecoder {
                 base_addr
             })
             .collect::<Vec<_>>();
-        
+
         let mut shift: Vec<usize> = vec![];
         let mut addr_diff: Vec<usize> = vec![];
 
         for idx in 0..8 {
             for encoder in self.encoders.iter() {
                 let offset = left as usize - encoder.base_offset + idx;
-                addr_diff.push((offset + 1) * encoder.bit_width / 8 - offset * encoder.bit_width / 8);
+                addr_diff
+                    .push((offset + 1) * encoder.bit_width / 8 - offset * encoder.bit_width / 8);
                 shift.push((offset * encoder.bit_width) % 8);
             }
         }

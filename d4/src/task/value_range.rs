@@ -11,7 +11,6 @@ impl SimpleTask for ValueRange {
 }
 
 pub struct ValueRangePartition {
-    task_range: (u32, u32),
     min_value: i32,
     max_value: i32,
 }
@@ -19,15 +18,11 @@ pub struct ValueRangePartition {
 impl TaskPartition<Once<i32>> for ValueRangePartition {
     type ParentType = ValueRange;
     type ResultType = (i32, i32);
-    fn new(left: u32, right: u32, _: &Self::ParentType) -> Self {
+    fn new(_left: u32, _right: u32, _: &Self::ParentType) -> Self {
         Self {
-            task_range: (left, right),
             min_value: i32::MAX,
             max_value: i32::MIN,
         }
-    }
-    fn scope(&self) -> (u32, u32) {
-        self.task_range
     }
     #[inline(always)]
     fn feed(&mut self, _: u32, value: &mut Once<i32>) -> bool {

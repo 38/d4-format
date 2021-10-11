@@ -65,8 +65,10 @@ async fn main(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
                     buffer
                         .write_all(&(task_result.len() as u32).to_le_bytes())
                         .unwrap();
-                    task_result.into_iter().for_each(|(_, _, _, value)| {
-                        buffer.write_all(&(value as f32).to_le_bytes()).unwrap()
+                    task_result.into_iter().for_each(|out| {
+                        buffer
+                            .write_all(&(out.output as f32).to_le_bytes())
+                            .unwrap()
                     });
                     warp::http::Response::builder()
                         .header("content-type", "application/octect-stream")
