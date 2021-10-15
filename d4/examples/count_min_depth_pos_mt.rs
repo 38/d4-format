@@ -24,7 +24,7 @@ impl<T: Iterator<Item = i32> + ExactSizeIterator> TaskPartition<T> for CountTask
         }
         true
     }
-    fn into_result(self) -> Self::ResultType {
+    fn result(&mut self) -> Self::ResultType {
         self.count
     }
 }

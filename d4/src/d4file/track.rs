@@ -1,3 +1,5 @@
+use smallvec::SmallVec;
+
 use super::D4TrackReader;
 use crate::{
     ptab::{
@@ -5,15 +7,91 @@ use crate::{
         PTablePartitionReader, PTableReader,
     },
     stab::{STablePartitionReader, STableReader},
-    task::{IntoTaskVec, Task, TaskContext, TaskOutput},
+    task::{IntoTaskVec, Task, TaskContext, TaskOutputVec},
 };
 
 use std::{
+    cmp::Ordering,
     collections::BinaryHeap,
     io::{Error, ErrorKind, Result},
     iter::Once,
     ops::{Deref, DerefMut},
 };
+
+fn adjust_down<T, Cmp: Fn(&T, &T) -> Ordering>(heap: &mut [T], mut idx: usize, cmp: Cmp) {
+    while idx < heap.len() {
+        let mut min_idx = idx;
+        if idx * 2 + 1 < heap.len() && cmp(&heap[min_idx], &heap[idx * 2 + 1]).is_gt() {
+            min_idx = idx * 2 + 1;
+        }
+        if idx * 2 + 2 < heap.len() && cmp(&heap[min_idx], &heap[idx * 2 + 2]).is_gt() {
+            min_idx = idx * 2 + 2;
+        }
+        if min_idx == idx {
+            break;
+        }
+        heap.swap(min_idx, idx);
+        idx = min_idx;
+    }
+}
+
+fn adjust_up<T, Cmp: Fn(&T, &T) -> Ordering>(heap: &mut [T], mut idx: usize, cmp: Cmp) {
+    while idx > 0 && cmp(&heap[idx / 2], &heap[idx]).is_gt() {
+        heap.swap(idx / 2, idx);
+        idx /= 2;
+    }
+}
+
+fn scan_partition_impl<RT, DS, F>(handles: &mut [DS], mut func: F)
+where
+    RT: Iterator<Item = i32> + ExactSizeIterator,
+    DS: DataScanner<RT>,
+    F: FnMut(u32, u32, &mut [&mut DS]),
+{
+    if handles.is_empty() {
+        return;
+    }
+
+    handles.sort_unstable_by(|a, b| a.get_range().cmp(&b.get_range()));
+
+    let mut active_heap: Vec<&mut DS> = vec![];
+    let cmp = |a: &&mut DS, b: &&mut DS| a.get_range().1.cmp(&b.get_range().1);
+    let mut last_end = handles[0].get_range().0;
+    let mut handle_iter = handles.iter_mut();
+
+    loop {
+        let handle = handle_iter.next();
+        let pos = handle.as_ref().map_or(u32::MAX, |h| h.get_range().0);
+        // First, we need to pop all the previously active handles that will be deactivaited
+        while let Some(top) = active_heap.get(0) {
+            let this_end = top.get_range().1;
+            if pos < this_end {
+                break;
+            }
+
+            if this_end != last_end {
+                func(last_end, this_end, &mut active_heap);
+                last_end = this_end;
+            }
+
+            let heap_size = active_heap.len();
+            active_heap.swap(0, heap_size - 1);
+            active_heap.pop();
+            adjust_down(&mut active_heap, 0, cmp);
+        }
+        if let Some(handle) = handle {
+            if active_heap.len() > 0 {
+                func(last_end, pos, &mut active_heap);
+                last_end = pos;
+            }
+            let idx = active_heap.len();
+            active_heap.push(handle);
+            adjust_up(&mut active_heap, idx, cmp);
+        } else {
+            break;
+        }
+    }
+}
 
 /// Code that used to scan a multi-track D4 file
 pub trait DataScanner<RowType: Iterator<Item = i32> + ExactSizeIterator> {
@@ -42,7 +120,7 @@ pub trait MultiTrackReader {
     /// Split a multi track reader into different partitions
     fn split(&mut self, size_limit: Option<usize>) -> Result<Vec<Self::PartitionType>>;
     /// Create a task on this reader
-    fn run_tasks<RS, T>(&mut self, tasks: RS) -> Result<Vec<TaskOutput<T::Output>>>
+    fn run_tasks<RS, T>(&mut self, tasks: RS) -> Result<TaskOutputVec<T::Output>>
     where
         Self: Sized,
         T: Task<<Self::PartitionType as MultiTrackPartitionReader>::RowType>,
@@ -65,40 +143,7 @@ impl<P: PTableReader, S: STableReader> MultiTrackPartitionReader for D4FileParti
         let per_base = self.primary.bit_width() > 0;
         let mut decoder = self.primary.make_decoder();
 
-        // First, we need to determine all the break points defined by each scanner
-        let mut break_points: Vec<_> = handles
-            .iter()
-            .map(|x| {
-                let (start, end) = x.get_range();
-                std::iter::once(start).chain(std::iter::once(end))
-            })
-            .flatten()
-            .collect();
-        break_points.sort_unstable();
-
-        if break_points.is_empty() {
-            return;
-        }
-
-        for idx in 0..break_points.len() - 1 {
-            if break_points[idx] == break_points[idx + 1] {
-                continue;
-            }
-            let part_left = break_points[idx];
-            let part_right = break_points[idx + 1];
-
-            // Find all handles that is active in range [part_left, part_right)
-            let active_handles: Vec<_> = (0..handles.len())
-                .filter(|&x| {
-                    let (l, r) = handles[x].get_range();
-                    l <= part_left && part_right <= r
-                })
-                .collect();
-
-            if active_handles.is_empty() {
-                continue;
-            }
-
+        scan_partition_impl(handles, |part_left, part_right, active_handles| {
             if per_base {
                 decoder.decode_block(
                     part_left as usize,
@@ -114,8 +159,8 @@ impl<P: PTableReader, S: STableReader> MultiTrackPartitionReader for D4FileParti
                                 }
                             }
                         };
-                        for &id in active_handles.iter() {
-                            handles[id].feed_row(pos as u32, &mut std::iter::once(value));
+                        for handle in active_handles.iter_mut() {
+                            handle.feed_row(pos as u32, &mut std::iter::once(value));
                         }
                     },
                 );
@@ -124,15 +169,15 @@ impl<P: PTableReader, S: STableReader> MultiTrackPartitionReader for D4FileParti
                 for (mut left, mut right, value) in iter {
                     left = left.max(part_left);
                     right = right.min(part_right).max(left);
-                    for &id in active_handles.iter() {
-                        handles[id].feed_rows(left, right, &mut std::iter::once(value));
+                    for handle in active_handles.iter_mut() {
+                        handle.feed_rows(left, right, &mut std::iter::once(value));
                     }
                     if right == part_right {
                         break;
                     }
                 }
             }
-        }
+        });
     }
 
     fn chrom(&self) -> &str {
@@ -205,6 +250,28 @@ impl Iterator for MatrixRow {
 
 impl ExactSizeIterator for MatrixRow {}
 impl<S: STableReader> D4MatrixReaderPartition<S> {
+    fn decode_secondary<H: FnMut(u32, &mut MatrixRow)>(
+        &mut self,
+        pos: u32,
+        ncols: usize,
+        decode_buf: &mut MatrixRow,
+        data: &[DecodeResult],
+        mut handle: H,
+    ) {
+        for i in 0..ncols {
+            decode_buf[i] = match data[i] {
+                DecodeResult::Definitely(value) => value,
+                DecodeResult::Maybe(value_from_1st) => {
+                    if let Some(value_from_2nd) = self.secondary[i].decode(pos) {
+                        value_from_2nd
+                    } else {
+                        value_from_1st
+                    }
+                }
+            };
+        }
+        handle(pos, decode_buf);
+    }
     fn decode_block_impl<H: FnMut(u32, &mut MatrixRow)>(
         &mut self,
         mut handle: H,
@@ -215,175 +282,126 @@ impl<S: STableReader> D4MatrixReaderPartition<S> {
     ) {
         let mut decode_buf = MatrixRow::default();
         decode_buf.resize(ncols, 0);
-        decoder.decode_block(part_left, part_right, |pos, data| {
-            for i in 0..ncols {
-                decode_buf[i] = match data[i] {
-                    DecodeResult::Definitely(value) => value,
-                    DecodeResult::Maybe(value_from_1st) => {
-                        if let Some(value_from_2nd) = self.secondary[i].decode(pos) {
-                            value_from_2nd
-                        } else {
-                            value_from_1st
-                        }
-                    }
-                };
+        if part_right - part_left > 1000 {
+            decoder.decode_block(part_left, part_right, |pos, data| {
+                self.decode_secondary(pos, ncols, &mut decode_buf, data, &mut handle);
+                true
+            });
+        } else {
+            let mut data = Vec::with_capacity(ncols);
+            for pos in part_left..part_right {
+                decoder.decode(pos, &mut data);
+                self.decode_secondary(pos, ncols, &mut decode_buf, &data, &mut handle);
             }
-            handle(pos, &mut decode_buf);
-            true
-        });
+        }
+    }
+    fn scan_per_base<H>(
+        &mut self,
+        part_left: u32,
+        part_right: u32,
+        active_handles: &mut [&mut H],
+        decoder: &mut MatrixDecoder,
+    ) where
+        H: DataScanner<<Self as MultiTrackPartitionReader>::RowType>,
+    {
+        self.decode_block_impl(
+            |pos, buf| {
+                for handle in active_handles.iter_mut() {
+                    buf.read_idx = 0;
+                    handle.feed_row(pos, buf);
+                }
+            },
+            self.secondary.len(),
+            part_left,
+            part_right,
+            &decoder,
+        );
+    }
+    fn scan_per_interval<H>(
+        &mut self,
+        part_left: u32,
+        part_right: u32,
+        active_handles: &mut [&mut H],
+    ) where
+        H: DataScanner<<Self as MultiTrackPartitionReader>::RowType>,
+    {
+        let default_values: Vec<_> = self
+            .primary
+            .iter()
+            .map(|p| {
+                let dict = p.dict();
+                dict.first_value()
+            })
+            .collect();
+        let mut iters = SmallVec::<[_; 8]>::with_capacity(self.secondary.len());
+
+        for sec_tab in self.secondary.iter_mut() {
+            iters.push(sec_tab.seek_iter(part_left));
+        }
+
+        // Event(idx, start, value)
+        let mut event_heap = BinaryHeap::new();
+
+        for (track_id, reader) in iters.iter_mut().enumerate() {
+            if let Some((begin, end, value)) = reader.next() {
+                if begin < part_right {
+                    event_heap.push((begin, value, track_id));
+                    event_heap.push((end, default_values[track_id], track_id))
+                }
+            }
+        }
+
+        let mut data_buf = MatrixRow::default();
+        data_buf.extend(&default_values);
+        let mut cur_pos = part_left;
+        let mut last_event_pos = part_left;
+
+        while let Some(event) = event_heap.pop() {
+            if event.1 == default_values[event.2] {
+                if let Some(next) = iters[event.2].next() {
+                    if next.0 < part_right {
+                        event_heap.push((next.0, next.2, event.2));
+                        event_heap.push((next.1, default_values[event.2], event.2));
+                    }
+                }
+            }
+            if last_event_pos != event.0 {
+                if cur_pos < last_event_pos {
+                    for handle in active_handles.iter_mut() {
+                        data_buf.read_idx = 0;
+                        handle.feed_rows(cur_pos, last_event_pos, &mut data_buf);
+                    }
+                }
+                cur_pos = last_event_pos;
+            }
+
+            data_buf[event.2] = event.1;
+            last_event_pos = event.0;
+        }
+
+        if cur_pos < last_event_pos {
+            for handle in active_handles.iter_mut() {
+                data_buf.read_idx = 0;
+                handle.feed_rows(cur_pos, last_event_pos, &mut data_buf);
+            }
+        }
     }
 }
+
 impl<S: STableReader> MultiTrackPartitionReader for D4MatrixReaderPartition<S> {
     type RowType = MatrixRow;
 
     fn scan_partition<DS: DataScanner<Self::RowType>>(&mut self, handles: &mut [DS]) {
-        let decoder = MatrixDecoder::new(self.primary.as_mut_slice());
-        let per_base = decoder.is_zero_sized();
+        let mut decoder = MatrixDecoder::new(self.primary.as_mut_slice());
+        let per_base = !decoder.is_zero_sized();
 
-        // First, we need to determine all the break points defined by each scanner
-        let mut break_points: Vec<_> = handles
-            .iter()
-            .map(|x| {
-                let (start, end) = x.get_range();
-                std::iter::once(start).chain(std::iter::once(end))
-            })
-            .flatten()
-            .collect();
-        break_points.sort_unstable();
-
-        if break_points.is_empty() {
-            return;
-        }
-
-        for idx in 0..break_points.len() - 1 {
-            if break_points[idx] == break_points[idx + 1] {
-                continue;
-            }
-            let part_left = break_points[idx];
-            let part_right = break_points[idx + 1];
-
-            // Find all handles that is active in range [part_left, part_right)
-            let active_handles: Vec<_> = (0..handles.len())
-                .filter(|&x| {
-                    let (l, r) = handles[x].get_range();
-                    l <= part_left && part_right <= r
-                })
-                .collect();
-
-            if active_handles.is_empty() {
-                continue;
-            }
-
-            if !per_base {
-                match active_handles.len() {
-                    1 => {
-                        let h0 = &mut handles[active_handles[0]];
-                        self.decode_block_impl(
-                            |pos, buf| {
-                                buf.read_idx = 0;
-                                h0.feed_row(pos, buf);
-                            },
-                            self.secondary.len(),
-                            part_left,
-                            part_right,
-                            &decoder,
-                        );
-                    }
-                    2 => {
-                        let (head, tail) = handles.split_at_mut(1);
-                        let h0 = &mut head[0];
-                        let h1 = &mut tail[0];
-                        self.decode_block_impl(
-                            |pos, buf| {
-                                buf.read_idx = 0;
-                                h0.feed_row(pos, buf);
-                                buf.read_idx = 0;
-                                h1.feed_row(pos, buf);
-                            },
-                            self.secondary.len(),
-                            part_left,
-                            part_right,
-                            &decoder,
-                        );
-                    }
-                    _ => {
-                        self.decode_block_impl(
-                            |pos, buf| {
-                                for &handle_id in active_handles.iter() {
-                                    buf.read_idx = 0;
-                                    handles[handle_id].feed_row(pos, buf);
-                                }
-                            },
-                            self.secondary.len(),
-                            part_left,
-                            part_right,
-                            &decoder,
-                        );
-                    }
-                }
+        scan_partition_impl(handles, |begin, end, active_handles| {
+            if per_base {
+                self.scan_per_base(begin, end, active_handles, &mut decoder);
             } else {
-                let default_values: Vec<_> = self
-                    .primary
-                    .iter()
-                    .map(|p| {
-                        let dict = p.dict();
-                        dict.first_value()
-                    })
-                    .collect();
-                let mut iters: Vec<_> = self
-                    .secondary
-                    .iter()
-                    .map(|s| s.seek_iter(part_left))
-                    .collect();
-                // Event(idx, start, value)
-                let mut event_heap: BinaryHeap<(u32, i32, usize)> = iters
-                    .iter_mut()
-                    .enumerate()
-                    .map(|(id, r)| {
-                        if let Some(data) = r.next() {
-                            vec![(data.0, data.2, id), (data.1, default_values[id], id)]
-                        } else {
-                            vec![]
-                        }
-                        .into_iter()
-                    })
-                    .flatten()
-                    .collect();
-
-                let mut data_buf = MatrixRow::default();
-                data_buf.extend(&default_values);
-                let mut cur_pos = part_left;
-                let mut last_event_pos = part_left;
-
-                while let Some(event) = event_heap.pop() {
-                    if event.1 == default_values[event.2] {
-                        if let Some(next) = iters[event.2].next() {
-                            event_heap.push((next.0, next.2, event.2));
-                            event_heap.push((next.1, default_values[event.2], event.2));
-                        }
-                    }
-                    if last_event_pos != event.0 {
-                        if cur_pos < last_event_pos {
-                            for &hid in active_handles.iter() {
-                                data_buf.read_idx = 0;
-                                handles[hid].feed_rows(cur_pos, last_event_pos, &mut data_buf);
-                            }
-                        }
-                        cur_pos = last_event_pos;
-                    }
-
-                    data_buf[event.2] = event.1;
-                    last_event_pos = event.0;
-                }
-
-                if cur_pos < last_event_pos {
-                    for &hid in active_handles.iter() {
-                        data_buf.read_idx = 0;
-                        handles[hid].feed_rows(cur_pos, last_event_pos, &mut data_buf);
-                    }
-                }
+                self.scan_per_interval(begin, end, active_handles)
             }
-        }
+        });
     }
 
     fn chrom(&self) -> &str {

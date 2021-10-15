@@ -90,10 +90,21 @@ where
     };
     func(d4files, region_spec)
 }
+
+pub struct OwnedOutput<T> {
+    chrom: String,
+    begin: u32,
+    end: u32,
+    output: T,
+}
+
 #[allow(clippy::type_complexity)]
 fn run_task<T: Task<Once<i32>> + SimpleTask + Clone>(
     matches: ArgMatches,
-) -> Result<Vec<TaskOutput<Vec<T::Output>>>, Box<dyn std::error::Error>> {
+) -> Result<Vec<OwnedOutput<Vec<T::Output>>>, Box<dyn std::error::Error>>
+where
+    T::Output: Clone,
+{
     open_file_parse_region_and_then(matches, |inputs, region_spec| {
         /*
           let tasks: Vec<_> = region_spec
@@ -110,14 +121,14 @@ fn run_task<T: Task<Once<i32>> + SimpleTask + Clone>(
             let result = T::create_task(&mut input, &region_spec)?.run();
             for (idx, result) in result.into_iter().enumerate() {
                 if ret.len() <= idx {
-                    ret.push(TaskOutput {
-                        output: vec![result.output],
+                    ret.push(OwnedOutput {
+                        output: vec![result.output.clone()],
                         begin: result.begin,
                         end: result.end,
-                        chrom: result.chrom,
+                        chrom: result.chrom.to_string(),
                     });
                 } else {
-                    ret[idx].output.push(result.output);
+                    ret[idx].output.push(result.output.clone());
                 }
             }
         }
@@ -127,7 +138,7 @@ fn run_task<T: Task<Once<i32>> + SimpleTask + Clone>(
 
 fn percentile_stat(matches: ArgMatches, percentile: f64) -> Result<(), Box<dyn std::error::Error>> {
     let histograms = run_task::<Histogram>(matches)?;
-    for TaskOutput {
+    for OwnedOutput {
         chrom: chr,
         begin,
         end,
@@ -165,7 +176,7 @@ fn hist_stat(matches: ArgMatches) -> Result<(), Box<dyn std::error::Error>> {
     for TaskOutput {
         output: (b, hist, a),
         ..
-    } in histograms
+    } in histograms.into_iter()
     {
         below += b;
         above += a;

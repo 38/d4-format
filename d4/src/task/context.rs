@@ -1,13 +1,8 @@
 use rayon::prelude::*;
-use std::io::Result;
+use std::{collections::HashMap, io::Result};
 
-use super::{Task, TaskOutput, TaskPartition};
+use super::{Task, TaskOutputVec, TaskPartition};
 use crate::d4file::{DataScanner, MultiTrackPartitionReader, MultiTrackReader};
-
-struct PartitionExecutionResult<RT: Iterator<Item = i32> + ExactSizeIterator, T: Task<RT>> {
-    task_id: usize,
-    result: <T::Partition as TaskPartition<RT>>::ResultType,
-}
 
 struct TaskScanner<P> {
     task_id: usize,
@@ -37,16 +32,9 @@ struct PartitionContext<R: MultiTrackPartitionReader, T: Task<R::RowType>> {
 }
 
 impl<R: MultiTrackPartitionReader, T: Task<R::RowType>> PartitionContext<R, T> {
-    fn execute(&mut self) -> Vec<PartitionExecutionResult<R::RowType, T>> {
+    fn execute(&mut self) -> Vec<TaskScanner<T::Partition>> {
         self.reader.scan_partition(self.tasks.as_mut_slice());
-
         std::mem::take(&mut self.tasks)
-            .into_iter()
-            .map(|scanner| PartitionExecutionResult {
-                task_id: scanner.task_id,
-                result: scanner.partition.into_result(),
-            })
-            .collect()
     }
 }
 
@@ -68,12 +56,12 @@ where
     /// Create a new task that processing the given file
     pub fn new(reader: &mut R, mut tasks: Vec<T>) -> Result<Self> {
         let mut file_partition = MultiTrackReader::split(reader, Some(10_000_000))?;
-        file_partition.sort_by_key(|p| (p.chrom().to_string(), p.begin(), p.end()));
 
-        tasks.sort_unstable_by_key(|t| {
-            let (chr, begin, end) = t.region();
-            (chr.to_string(), begin, end)
+        file_partition.sort_unstable_by(|a, b| {
+            (a.chrom(), a.begin(), a.end()).cmp(&(b.chrom(), b.begin(), b.end()))
         });
+
+        tasks.sort_unstable_by(|a, b| a.region().cmp(&b.region()));
 
         let mut task_assignment: Vec<Vec<_>> = (0..file_partition.len())
             .map(|_| Default::default())
@@ -135,7 +123,7 @@ where
     }
 
     /// Run the task in parallel
-    pub fn run(self) -> Vec<TaskOutput<T::Output>> {
+    pub fn run(self) -> TaskOutputVec<T::Output> {
         let mut task_result: Vec<_> = self
             .partitions
             //.into_iter()
@@ -145,26 +133,34 @@ where
             .collect();
         task_result.sort_by_key(|part| part.task_id);
 
-        let mut result = vec![];
+        let mut result = TaskOutputVec {
+            chrom_list: vec![],
+            results: vec![],
+        };
 
         let mut task_result_idx = 0;
+        let mut chrom_dict = HashMap::new();
         for (id, region_ctx) in self.regions.into_iter().enumerate() {
             let region = region_ctx.region();
+            let chrom_idx = if let Some(&idx) = chrom_dict.get(region.0) {
+                idx
+            } else {
+                chrom_dict.insert(region.0.to_string(), chrom_dict.len());
+                result.chrom_list.push(region.0.to_string());
+                chrom_dict.len() - 1
+            };
             let mut region_partition_results = vec![];
             while task_result_idx < task_result.len() && task_result[task_result_idx].task_id <= id
             {
                 if task_result[task_result_idx].task_id == id {
-                    region_partition_results.push(task_result[task_result_idx].result.clone());
+                    region_partition_results.push(task_result[task_result_idx].partition.result());
                 }
                 task_result_idx += 1;
             }
             let final_result = region_ctx.combine(&region_partition_results);
-            result.push(TaskOutput {
-                chrom: region.0.to_string(),
-                begin: region.1,
-                end: region.2,
-                output: final_result,
-            });
+            result
+                .results
+                .push((chrom_idx, region.1, region.2, final_result));
         }
         result
     }

@@ -60,10 +60,10 @@ impl<R: Iterator<Item = i32> + ExactSizeIterator, T: Task<Once<i32>>> TaskPartit
         true
     }
 
-    fn into_result(self) -> Self::ResultType {
-        self.scalar_parts
+    fn result(&mut self) -> Self::ResultType {
+        std::mem::take(&mut self.scalar_parts)
             .into_iter()
-            .map(|task| task.into_result())
+            .map(|mut task| task.result())
             .collect()
     }
 }

@@ -50,7 +50,7 @@ pub trait STableReader: Sized {
 }
 
 /// A type that can be used as a partition reader for a secondary table
-pub trait STablePartitionReader {
+pub trait STablePartitionReader: Sized {
     /// The type for additional data used for the iterator interface
     type IteratorState: Sized;
     /// Decode the value at given location
@@ -68,7 +68,7 @@ pub trait STablePartitionReader {
 }
 
 /// The iterator over all the intervals
-pub struct RecordIterator<'a, S: STablePartitionReader + ?Sized>(&'a S, S::IteratorState);
+pub struct RecordIterator<'a, S: STablePartitionReader>(&'a S, S::IteratorState);
 impl<'a, S: STablePartitionReader> RecordIterator<'a, S> {
     /// Cast the record into the iterator state
     pub fn into_state(self) -> S::IteratorState {

@@ -38,7 +38,7 @@ impl TaskPartition<Once<i32>> for MeanPartition {
         true
     }
 
-    fn into_result(self) -> (i64, usize) {
+    fn result(&mut self) -> Self::ResultType {
         (self.sum, (self.range.1 - self.range.0) as usize)
     }
 }

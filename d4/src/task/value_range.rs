@@ -35,7 +35,7 @@ impl TaskPartition<Once<i32>> for ValueRangePartition {
     fn feed_range(&mut self, _: u32, _: u32, value: &mut Once<i32>) -> bool {
         self.feed(0, value)
     }
-    fn into_result(self) -> Self::ResultType {
+    fn result(&mut self) -> Self::ResultType {
         (self.min_value, self.max_value)
     }
 }

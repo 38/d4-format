@@ -47,7 +47,7 @@ fn downsample_data(
             |TaskOutput {
                  begin: l,
                  end: r,
-                 output: b,
+                 output: &b,
                  ..
              }| ((l + r) / 2, b),
         )

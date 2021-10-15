@@ -50,12 +50,53 @@ impl<T: Task<R>, R: Iterator<Item = i32> + ExactSizeIterator> IntoTaskVec<R, T> 
     }
 }
 
-pub struct TaskOutput<T> {
-    pub chrom: String,
+pub struct TaskOutput<'a, T> {
+    pub chrom: &'a str,
     pub begin: u32,
     pub end: u32,
-    pub output: T,
+    pub output: &'a T,
 }
+
+pub struct TaskOutputVec<T> {
+    chrom_list: Vec<String>,
+    results: Vec<(usize, u32, u32, T)>,
+}
+
+pub struct TaskOutputIter<'a, T> {
+    idx: usize,
+    data: &'a TaskOutputVec<T>,
+}
+
+impl<'a, T> IntoIterator for &'a TaskOutputVec<T> {
+    type IntoIter = TaskOutputIter<'a, T>;
+    type Item = TaskOutput<'a, T>;
+    fn into_iter(self) -> Self::IntoIter {
+        TaskOutputIter { idx: 0, data: self }
+    }
+}
+
+impl<'a, T> Iterator for TaskOutputIter<'a, T> {
+    type Item = TaskOutput<'a, T>;
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.idx < self.data.results.len() {
+            let idx = self.idx;
+            self.idx += 1;
+            return Some(TaskOutput {
+                chrom: &self.data.chrom_list[self.data.results[idx].0],
+                begin: self.data.results[idx].1,
+                end: self.data.results[idx].2,
+                output: &self.data.results[idx].3,
+            });
+        }
+        None
+    }
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let size = self.data.results.len() - self.idx;
+        (size, Some(size))
+    }
+}
+
+impl<'a, T> ExactSizeIterator for TaskOutputIter<'a, T> {}
 
 /// An abstracted task
 pub trait Task<RowType: Iterator<Item = i32> + ExactSizeIterator> {
@@ -101,5 +142,5 @@ pub trait TaskPartition<RowType: Iterator<Item = i32> + ExactSizeIterator>: Send
     /// Feed a range of position that has the same value
     fn feed_range(&mut self, left: u32, right: u32, value: &mut RowType) -> bool;
     /// Convert the task into the result
-    fn into_result(self) -> Self::ResultType;
+    fn result(&mut self) -> Self::ResultType;
 }

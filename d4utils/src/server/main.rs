@@ -63,11 +63,11 @@ async fn main(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
                     buffer.write_all(&(start as u32).to_le_bytes()).unwrap();
                     buffer.write_all(&(step as u32).to_le_bytes()).unwrap();
                     buffer
-                        .write_all(&(task_result.len() as u32).to_le_bytes())
+                        .write_all(&(task_result.into_iter().len() as u32).to_le_bytes())
                         .unwrap();
                     task_result.into_iter().for_each(|out| {
                         buffer
-                            .write_all(&(out.output as f32).to_le_bytes())
+                            .write_all(&(*out.output as f32).to_le_bytes())
                             .unwrap()
                     });
                     warp::http::Response::builder()

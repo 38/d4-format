@@ -1,6 +1,7 @@
 use super::*;
 use d4_framefile::mode::{AccessMode, ReadOnly, ReadWrite};
 use d4_framefile::{Blob, Directory};
+use smallvec::SmallVec;
 use std::fs::File;
 use std::io::Result;
 use std::sync::{Arc, Mutex};
@@ -195,20 +196,29 @@ pub struct PrimaryTableCodec<M: PrimaryTableMode> {
 }
 
 pub struct MatrixDecoder {
-    encoders: Vec<PrimaryTableCodec<Reader>>,
+    decoders: Vec<PrimaryTableCodec<Reader>>,
 }
 
 impl MatrixDecoder {
     pub fn is_zero_sized(&self) -> bool {
-        self.encoders.iter().all(|enc| enc.bit_width == 0)
+        self.decoders.iter().all(|enc| enc.bit_width == 0)
     }
     pub fn new<'a, T: IntoIterator<Item = &'a mut PartialPrimaryTable<Reader>>>(
-        encoders: T,
+        decoders: T,
     ) -> Self {
-        let encoders: Vec<_> = encoders.into_iter().map(|p| p.make_decoder()).collect();
-        assert!(!encoders.is_empty());
-        Self { encoders }
+        let decoders: Vec<_> = decoders.into_iter().map(|p| p.make_decoder()).collect();
+        assert!(!decoders.is_empty());
+        Self { decoders }
     }
+
+    #[inline(always)]
+    pub fn decode(&self, pos: u32, buf: &mut Vec<DecodeResult>) {
+        buf.clear();
+        for idx in 0..self.decoders.len() {
+            buf.push(self.decoders[idx].decode(pos as usize));
+        }
+    }
+
     pub fn decode_block<H: FnMut(u32, &[DecodeResult]) -> bool>(
         &self,
         left: u32,
@@ -216,7 +226,7 @@ impl MatrixDecoder {
         mut handle: H,
     ) {
         let mut states = self
-            .encoders
+            .decoders
             .iter()
             .map(|enc| {
                 let offset = left as usize - enc.base_offset;
@@ -229,7 +239,7 @@ impl MatrixDecoder {
         let mut addr_diff: Vec<usize> = vec![];
 
         for idx in 0..8 {
-            for encoder in self.encoders.iter() {
+            for encoder in self.decoders.iter() {
                 let offset = left as usize - encoder.base_offset + idx;
                 addr_diff
                     .push((offset + 1) * encoder.bit_width / 8 - offset * encoder.bit_width / 8);
@@ -237,14 +247,14 @@ impl MatrixDecoder {
             }
         }
 
-        let mut result_buf = Vec::with_capacity(states.len());
+        let mut result_buf = SmallVec::<[_; 16]>::with_capacity(states.len());
         let n_inputs = states.len();
         let rule_cap = n_inputs * 8;
         let mut rule_base = 0;
 
         for pos in left..right {
             result_buf.clear();
-            for (idx, (enc, mem)) in self.encoders.iter().zip(&mut states).enumerate() {
+            for (idx, (enc, mem)) in self.decoders.iter().zip(&mut states).enumerate() {
                 let shift = shift[rule_base + idx];
                 let data: &u32 = unsafe { std::mem::transmute(*mem) };
                 let code = (*data >> shift) & enc.mask;

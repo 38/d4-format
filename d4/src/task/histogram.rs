@@ -54,8 +54,8 @@ impl TaskPartition<Once<i32>> for Partition {
         true
     }
 
-    fn into_result(self) -> (u32, Vec<u32>, u32) {
-        (self.below, self.histogram, self.above)
+    fn result(&mut self) -> Self::ResultType {
+        (self.below, std::mem::take(&mut self.histogram), self.above)
     }
 }
 
