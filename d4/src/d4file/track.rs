@@ -278,7 +278,7 @@ impl<S: STableReader> D4MatrixReaderPartition<S> {
         ncols: usize,
         part_left: u32,
         part_right: u32,
-        decoder: &MatrixDecoder,
+        decoder: &mut MatrixDecoder,
     ) {
         let mut decode_buf = MatrixRow::default();
         decode_buf.resize(ncols, 0);
@@ -314,7 +314,7 @@ impl<S: STableReader> D4MatrixReaderPartition<S> {
             self.secondary.len(),
             part_left,
             part_right,
-            &decoder,
+            decoder,
         );
     }
     fn scan_per_interval<H>(

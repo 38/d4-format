@@ -7,13 +7,16 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::io::Result;
 
+/// A memory mapped data structure for a directory object in frame file
 pub struct MappedDirectory {
     streams: HashMap<String, (usize, usize)>,
     _handle: MappingHandle,
 }
 
+/// A memory mapped stream object
 pub struct MappedStream<'a>(&'a u8, usize);
 
+/// A single stream frame in a mapped stream object
 #[repr(packed)]
 pub struct MappedStreamFrame {
     header: FrameHeader,
@@ -25,12 +28,13 @@ impl<'a> MappedStream<'a> {
         MappedStream(data, primary_size)
     }
 
+    /// Get the first frame in this stream
     pub fn get_primary_frame(&self) -> &MappedStreamFrame {
         unsafe { std::mem::transmute((self.0, self.1 - std::mem::size_of::<FrameHeader>())) }
     }
 
     pub fn copy_content(&self) -> Vec<u8> {
-        let mut ret = vec![];
+        let mut ret = Vec::<u8>::new();
         let mut current = Some(self.get_primary_frame());
         while let Some(frame) = current {
             ret.extend_from_slice(&frame.data);
@@ -68,7 +72,7 @@ impl MappedDirectory {
             crate::directory::Directory::<ReadOnly, File>::INIT_BLOCK_SIZE,
         );
         let content = root_stream.copy_content();
-        // TODO: consider reuse the directory parsing code
+
         let mut dir_table = HashMap::new();
         let mut cursor = &content[..];
         while let Some(entry) = Directory::<ReadOnly, File>::read_next_entry(0, &mut cursor)? {

@@ -1,7 +1,7 @@
 use super::*;
 use d4_framefile::mode::{AccessMode, ReadOnly, ReadWrite};
 use d4_framefile::{Blob, Directory};
-use smallvec::SmallVec;
+use smallvec::{smallvec, SmallVec};
 use std::fs::File;
 use std::io::Result;
 use std::sync::{Arc, Mutex};
@@ -197,6 +197,78 @@ pub struct PrimaryTableCodec<M: PrimaryTableMode> {
 
 pub struct MatrixDecoder {
     decoders: Vec<PrimaryTableCodec<Reader>>,
+    state: DecoderParameter,
+}
+
+struct DecoderParameter {
+    base_offset: usize,
+    rule_base: usize,
+    pointers: SmallVec<[*const u8; 32]>,
+    shift: SmallVec<[usize; 32]>,
+    delta: SmallVec<[usize; 32]>,
+}
+
+impl DecoderParameter {
+    #[inline(always)]
+    fn read_value(&mut self, idx: usize) -> u32 {
+        let shift = self.shift[self.rule_base + idx];
+        let data: &u32 = unsafe { std::mem::transmute(*self.pointers.get_unchecked(idx)) };
+        data >> shift
+    }
+
+    #[inline(always)]
+    fn step_foward(&mut self) {
+        for (i, pointer) in self.pointers.iter_mut().enumerate() {
+            *pointer = unsafe { pointer.add(self.delta[self.rule_base + i]) };
+        }
+        self.rule_base += self.pointers.len();
+        if self.rule_base >= self.delta.len() {
+            self.rule_base -= self.delta.len();
+        }
+    }
+
+    fn move_to_pos(&mut self, pos: usize, decoders: &[PrimaryTableCodec<Reader>]) {
+        assert!(pos >= self.base_offset);
+        if self.base_offset != pos {
+            let n_period = (pos - self.base_offset) / 8;
+            for (pointer, decoder) in self.pointers.iter_mut().zip(decoders) {
+                *pointer = unsafe { pointer.add(n_period * decoder.bit_width) };
+            }
+            for _ in 0..(pos - self.base_offset) % 8 {
+                self.step_foward();
+            }
+            self.base_offset = pos;
+        }
+    }
+
+    fn new(decoders: &[PrimaryTableCodec<Reader>]) -> Self {
+        let pointers = decoders
+            .iter()
+            .map(|enc| {
+                let base_addr = &enc.memory[0] as *const u8;
+                base_addr
+            })
+            .collect::<SmallVec<_>>();
+
+        let mut shift = smallvec![];
+        let mut delta = smallvec![];
+
+        for idx in 0..8 {
+            for encoder in decoders.iter() {
+                let offset = idx;
+                delta.push((offset + 1) * encoder.bit_width / 8 - offset * encoder.bit_width / 8);
+                shift.push((offset * encoder.bit_width) % 8);
+            }
+        }
+
+        Self {
+            base_offset: decoders[0].base_offset,
+            rule_base: 0,
+            pointers,
+            shift,
+            delta,
+        }
+    }
 }
 
 impl MatrixDecoder {
@@ -207,8 +279,9 @@ impl MatrixDecoder {
         decoders: T,
     ) -> Self {
         let decoders: Vec<_> = decoders.into_iter().map(|p| p.make_decoder()).collect();
+        let state = DecoderParameter::new(&decoders);
         assert!(!decoders.is_empty());
-        Self { decoders }
+        Self { decoders, state }
     }
 
     #[inline(always)]
@@ -220,44 +293,20 @@ impl MatrixDecoder {
     }
 
     pub fn decode_block<H: FnMut(u32, &[DecodeResult]) -> bool>(
-        &self,
+        &mut self,
         left: u32,
         right: u32,
         mut handle: H,
     ) {
-        let mut states = self
-            .decoders
-            .iter()
-            .map(|enc| {
-                let offset = left as usize - enc.base_offset;
-                let base_addr = &enc.memory[offset * enc.bit_width / 8] as *const u8;
-                base_addr
-            })
-            .collect::<Vec<_>>();
+        self.state.move_to_pos(left as usize, &self.decoders);
 
-        let mut shift: Vec<usize> = vec![];
-        let mut addr_diff: Vec<usize> = vec![];
-
-        for idx in 0..8 {
-            for encoder in self.decoders.iter() {
-                let offset = left as usize - encoder.base_offset + idx;
-                addr_diff
-                    .push((offset + 1) * encoder.bit_width / 8 - offset * encoder.bit_width / 8);
-                shift.push((offset * encoder.bit_width) % 8);
-            }
-        }
-
-        let mut result_buf = SmallVec::<[_; 16]>::with_capacity(states.len());
-        let n_inputs = states.len();
-        let rule_cap = n_inputs * 8;
-        let mut rule_base = 0;
+        let n_inputs = self.decoders.len();
+        let mut result_buf = SmallVec::<[_; 16]>::with_capacity(n_inputs);
 
         for pos in left..right {
             result_buf.clear();
-            for (idx, (enc, mem)) in self.decoders.iter().zip(&mut states).enumerate() {
-                let shift = shift[rule_base + idx];
-                let data: &u32 = unsafe { std::mem::transmute(*mem) };
-                let code = (*data >> shift) & enc.mask;
+            for (idx, enc) in self.decoders.iter().enumerate() {
+                let code = self.state.read_value(idx) & enc.mask;
                 let result = if let Some(value) = enc.dict.decode_value(code) {
                     if code == enc.mask {
                         DecodeResult::Maybe(value)
@@ -268,16 +317,13 @@ impl MatrixDecoder {
                     DecodeResult::Maybe(0)
                 };
                 result_buf.push(result);
-                *mem = unsafe { mem.add(addr_diff[rule_base + idx]) };
             }
+            self.state.step_foward();
             if !handle(pos, &result_buf) {
-                return;
-            }
-            rule_base += n_inputs;
-            if rule_base >= rule_cap {
-                rule_base = 0;
+                break;
             }
         }
+        self.state.base_offset = right as usize;
     }
 }
 
