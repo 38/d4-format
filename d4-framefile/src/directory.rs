@@ -1,3 +1,4 @@
+#[cfg(feature = "mapped_io")]
 use crate::mapped::MappedDirectory;
 use crate::mode::{AccessMode, CanWrite, ReadOnly, ReadWrite};
 use crate::randfile::RandFile;
@@ -235,6 +236,7 @@ impl<'a, T: Read + Write + Seek + 'a> Directory<'a, ReadWrite, T> {
     }
 }
 impl<'a> Directory<'a, ReadWrite, File> {
+    #[cfg(feature = "mapped_io")]
     pub fn copy_directory_from_file<T: Read + Seek>(
         &mut self,
         name: &str,
@@ -262,6 +264,7 @@ impl<'a> Directory<'a, ReadWrite, File> {
 }
 
 impl<'a> Directory<'a, ReadOnly, File> {
+    #[cfg(feature = "mapped_io")]
     pub fn map_directory(&self, name: &str) -> Result<MappedDirectory> {
         let inner = self
             .0

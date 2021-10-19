@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use std::io::{BufRead, BufReader, Read, Result};
 use std::path::Path;
 
+#[cfg(feature = "depth_profiler")]
 use d4_hts::{BamFile, DepthIter};
 use rand::Rng;
 use rayon::prelude::*;
@@ -36,6 +37,7 @@ impl Dictionary {
 
     /// Run the random sampling algorithm on an alignment file, determining the optimal
     /// dictionary configuration
+    #[cfg(feature = "depth_profiler")]
     pub fn from_sample_bam<P: AsRef<Path>, F: Fn(&str, usize) -> bool>(
         path: P,
         filter: F,

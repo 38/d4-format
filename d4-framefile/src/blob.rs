@@ -15,12 +15,14 @@ impl<'a, M: AccessMode, T> Blob<'a, M, T> {
     }
 }
 
+#[cfg(feature = "mapped_io")]
 impl<M: CanRead<File>> Blob<'_, M, File> {
     pub fn mmap(&self) -> Result<impl AsRef<[u8]>> {
         self.file.mmap(self.offset, self.size)
     }
 }
 
+#[cfg(feature = "mapped_io")]
 impl<M: CanRead<File> + CanWrite<File>> Blob<'_, M, File> {
     pub fn mmap_mut(&mut self) -> Result<impl AsMut<[u8]>> {
         self.file.mmap_mut(self.offset, self.size)

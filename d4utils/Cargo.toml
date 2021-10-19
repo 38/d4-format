@@ -11,7 +11,7 @@ description = "The CLI utils for D4 file format"
 [dependencies]
 d4 = { path = "../d4" }
 d4-hts = { path = "../d4-hts" }
-d4-framefile = { path = "../d4-framefile" }
+d4-framefile = { path = "../d4-framefile", features = ["mapped_io"]}
 d4-bigwig = { path = "../d4-bigwig" }
 #d4 = "0.2.18"
 #d4-hts = "0.2.18"
