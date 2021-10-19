@@ -1,4 +1,5 @@
 use crate::mode::{AccessMode, CanRead, CanWrite, ReadOnly, ReadWrite};
+#[cfg(all(feature = "mapped_io", not(target_arch = "wasm32")))]
 use std::fs::File;
 use std::io::{Read, Result, Seek, SeekFrom, Write};
 use std::marker::PhantomData;
@@ -132,14 +133,14 @@ impl<T: Read + Write + Seek> RandFile<'_, ReadWrite, T> {
     }
 }
 
-#[cfg(feature = "mapped_io")]
+#[cfg(all(feature = "mapped_io", not(target_arch = "wasm32")))]
 impl<T: CanRead<File>> RandFile<'_, T, File> {
     pub fn mmap(&self, offset: u64, size: usize) -> Result<mapping::MappingHandle> {
         mapping::MappingHandle::new(self, offset, size)
     }
 }
 
-#[cfg(feature = "mapped_io")]
+#[cfg(all(feature = "mapped_io", not(target_arch = "wasm32")))]
 impl<T: CanRead<File> + CanWrite<File>> RandFile<'_, T, File> {
     pub fn mmap_mut(&mut self, offset: u64, size: usize) -> Result<mapping::MappingHandleMut> {
         mapping::MappingHandleMut::new(self, offset, size)
@@ -226,7 +227,7 @@ impl<Mode: CanRead<T>, T: Read + Seek> RandFile<'_, Mode, T> {
     }
 }
 
-#[cfg(feature = "mapped_io")]
+#[cfg(all(feature = "mapped_io", not(target_arch = "wasm32")))]
 pub mod mapping {
     use super::*;
 

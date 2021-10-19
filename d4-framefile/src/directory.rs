@@ -1,11 +1,17 @@
-#[cfg(feature = "mapped_io")]
+#[cfg(all(feature = "mapped_io", not(target_arch = "wasm32")))]
 use crate::mapped::MappedDirectory;
 use crate::mode::{AccessMode, CanWrite, ReadOnly, ReadWrite};
 use crate::randfile::RandFile;
 use crate::stream::Stream;
 use crate::Blob;
-use std::fs::File;
-use std::io::{Error, ErrorKind, Read, Result, Seek, SeekFrom, Write};
+use std::{
+    fs::File,
+    io::{Error, ErrorKind, Read, Result, Seek, Write},
+};
+
+#[cfg(all(feature = "mapped_io", not(target_arch = "wasm32")))]
+use std::io::SeekFrom;
+
 use std::path::{Component, Path, PathBuf};
 use std::sync::{Arc, RwLock};
 
@@ -33,7 +39,7 @@ pub struct Entry {
     /// The size of the primary frame of the data object.
     /// - For blobs and directories,  it describes the **total size** of the object
     /// - For streams, this only describes the primary frame of the data object
-    pub primary_size: usize,
+    pub primary_size: u64,
     /// The name of the stream
     pub name: String,
 }
@@ -87,7 +93,7 @@ impl<'a, T: Read + Seek + 'a> Directory<'a, ReadOnly, T> {
         input.read_exact(&mut offset_buffer)?;
         input.read_exact(&mut size_buffer)?;
         let offset = u64::from_le_bytes(offset_buffer) + base;
-        let size = usize::from_le_bytes(size_buffer);
+        let size = u64::from_le_bytes(size_buffer);
         let mut name = vec![];
         let mut current_byte = [0];
         while input.read(&mut current_byte)? > 0 {
@@ -173,7 +179,7 @@ impl<'a, T: Read + Write + Seek + 'a> Directory<'a, ReadWrite, T> {
         inner.append_directory(Entry {
             kind: EntryKind::Blob,
             primary_offset: offset,
-            primary_size: size,
+            primary_size: size as u64,
             name: name.to_string(),
         })?;
         Ok(Blob::new(file, offset, size))
@@ -196,7 +202,7 @@ impl<'a, T: Read + Write + Seek + 'a> Directory<'a, ReadWrite, T> {
             parent_file.clone().lock(Box::new(move || {
                 let kind = EntryKind::SubDir;
                 let primary_offset = dir_addr;
-                let primary_size = (parent_file.size().unwrap() - dir_addr) as usize;
+                let primary_size = parent_file.size().unwrap() - dir_addr;
                 let mut inner = parent_directory.0.write().unwrap();
                 let entry = Entry {
                     kind,
@@ -229,14 +235,14 @@ impl<'a, T: Read + Write + Seek + 'a> Directory<'a, ReadWrite, T> {
         inner.append_directory(Entry {
             kind: EntryKind::Stream,
             primary_offset: stream.get_frame_offset().unwrap(),
-            primary_size: stream.get_frame_size().unwrap(),
+            primary_size: stream.get_frame_size().unwrap() as u64,
             name: name.to_string(),
         })?;
         Ok(stream)
     }
 }
 impl<'a> Directory<'a, ReadWrite, File> {
-    #[cfg(feature = "mapped_io")]
+    #[cfg(all(feature = "mapped_io", not(target_arch = "wasm32")))]
     pub fn copy_directory_from_file<T: Read + Seek>(
         &mut self,
         name: &str,
@@ -253,7 +259,7 @@ impl<'a> Directory<'a, ReadWrite, File> {
         inner.append_directory(Entry {
             kind: EntryKind::SubDir,
             primary_offset: dest_offset,
-            primary_size: size,
+            primary_size: size as u64,
             name: name.to_string(),
         })?;
         let mut object = Blob::new(file, dest_offset, size);
@@ -264,7 +270,7 @@ impl<'a> Directory<'a, ReadWrite, File> {
 }
 
 impl<'a> Directory<'a, ReadOnly, File> {
-    #[cfg(feature = "mapped_io")]
+    #[cfg(all(feature = "mapped_io", not(target_arch = "wasm32")))]
     pub fn map_directory(&self, name: &str) -> Result<MappedDirectory> {
         let inner = self
             .0
@@ -278,7 +284,7 @@ impl<'a> Directory<'a, ReadOnly, File> {
             return MappedDirectory::new(
                 inner.stream.clone_underlying_file(),
                 entry.primary_offset,
-                entry.primary_size,
+                entry.primary_size as usize,
             );
         }
 
@@ -304,7 +310,11 @@ impl<'a, T: Read + Seek + 'a> Directory<'a, ReadOnly, T> {
             .find(|e| e.name == name && e.kind == EntryKind::Blob)
         {
             let file = inner.stream.clone_underlying_file();
-            return Ok(Blob::new(file, entry.primary_offset, entry.primary_size));
+            return Ok(Blob::new(
+                file,
+                entry.primary_offset,
+                entry.primary_size as usize,
+            ));
         }
         Err(Error::new(ErrorKind::Other, "Chunk not found"))
     }
@@ -319,7 +329,7 @@ impl<'a, T: Read + Seek + 'a> Directory<'a, ReadOnly, T> {
             .find(|e| e.name == name && e.kind == EntryKind::Stream)
         {
             let file = inner.stream.clone_underlying_file();
-            return Stream::open_ro(file, (entry.primary_offset, entry.primary_size));
+            return Stream::open_ro(file, (entry.primary_offset, entry.primary_size as usize));
         }
         Err(Error::new(ErrorKind::Other, "Stream not found"))
     }

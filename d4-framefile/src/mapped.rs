@@ -81,7 +81,7 @@ impl MappedDirectory {
                     entry.name,
                     (
                         &data[entry.primary_offset as usize] as *const u8 as usize,
-                        entry.primary_size,
+                        entry.primary_size as usize,
                     ),
                 );
             }

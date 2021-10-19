@@ -2,15 +2,15 @@
  * This is the Rust implementation of the D4 file format.
  **/
 mod chrom;
-mod dict;
-mod header;
 #[cfg(all(feature = "mapped_io", not(target_arch = "wasm32")))]
 mod d4file;
+mod dict;
+mod header;
 #[cfg(all(feature = "mapped_io", not(target_arch = "wasm32")))]
 pub mod ptab;
 #[cfg(all(feature = "mapped_io", not(target_arch = "wasm32")))]
 pub mod stab;
-#[cfg(all(feature = "mapped_io", not(target_arch = "wasm32")))]
+#[cfg(all(feature = "task", not(target_arch = "wasm32")))]
 pub mod task;
 
 pub use chrom::Chrom;

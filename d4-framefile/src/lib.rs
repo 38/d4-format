@@ -8,6 +8,6 @@ pub use directory::{Directory, EntryKind, OpenResult};
 pub use randfile::RandFile;
 pub use stream::Stream;
 
-#[cfg(feature = "mapped_io")]
+#[cfg(all(feature = "mapped_io", not(target_arch = "wasm32")))]
 pub mod mapped;
 pub mod mode;

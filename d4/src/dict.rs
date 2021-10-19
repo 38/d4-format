@@ -1,11 +1,15 @@
 use serde_derive::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::io::{BufRead, BufReader, Read, Result};
+
+#[cfg(feature = "depth_profiler")]
 use std::path::Path;
 
 #[cfg(feature = "depth_profiler")]
 use d4_hts::{BamFile, DepthIter};
+#[cfg(feature = "depth_profiler")]
 use rand::Rng;
+#[cfg(feature = "depth_profiler")]
 use rayon::prelude::*;
 
 /// The dictionary (a.k.a encoding table)
@@ -21,6 +25,7 @@ pub enum Dictionary {
     },
 }
 
+#[cfg(feature = "writer")]
 /// The dictionary encoding result
 pub enum EncodeResult {
     /// The dictionary is successfully encoded the value
@@ -239,6 +244,7 @@ impl Dictionary {
         }
     }
 
+    #[cfg(feature = "writer")]
     #[inline(always)]
     pub(crate) fn encode_value(&self, value: i32) -> EncodeResult {
         match self {
