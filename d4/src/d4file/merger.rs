@@ -34,7 +34,7 @@ impl D4FileMerger {
     pub fn merge(self) -> Result<()> {
         let mut root_dir = D4FileBuilder::write_d4_header(self.dest.as_path())?;
         for (name, path) in self.sources {
-            let mut input = super::reader::open_file_and_validate_header(path)?;
+            let mut input = super::open_file_and_validate_header(path)?;
             let size = input.seek(SeekFrom::End(0))?;
             root_dir.copy_directory_from_file(&name, input, 8, size as usize - 8)?;
         }

@@ -1,3 +1,5 @@
+use std::io::{Read, Result};
+
 pub use crate::chrom::Chrom;
 use crate::dict::Dictionary;
 use serde_derive::{Deserialize, Serialize};
@@ -22,6 +24,27 @@ impl Header {
             chrom_list: vec![],
             dictionary: Dictionary::SimpleRange { low: 0, high: 64 },
         }
+    }
+
+    pub fn read<R: Read>(mut input: R) -> Result<Self> {
+        let header_data = {
+            let mut ret = vec![];
+            loop {
+                let mut buf = [0u8; 4096];
+                let sz = input.read(&mut buf)?;
+                let mut actual_size = sz;
+                while actual_size > 0 && buf[actual_size - 1] == 0 {
+                    actual_size -= 1;
+                }
+                ret.extend_from_slice(&buf[..actual_size]);
+                if actual_size != sz {
+                    break ret;
+                }
+            }
+        };
+        let header = serde_json::from_str(String::from_utf8_lossy(&header_data).as_ref())
+            .map_err(|_| std::io::Error::new(std::io::ErrorKind::Other, "Invalid Metadata"))?;
+        Ok(header)
     }
 
     /// Assign dictionary to the header

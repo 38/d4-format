@@ -10,6 +10,8 @@ use crate::header::Header;
 
 mod simple_kv;
 
+pub(crate) use simple_kv::{CompressionMethod, SimpleKvMetadata};
+
 /// Any type that is used to write a secondary table for D4 file
 pub trait STableWriter: Sized {
     /// The writer type to write a single parallel partition for the secondary table
@@ -35,9 +37,6 @@ pub trait STablePartitionWriter: Send {
         Ok(())
     }
 }
-
-/// The simple implementation for the Key-Value sparse array based secondary table
-pub use simple_kv::SimpleKeyValueWriter;
 
 /// Type usd as a secondary table reader
 pub trait STableReader: Sized {
@@ -86,7 +85,15 @@ impl<'a, S: STablePartitionReader> Iterator for RecordIterator<'a, S> {
     }
 }
 
-pub use simple_kv::RangeRecord;
-pub use simple_kv::SimpleKeyValuePartialReader;
-pub use simple_kv::SimpleKeyValuePartialWriter;
-pub use simple_kv::SimpleKeyValueReader;
+#[cfg(all(feature = "mapped_io", not(target_arch = "wasm32")))]
+pub mod mapped {
+    use super::simple_kv;
+    pub use simple_kv::RangeRecord;
+    pub use simple_kv::SimpleKeyValuePartialReader;
+    pub use simple_kv::SimpleKeyValuePartialWriter;
+    pub use simple_kv::SimpleKeyValueReader;
+    pub use simple_kv::SimpleKeyValueWriter;
+}
+
+#[cfg(all(feature = "mapped_io", not(target_arch = "wasm32")))]
+pub use mapped::*;

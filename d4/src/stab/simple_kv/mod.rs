@@ -1,14 +1,18 @@
 mod compression;
+#[cfg(all(feature = "mapped_io", not(target_arch = "wasm32")))]
 mod reader;
+
 mod record;
+#[cfg(all(feature = "mapped_io", not(target_arch = "wasm32")))]
 mod record_block;
+#[cfg(all(feature = "mapped_io", not(target_arch = "wasm32")))]
 mod writer;
 
 use serde_derive::{Deserialize, Serialize};
 
 /// The metadata of the Key Value table
 #[derive(Serialize, Deserialize)]
-struct SimpleKvMetadata {
+pub(crate) struct SimpleKvMetadata {
     /// The format identifier
     format: String,
     /// The record format identifier
@@ -20,15 +24,18 @@ struct SimpleKvMetadata {
     compression: CompressionMethod,
 }
 
-struct StreamInfo {
-    id: String,
-    chr: String,
+pub(crate) struct StreamInfo {
+    pub(crate) id: String,
+    pub(crate) chr: String,
     #[allow(dead_code)]
-    range: (u32, u32),
+    pub(crate) range: (u32, u32),
 }
 
 impl SimpleKvMetadata {
-    fn streams(&self) -> impl Iterator<Item = StreamInfo> {
+    pub(crate) fn compression(&self) -> CompressionMethod {
+        self.compression
+    }
+    pub(crate) fn streams(&self) -> impl Iterator<Item = StreamInfo> {
         self.partitions
             .clone()
             .into_iter()
@@ -42,6 +49,9 @@ impl SimpleKvMetadata {
 }
 
 pub use compression::CompressionMethod;
+#[cfg(all(feature = "mapped_io", not(target_arch = "wasm32")))]
 pub use reader::{SimpleKeyValuePartialReader, SimpleKeyValueReader};
+#[cfg(all(feature = "mapped_io", not(target_arch = "wasm32")))]
 pub use record::{RangeRecord, Record};
+#[cfg(all(feature = "mapped_io", not(target_arch = "wasm32")))]
 pub use writer::{SimpleKeyValuePartialWriter, SimpleKeyValueWriter};

@@ -311,6 +311,15 @@ impl<M: CanRead<T>, T: Read + Seek> Read for Stream<'_, M, T> {
     }
 }
 impl<M: CanRead<T>, T: Read + Seek> Stream<'_, M, T> {
+    pub fn read_current_frame(&mut self, buffer: &mut Vec<u8>) -> Result<()> {
+        buffer.clear();
+        if let Some(this_frame) = self.current_frame.take() {
+            self.cursor = 0;
+            buffer.extend_from_slice(&this_frame.data[this_frame.payload_offset..]);
+            self.current_frame = this_frame.load_next_frame(&mut self.file, true)?;
+        }
+        Ok(())
+    }
     pub fn read(&mut self, buffer: &mut [u8]) -> Result<usize> {
         let mut ret = 0;
         let mut ptr = buffer;

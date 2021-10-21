@@ -394,7 +394,7 @@ impl<R: Record> STableReader for SimpleKeyValueReader<R> {
         {
             let (block_min, block_max) = block.range();
             while current_part_id < partitions.len()
-                && (partitions[current_part_id].chrom < chrom.as_ref()
+                && (partitions[current_part_id].chrom < chrom.as_str()
                     || partitions[current_part_id].right < block_min)
             {
                 current_part_id += 1;
