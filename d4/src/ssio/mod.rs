@@ -1,10 +1,20 @@
-use std::{collections::VecDeque, io::{Error, ErrorKind, Read, Result, Seek}, rc::Rc};
+use std::{
+    collections::VecDeque,
+    io::{Error, ErrorKind, Read, Result, Seek},
+};
 
-use crate::{Dictionary, Header, d4file::validate_header, stab::{CompressionMethod, RangeRecord, Record, RecordBlock, RecordBlockParsingState, SimpleKvMetadata}};
+use crate::{
+    d4file::validate_header,
+    stab::{CompressionMethod, RangeRecord, Record, RecordBlockParsingState, SimpleKvMetadata},
+    Dictionary, Header,
+};
 use d4_framefile::{mode::ReadOnly, Blob, Directory, OpenResult, Stream};
 
 #[cfg(feature = "http_reader")]
 pub mod http;
+
+#[cfg(feature = "wasm")]
+pub mod wasm;
 
 struct DataStreamEntry<'a, R: Read + Seek + 'a>(Directory<'a, ReadOnly, R>, String);
 
@@ -52,7 +62,7 @@ pub struct D4TrackView<'a, R: Read + Seek + 'a> {
     primary_table_buffer: Option<(u32, Vec<u8>)>,
     secondary_tables: VecDeque<SecondaryTableStream<'a, R>>,
     stream: Option<Stream<'a, ReadOnly, R>>,
-    rbp_state: RecordBlockParsingState<RangeRecord>, 
+    rbp_state: RecordBlockParsingState<RangeRecord>,
     frame_decode_result: VecDeque<RangeRecord>,
     current_record: Option<RangeRecord>,
     dictionary: Dictionary,
@@ -96,7 +106,7 @@ impl<'a, R: Read + Seek + 'a> D4TrackView<'a, R> {
         }
         Ok(())
     }
-    
+
     fn load_next_secondary_record(&mut self) -> Option<&RangeRecord> {
         if let Some(rec) = self.frame_decode_result.pop_front() {
             self.current_record = Some(rec);

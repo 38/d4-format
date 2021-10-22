@@ -83,7 +83,7 @@ pub(crate) struct RecordBlockParsingState<R: Record> {
     _phantom: PhantomData<R>,
 }
 
-impl <R: Record> RecordBlockParsingState<R> {
+impl<R: Record> RecordBlockParsingState<R> {
     pub fn parse_frame<'a>(&mut self, data: &'a [u8], buf: &mut Vec<RecordBlock<'a, R>>) {
         match self.compression {
             CompressionMethod::NoCompression => {
@@ -92,7 +92,7 @@ impl <R: Record> RecordBlockParsingState<R> {
             CompressionMethod::Deflate(_) => {
                 load_compressed_frame(data, self.first, buf);
             }
-        } 
+        }
         self.first = false;
     }
     pub fn new(compression: CompressionMethod) -> Self {
@@ -135,13 +135,13 @@ mod mapped_io {
 
     /// The parallel partial reader for simple sparse array based secondary table
     pub struct SimpleKeyValuePartialReader<R: Record> {
-        // We need to hold the mapped memory, 
-        // thus we have to hold a ticket of the root directory to prevent 
+        // We need to hold the mapped memory,
+        // thus we have to hold a ticket of the root directory to prevent
         // the mapped memory from being unmapped
         _root: Arc<MappedDirectory>,
-        // As the directory ticket has been hold for the entire lifetime 
-        // for this object plus we never leak any reference of record to 
-        // the other part of the code. So the 'static lifetime won't be 
+        // As the directory ticket has been hold for the entire lifetime
+        // for this object plus we never leak any reference of record to
+        // the other part of the code. So the 'static lifetime won't be
         // seen by any other code. By doing so, there's no difference for
         // the object to have 'static lifetime or whatever lifetime self have.
         // Thus, we cast the record block to have static lifetime.
@@ -171,9 +171,7 @@ mod mapped_io {
                 let mut next_frame = Some(stream.get_primary_frame());
 
                 let mut state = RecordBlockParsingState::new(metadata.compression);
-                let buffer = record_blocks
-                    .entry(chr.to_string())
-                    .or_default();
+                let buffer = record_blocks.entry(chr.to_string()).or_default();
 
                 while let Some(this_frame) = next_frame {
                     state.parse_frame(this_frame.as_ref(), buffer);

@@ -13,7 +13,7 @@ mod simple_kv;
 pub use simple_kv::RangeRecord;
 
 pub(crate) use simple_kv::{
-    CompressionMethod, Record, RecordBlock, SimpleKvMetadata, RecordBlockParsingState, 
+    CompressionMethod, Record, RecordBlockParsingState, SimpleKvMetadata,
 };
 
 /// Any type that is used to write a secondary table for D4 file

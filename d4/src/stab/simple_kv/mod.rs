@@ -54,4 +54,3 @@ pub use writer::{SimpleKeyValuePartialWriter, SimpleKeyValueWriter};
 
 pub(crate) use reader::RecordBlockParsingState;
 pub use record::{RangeRecord, Record};
-pub(crate) use record_block::RecordBlock;

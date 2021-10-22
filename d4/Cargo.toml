@@ -30,12 +30,21 @@ path = "../d4-framefile"
 path = "../d4-hts"
 optional = true
 
+[dependencies.wasm-bindgen]
+version = "0.2.78"
+optional = true
+
+[dependencies.js-sys]
+version = "0.3.55"
+optional = true
+
 [features]
 depth_profiler = ["d4-hts", "rayon", "rand"]
 task = ["mapped_io", "rayon"]
 mapped_io = ["d4-framefile/mapped_io"]
 writer = ["mapped_io"]
 http_reader = ["reqwest"]
+wasm = ["wasm-bindgen", "js-sys"]
 default = ["depth_profiler", "task", "writer", "http_reader"]
 
 [dev-dependencies]
