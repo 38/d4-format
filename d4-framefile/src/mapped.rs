@@ -23,13 +23,19 @@ pub struct MappedStreamFrame {
     pub data: [u8],
 }
 
+impl AsRef<[u8]> for MappedStreamFrame {
+    fn as_ref(&self) -> &[u8] {
+        &self.data
+    }
+}
+
 impl<'a> MappedStream<'a> {
     pub(crate) fn new(data: &'a u8, primary_size: usize) -> Self {
         MappedStream(data, primary_size)
     }
 
     /// Get the first frame in this stream
-    pub fn get_primary_frame(&self) -> &MappedStreamFrame {
+    pub fn get_primary_frame(&self) -> &'a MappedStreamFrame {
         unsafe { std::mem::transmute((self.0, self.1 - std::mem::size_of::<FrameHeader>())) }
     }
 
@@ -57,7 +63,7 @@ impl MappedStreamFrame {
 }
 
 impl MappedDirectory {
-    pub fn get(&self, name: &str) -> Option<MappedStream> {
+    pub fn open_dir(&self, name: &str) -> Option<MappedStream> {
         if let Some((ptr, size)) = self.streams.get(name) {
             Some(unsafe { MappedStream::new(std::mem::transmute(*ptr), *size) })
         } else {

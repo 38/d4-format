@@ -10,7 +10,11 @@ use crate::header::Header;
 
 mod simple_kv;
 
-pub(crate) use simple_kv::{CompressionMethod, SimpleKvMetadata};
+pub use simple_kv::RangeRecord;
+
+pub(crate) use simple_kv::{
+    CompressionMethod, Record, RecordBlock, SimpleKvMetadata, StreamFrameIter,
+};
 
 /// Any type that is used to write a secondary table for D4 file
 pub trait STableWriter: Sized {

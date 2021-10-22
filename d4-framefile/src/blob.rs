@@ -19,7 +19,7 @@ pub struct Blob<'a, M: AccessMode, T: 'a> {
 
 impl<'a, T: Read + Seek + 'a, M: CanRead<T>> Blob<'a, M, T> {
     pub fn get_view(&self, offset: u64, size: usize) -> Self {
-        let offset = offset.min(self.size as u64);
+        let offset = self.offset + offset.min(self.size as u64);
         let size = (self.size - offset as usize).min(size);
 
         Self {

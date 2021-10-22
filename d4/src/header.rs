@@ -62,6 +62,24 @@ impl Header {
         self.chrom_list = new_value
     }
 
+    pub(crate) fn primary_table_offset_of_chrom(&self, chrom: &str) -> usize {
+        let bw = self.dictionary.bit_width();
+        self.chrom_list
+            .iter()
+            .take_while(|chr| chr.name != chrom)
+            .map(|chr| (chr.size as usize * bw + 7) / 8)
+            .sum()
+    }
+
+    pub(crate) fn primary_table_size_of_chrom(&self, chrom: &str) -> usize {
+        let bw = self.dictionary.bit_width();
+        self.chrom_list
+            .iter()
+            .find(|chr| chr.name == chrom)
+            .map(|chr| (chr.size as usize * bw + 7) / 8)
+            .unwrap_or(0)
+    }
+
     pub(crate) fn primary_table_size(&self) -> usize {
         let bit_width = self.dictionary.bit_width();
         self.chrom_list

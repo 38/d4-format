@@ -3,7 +3,7 @@ use flate2::read::DeflateDecoder;
 use std::cell::RefCell;
 use std::io::{Read, Result};
 
-pub(super) enum RecordBlock<'a, R: Record> {
+pub(crate) enum RecordBlock<'a, R: Record> {
     Block(&'a [R]),
     CompressedBlock {
         raw: &'a [u8],
@@ -17,6 +17,10 @@ pub(super) enum RecordBlock<'a, R: Record> {
     Record(R),
 }
 impl<'a, R: Record> RecordBlock<'a, R> {
+    pub fn to_owned(&self) -> RecordBlock<'static, R> {
+        let data = self.as_ref();
+        RecordBlock::OwnedBlock(data.iter().cloned().collect())
+    }
     #[inline(never)]
     fn decompress(&self, mut count: isize) -> Result<()> {
         if let Self::CompressedBlock {
