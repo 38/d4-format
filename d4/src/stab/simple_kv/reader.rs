@@ -1,7 +1,7 @@
 use super::record::Record;
 use super::record_block::RecordBlock;
 use std::cell::RefCell;
-use std::collections::VecDeque;
+use std::marker::PhantomData;
 
 use super::CompressionMethod;
 
@@ -22,8 +22,8 @@ pub(crate) fn assemble_incomplete_records<'a, R: Record>(
     extra
 }
 
-pub(crate) fn load_compressed_frame<'a, R: Record, Frame: AsRef<[u8]> + ?Sized>(
-    frame: &'a Frame,
+pub(crate) fn load_compressed_frame<'a, R: Record>(
+    frame: &'a [u8],
     first: bool,
     buffer: &mut Vec<RecordBlock<'a, R>>,
 ) {
@@ -58,8 +58,8 @@ pub(crate) fn load_compressed_frame<'a, R: Record, Frame: AsRef<[u8]> + ?Sized>(
         buffer.push(RecordBlock::Block(unsafe { std::mem::transmute(data) }));
     }
 }
-pub(crate) fn load_frame<'a, R: Record, Frame: AsRef<[u8]> + ?Sized>(
-    frame: &'a Frame,
+pub(crate) fn load_frame<'a, R: Record>(
+    frame: &'a [u8],
     mut excess: Vec<u8>,
     buffer: &mut Vec<RecordBlock<'a, R>>,
 ) -> Vec<u8> {
@@ -76,68 +76,38 @@ pub(crate) fn load_frame<'a, R: Record, Frame: AsRef<[u8]> + ?Sized>(
     excess
 }
 
-pub(crate) struct StreamFrameIter<
-    'a,
-    R: Record,
-    Frame: AsRef<[u8]> + ?Sized,
-    FrameVisitor: FnMut(&Frame) -> Option<&Frame>,
-> {
-    this_frame: Option<&'a Frame>,
+pub(crate) struct RecordBlockParsingState<R: Record> {
     compression: CompressionMethod,
-    frame_visitor: FrameVisitor,
     excess: Vec<u8>,
     first: bool,
-    cached_blocks: VecDeque<RecordBlock<'a, R>>,
+    _phantom: PhantomData<R>,
 }
 
-impl<'a, R, F, V> StreamFrameIter<'a, R, F, V>
-where
-    R: Record,
-    F: AsRef<[u8]> + ?Sized,
-    V: FnMut(&F) -> Option<&F>,
-{
-    pub fn new(init_frame: &'a F, compression: CompressionMethod, visotor: V) -> Self {
-        Self {
-            this_frame: Some(init_frame),
-            compression,
-            frame_visitor: visotor,
-            excess: vec![],
-            first: true,
-            cached_blocks: VecDeque::new(),
-        }
-    }
-}
-
-impl<'a, R, F, V> Iterator for StreamFrameIter<'a, R, F, V>
-where
-    R: Record,
-    F: AsRef<[u8]> + ?Sized,
-    V: FnMut(&F) -> Option<&F>,
-{
-    type Item = RecordBlock<'a, R>;
-    fn next(&mut self) -> Option<Self::Item> {
-        if let Some(cached_item) = self.cached_blocks.pop_front() {
-            return Some(cached_item);
-        }
-        if let Some(frame) = self.this_frame {
-            let mut buf = vec![];
-            match self.compression {
-                CompressionMethod::NoCompression => {
-                    self.excess = load_frame(frame, std::mem::take(&mut self.excess), &mut buf);
-                }
-                CompressionMethod::Deflate(_) => {
-                    load_compressed_frame(frame, self.first, &mut buf);
-                }
+impl <R: Record> RecordBlockParsingState<R> {
+    pub fn parse_frame<'a>(&mut self, data: &'a [u8], buf: &mut Vec<RecordBlock<'a, R>>) {
+        match self.compression {
+            CompressionMethod::NoCompression => {
+                self.excess = load_frame(data, std::mem::take(&mut self.excess), buf);
             }
-            self.cached_blocks.extend(buf.into_iter());
-            self.this_frame = (self.frame_visitor)(self.this_frame.take().unwrap());
-            self.first = false;
-            return self.next();
-        } else {
-            None
+            CompressionMethod::Deflate(_) => {
+                load_compressed_frame(data, self.first, buf);
+            }
+        } 
+        self.first = false;
+    }
+    pub fn new(compression: CompressionMethod) -> Self {
+        Self {
+            compression,
+            excess: Default::default(),
+            first: false,
+            _phantom: Default::default(),
         }
     }
+    pub fn reset(&mut self) {
+        *self = Self::new(self.compression);
+    }
 }
+
 #[cfg(all(feature = "mapped_io", not(target_arch = "wasm32")))]
 pub use mapped_io::*;
 
@@ -155,7 +125,7 @@ mod mapped_io {
         Header,
     };
 
-    use super::StreamFrameIter;
+    use super::RecordBlockParsingState;
 
     /// The reader for simple sparse array based secondary table
     pub struct SimpleKeyValueReader<R: Record> {
@@ -165,8 +135,16 @@ mod mapped_io {
 
     /// The parallel partial reader for simple sparse array based secondary table
     pub struct SimpleKeyValuePartialReader<R: Record> {
-        // We need to hold the mapped memory, thus we have to hold a ticket of the root directory to prevent the mapped memory from being unmapped
+        // We need to hold the mapped memory, 
+        // thus we have to hold a ticket of the root directory to prevent 
+        // the mapped memory from being unmapped
         _root: Arc<MappedDirectory>,
+        // As the directory ticket has been hold for the entire lifetime 
+        // for this object plus we never leak any reference of record to 
+        // the other part of the code. So the 'static lifetime won't be 
+        // seen by any other code. By doing so, there's no difference for
+        // the object to have 'static lifetime or whatever lifetime self have.
+        // Thus, we cast the record block to have static lifetime.
         records: Vec<RecordBlock<'static, R>>,
         cursor: (usize, usize),
         last_pos: Option<u32>,
@@ -190,17 +168,17 @@ mod mapped_io {
                 // For each stream under the stab directory
                 let stream = self.s_table_root.open_dir(&stream.id).unwrap();
 
-                let primary_frame = stream.get_primary_frame();
+                let mut next_frame = Some(stream.get_primary_frame());
 
-                let frame_iter =
-                    StreamFrameIter::new(primary_frame, metadata.compression, |frame| {
-                        frame.next_frame()
-                    });
-
-                record_blocks
+                let mut state = RecordBlockParsingState::new(metadata.compression);
+                let buffer = record_blocks
                     .entry(chr.to_string())
-                    .or_default()
-                    .extend(frame_iter);
+                    .or_default();
+
+                while let Some(this_frame) = next_frame {
+                    state.parse_frame(this_frame.as_ref(), buffer);
+                    next_frame = this_frame.next_frame();
+                }
 
                 // After we have done this stream, we need to strip the last invalid records if there is
                 if let Some(record_block) = record_blocks.get_mut(chr) {

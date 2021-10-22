@@ -1,15 +1,6 @@
-use std::{
-    collections::VecDeque,
-    io::{Error, ErrorKind, Read, Result, Seek},
-};
+use std::{collections::VecDeque, io::{Error, ErrorKind, Read, Result, Seek}, rc::Rc};
 
-use crate::{
-    d4file::validate_header,
-    stab::{
-        CompressionMethod, RangeRecord, Record, RecordBlock, SimpleKvMetadata, StreamFrameIter,
-    },
-    Dictionary, Header,
-};
+use crate::{Dictionary, Header, d4file::validate_header, stab::{CompressionMethod, RangeRecord, Record, RecordBlock, RecordBlockParsingState, SimpleKvMetadata}};
 use d4_framefile::{mode::ReadOnly, Blob, Directory, OpenResult, Stream};
 
 #[cfg(feature = "http_reader")]
@@ -57,12 +48,12 @@ pub struct D4TrackView<'a, R: Read + Seek + 'a> {
     chrom: String,
     end: u32,
     cursor: u32,
-    compression: CompressionMethod,
     primary_table: Blob<'a, ReadOnly, R>,
     primary_table_buffer: Option<(u32, Vec<u8>)>,
     secondary_tables: VecDeque<SecondaryTableStream<'a, R>>,
-    current_stream_iter: Option<Box<dyn Iterator<Item = RecordBlock<'a, RangeRecord>> + 'a>>,
-    current_record_block: Option<(usize, RecordBlock<'a, RangeRecord>)>,
+    stream: Option<Stream<'a, ReadOnly, R>>,
+    rbp_state: RecordBlockParsingState<RangeRecord>, 
+    frame_decode_result: VecDeque<RangeRecord>,
     current_record: Option<RangeRecord>,
     dictionary: Dictionary,
 }
@@ -105,35 +96,30 @@ impl<'a, R: Read + Seek + 'a> D4TrackView<'a, R> {
         }
         Ok(())
     }
+    
     fn load_next_secondary_record(&mut self) -> Option<&RangeRecord> {
-        if let Some((offset, block_data)) = self.current_record_block.as_mut() {
-            let block_data = block_data.as_ref();
-            if *offset < block_data.len() {
-                self.current_record = Some(block_data[*offset]);
-                *offset += 1;
-                return Some(self.current_record.as_ref().unwrap());
-            }
+        if let Some(rec) = self.frame_decode_result.pop_front() {
+            self.current_record = Some(rec);
+            return self.current_record.as_ref();
         }
 
-        if let Some(block_iter) = self.current_stream_iter.as_mut() {
-            if let Some(next_block) = block_iter.next() {
-                self.current_record_block = Some((0, next_block));
+        if let Some(stream) = self.stream.as_mut() {
+            if let Some(frame_data) = stream.read_current_frame() {
+                let mut blocks = vec![];
+                self.rbp_state.parse_frame(frame_data, &mut blocks);
+                for block in blocks {
+                    for &rec in block.as_ref() {
+                        self.frame_decode_result.push_back(rec);
+                    }
+                }
                 return self.load_next_secondary_record();
             }
         }
 
         if let Some(mut stream) = self.secondary_tables.pop_front() {
-            /*let mut stream = stream.data_stream.get_stream().unwrap();
-            if let Some(init_frame) = stream.read_current_frame() {
-                let stream_iter = StreamFrameIter::new(init_frame,
-                self.compression, move |mut buffer| {
-                    stream.load_next_frame().unwrap();
-                    stream.read_current_frame()
-                });
-                self.current_stream_iter = Some(Box::new(stream_iter));
-                return self.load_next_secondary_record();
-            }*/
-            todo!()
+            self.stream = Some(stream.data_stream.get_stream().unwrap());
+            self.rbp_state.reset();
+            return self.load_next_secondary_record();
         }
         None
     }
@@ -166,7 +152,7 @@ impl<'a, R: Read + Seek + 'a> D4TrackView<'a, R> {
             }
             if let Some(rec) = self.current_record {
                 let (begin, end) = rec.effective_range();
-                if begin <= pos && end < pos {
+                if begin <= pos && pos < end {
                     return Ok((pos, rec.value()));
                 }
             }
@@ -202,10 +188,10 @@ impl<'a, R: Read + Seek + 'a> D4TrackReader<'a, R> {
             cursor: begin,
             primary_table_buffer: None,
             dictionary: self.header.dictionary().clone(),
-            current_record_block: None,
-            current_stream_iter: None,
-            compression: self.compression,
+            stream: None,
             current_record: None,
+            rbp_state: RecordBlockParsingState::new(self.compression),
+            frame_decode_result: Default::default(),
         })
     }
     pub fn from_reader(mut reader: R, track_name: Option<&str>) -> Result<Self> {
@@ -287,7 +273,6 @@ fn test_open_hg002() {
     let mut reader = D4TrackReader::from_reader(hg002_file, None).unwrap();
     let view = reader.get_view("1", 0, 20000).unwrap();
     for read_result in view {
-        let (pos, value) = read_result.unwrap();
-        println!("{} {}", pos, value);
+        let (_pos, _value) = read_result.unwrap();
     }
 }

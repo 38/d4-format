@@ -333,6 +333,10 @@ impl<M: CanRead<T>, T: Read + Seek> Stream<'_, M, T> {
         }
         None
     }
+    pub fn copy_current_frame_data(&self, buf: &mut Vec<u8>) {
+        buf.clear();
+        buf.extend_from_slice(self.read_current_frame().unwrap_or(&[]));
+    }
     pub fn read(&mut self, buffer: &mut [u8]) -> Result<usize> {
         let mut ret = 0;
         let mut ptr = buffer;

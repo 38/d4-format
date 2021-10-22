@@ -17,6 +17,7 @@ pub(crate) enum RecordBlock<'a, R: Record> {
     Record(R),
 }
 impl<'a, R: Record> RecordBlock<'a, R> {
+    #[allow(dead_code)]
     pub fn to_owned(&self) -> RecordBlock<'static, R> {
         let data = self.as_ref();
         RecordBlock::OwnedBlock(data.iter().cloned().collect())

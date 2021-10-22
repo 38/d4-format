@@ -52,6 +52,6 @@ pub use reader::{SimpleKeyValuePartialReader, SimpleKeyValueReader};
 #[cfg(all(feature = "mapped_io", not(target_arch = "wasm32")))]
 pub use writer::{SimpleKeyValuePartialWriter, SimpleKeyValueWriter};
 
-pub(crate) use reader::StreamFrameIter;
+pub(crate) use reader::RecordBlockParsingState;
 pub use record::{RangeRecord, Record};
 pub(crate) use record_block::RecordBlock;
