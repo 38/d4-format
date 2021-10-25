@@ -1,7 +1,6 @@
 /*!
   The secondary table implementation
 */
-use d4_framefile::mode::{ReadOnly, ReadWrite};
 use d4_framefile::Directory;
 use std::fs::File;
 use std::io::Result;
@@ -19,7 +18,7 @@ pub trait STableWriter: Sized {
     /// The writer type to write a single parallel partition for the secondary table
     type Partition: STablePartitionWriter;
     /// Create the secondary table in the D4 file
-    fn create(root: &mut Directory<'static, ReadWrite, File>, header: &Header) -> Result<Self>;
+    fn create(root: &mut Directory<'static, File>, header: &Header) -> Result<Self>;
     /// Split the secondary table into parallel partitions
     fn split(&mut self, partitions: &[(&str, u32, u32)]) -> Result<Vec<Self::Partition>>;
     /// Enable the secondary table compression
@@ -45,7 +44,7 @@ pub trait STableReader: Sized {
     /// The type used to read a single parallel partition
     type Partition: STablePartitionReader;
     /// Create a new reader instance
-    fn create(root: &mut Directory<'static, ReadOnly, File>, header: &Header) -> Result<Self>;
+    fn create(root: &mut Directory<'static, File>, header: &Header) -> Result<Self>;
     /// Split the reader into parts
     fn split(&mut self, partitions: &[(&str, u32, u32)]) -> Result<Vec<Self::Partition>>;
 }

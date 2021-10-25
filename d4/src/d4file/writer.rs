@@ -1,4 +1,3 @@
-use d4_framefile::mode::ReadWrite;
 use d4_framefile::Directory;
 use d4_hts::BamFile;
 use std::fs::{File, OpenOptions};
@@ -19,7 +18,7 @@ pub struct D4FileWriter<
     PT: PTableWriter = BitArrayWriter,
     ST: STableWriter = SimpleKeyValueWriter<RangeRecord>,
 > {
-    file_root: Directory<'static, ReadWrite, File>,
+    file_root: Directory<'static, File>,
     pub(crate) header: Header,
     pub(crate) p_table: PT,
     pub(crate) s_table: Option<ST>,
@@ -121,9 +120,7 @@ impl D4FileBuilder {
         &self.dict
     }
 
-    pub(crate) fn write_d4_header<P: AsRef<Path>>(
-        path: P,
-    ) -> Result<Directory<'static, ReadWrite, File>> {
+    pub(crate) fn write_d4_header<P: AsRef<Path>>(path: P) -> Result<Directory<'static, File>> {
         let mut target = OpenOptions::new()
             .create(true)
             .read(true)

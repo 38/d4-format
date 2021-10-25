@@ -1,5 +1,4 @@
 use super::record::Record;
-use d4_framefile::mode::ReadWrite;
 use d4_framefile::Stream;
 use flate2::{write::DeflateEncoder, Compression};
 use serde_derive::{Deserialize, Serialize};
@@ -63,7 +62,7 @@ impl<R: Record> CompressionContext<R> {
     pub(super) fn append_record(
         &mut self,
         record: Option<&R>,
-        stream: &mut Stream<'static, ReadWrite, File>,
+        stream: &mut Stream<'static, File>,
     ) -> Result<()> {
         match self {
             Self::NoCompression => {

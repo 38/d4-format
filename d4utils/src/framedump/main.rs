@@ -1,10 +1,9 @@
-use d4_framefile::mode::ReadOnly;
 use d4_framefile::*;
 use std::fs::File;
 use std::io::Write;
 
 #[allow(clippy::print_literal)]
-pub fn dump_dir(dir: &Directory<'static, ReadOnly, File>) {
+pub fn dump_dir(dir: &Directory<'static, File>) {
     println!(
         "{:20}\t{:8}\t{}\t{}\n",
         "Name", "Type", "    Offset", "Primary-Size"

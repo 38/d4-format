@@ -8,7 +8,7 @@ use crate::{
     stab::{CompressionMethod, RangeRecord, Record, RecordBlockParsingState, SimpleKvMetadata},
     Dictionary, Header,
 };
-use d4_framefile::{mode::ReadOnly, Blob, Directory, OpenResult, Stream};
+use d4_framefile::{Blob, Directory, OpenResult, Stream};
 
 #[cfg(feature = "http_reader")]
 pub mod http;
@@ -16,7 +16,7 @@ pub mod http;
 /*#[cfg(feature = "wasm")]
 pub mod wasm;*/
 
-struct DataStreamEntry<'a, R: Read + Seek + 'a>(Directory<'a, ReadOnly, R>, String);
+struct DataStreamEntry<'a, R: Read + Seek + 'a>(Directory<'a, R>, String);
 
 impl<'a, R: Read + Seek + 'a> Clone for DataStreamEntry<'a, R> {
     fn clone(&self) -> Self {
@@ -25,7 +25,7 @@ impl<'a, R: Read + Seek + 'a> Clone for DataStreamEntry<'a, R> {
 }
 
 impl<'a, R: Read + Seek + 'a> DataStreamEntry<'a, R> {
-    fn get_stream(&mut self) -> Result<Stream<'a, ReadOnly, R>> {
+    fn get_stream(&mut self) -> Result<Stream<'a, R>> {
         let DataStreamEntry(dir, name) = self;
         Ok(dir.open_stream(name)?)
     }
@@ -49,7 +49,7 @@ impl<'a, R: Read + Seek + 'a> Clone for SecondaryTableStream<'a, R> {
 
 pub struct D4TrackReader<'a, R: Read + Seek + 'a> {
     header: Header,
-    primary_table: Blob<'a, ReadOnly, R>,
+    primary_table: Blob<'a, R>,
     compression: CompressionMethod,
     secondary_table: Vec<SecondaryTableStream<'a, R>>,
 }
@@ -58,10 +58,10 @@ pub struct D4TrackView<'a, R: Read + Seek + 'a> {
     chrom: String,
     end: u32,
     cursor: u32,
-    primary_table: Blob<'a, ReadOnly, R>,
+    primary_table: Blob<'a, R>,
     primary_table_buffer: Option<(u32, Vec<u8>)>,
     secondary_tables: VecDeque<SecondaryTableStream<'a, R>>,
-    stream: Option<Stream<'a, ReadOnly, R>>,
+    stream: Option<Stream<'a, R>>,
     rbp_state: RecordBlockParsingState<RangeRecord>,
     frame_decode_result: VecDeque<RangeRecord>,
     current_record: Option<RangeRecord>,

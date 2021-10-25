@@ -1,4 +1,3 @@
-use crate::mode::ReadOnly;
 use crate::randfile::mapping::MappingHandle;
 use crate::randfile::RandFile;
 use crate::stream::FrameHeader;
@@ -70,18 +69,18 @@ impl MappedDirectory {
             None
         }
     }
-    pub fn new(file: RandFile<ReadOnly, File>, offset: u64, size: usize) -> Result<Self> {
+    pub fn new(file: RandFile<File>, offset: u64, size: usize) -> Result<Self> {
         let handle = file.mmap(offset, size)?;
         let data = handle.as_ref();
         let root_stream = MappedStream::new(
             &data[0],
-            crate::directory::Directory::<ReadOnly, File>::INIT_BLOCK_SIZE,
+            crate::directory::Directory::<File>::INIT_BLOCK_SIZE,
         );
         let content = root_stream.copy_content();
 
         let mut dir_table = HashMap::new();
         let mut cursor = &content[..];
-        while let Some(entry) = Directory::<ReadOnly, File>::read_next_entry(0, &mut cursor)? {
+        while let Some(entry) = Directory::<File>::read_next_entry(0, &mut cursor)? {
             if entry.kind == EntryKind::Stream {
                 dir_table.insert(
                     entry.name,

@@ -1,4 +1,3 @@
-use d4_framefile::mode::ReadOnly;
 use d4_framefile::{Directory, OpenResult};
 
 use std::fs::File;
@@ -15,7 +14,7 @@ pub struct D4TrackReader<
     P: PTableReader = BitArrayReader,
     S: STableReader = SimpleKeyValueReader<RangeRecord>,
 > {
-    _root: Directory<'static, ReadOnly, File>,
+    _root: Directory<'static, File>,
     header: Header,
     p_table: P,
     s_table: S,
@@ -44,7 +43,7 @@ impl<P: PTableReader, S: STableReader> D4TrackReader<P, S> {
         &self.header
     }
 
-    pub fn create_reader_for_root(mut root: Directory<'static, ReadOnly, File>) -> Result<Self> {
+    pub fn create_reader_for_root(mut root: Directory<'static, File>) -> Result<Self> {
         let stream = root.open_stream(".metadata")?;
         let header = Header::read(stream)?;
         let p_table = PTableReader::create(&mut root, &header)?;

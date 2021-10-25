@@ -1,8 +1,6 @@
-use crate::mode::{AccessMode, CanRead, CanWrite, ReadOnly, ReadWrite};
 #[cfg(all(feature = "mapped_io", not(target_arch = "wasm32")))]
 use std::fs::File;
 use std::io::{Read, Result, Seek, SeekFrom, Write};
-use std::marker::PhantomData;
 use std::ops::Deref;
 use std::sync::{Arc, Mutex};
 
@@ -20,13 +18,12 @@ use std::sync::{Arc, Mutex};
 /// The rand file provides a offset-based file access API and data can be read and write from the
 /// specified address in blocks. But rand file itself doesn't tracking the block size and it's the
 /// upper layer's responsibility to determine the correct block beginning.
-pub struct RandFile<'a, Mode: AccessMode, T: 'a> {
+pub struct RandFile<'a, T: 'a> {
     inner: Arc<Mutex<IoWrapper<'a, T>>>,
     token: u32,
-    _phantom: PhantomData<Mode>,
 }
 
-impl<M: AccessMode, T> Drop for RandFile<'_, M, T> {
+impl<T> Drop for RandFile<'_, T> {
     fn drop(&mut self) {
         let mut inner = self.inner.lock().unwrap();
         if inner.token_stack[self.token as usize].ref_count > 0 {
@@ -84,18 +81,17 @@ impl<T> Deref for IoWrapper<'_, T> {
     }
 }
 
-impl<M: AccessMode, T> Clone for RandFile<'_, M, T> {
+impl<T> Clone for RandFile<'_, T> {
     fn clone(&self) -> Self {
         self.inner.lock().unwrap().token_stack[self.token as usize].ref_count += 1;
         Self {
             inner: self.inner.clone(),
             token: self.token,
-            _phantom: PhantomData,
         }
     }
 }
 
-impl<'a, M: AccessMode, T> RandFile<'a, M, T> {
+impl<'a, T> RandFile<'a, T> {
     /// Create a new random access file wrapper
     ///
     /// - `inner`: The underlying implementation for the backend
@@ -111,7 +107,6 @@ impl<'a, M: AccessMode, T> RandFile<'a, M, T> {
                 inner,
             })),
             token: 0,
-            _phantom: PhantomData,
         }
     }
 
@@ -133,12 +128,11 @@ impl<'a, M: AccessMode, T> RandFile<'a, M, T> {
         Ok(RandFile {
             inner: self.inner.clone(),
             token,
-            _phantom: PhantomData,
         })
     }
 }
 
-impl<T: Read + Seek> RandFile<'_, ReadOnly, T> {
+impl<T: Read + Seek> RandFile<'_, T> {
     /// The convenient helper function to create a read-only random file
     ///
     /// - `inner`: The underlying implementation for this backend
@@ -147,7 +141,7 @@ impl<T: Read + Seek> RandFile<'_, ReadOnly, T> {
     }
 }
 
-impl<T: Read + Write + Seek> RandFile<'_, ReadWrite, T> {
+impl<T: Read + Write + Seek> RandFile<'_, T> {
     /// The convenient helper function to create a read-write random file
     ///
     /// - `inner`: The underlying implementation for this backend
@@ -157,20 +151,17 @@ impl<T: Read + Write + Seek> RandFile<'_, ReadWrite, T> {
 }
 
 #[cfg(all(feature = "mapped_io", not(target_arch = "wasm32")))]
-impl<T: CanRead<File>> RandFile<'_, T, File> {
+impl RandFile<'_, File> {
     pub fn mmap(&self, offset: u64, size: usize) -> Result<mapping::MappingHandle> {
         mapping::MappingHandle::new(self, offset, size)
     }
-}
 
-#[cfg(all(feature = "mapped_io", not(target_arch = "wasm32")))]
-impl<T: CanRead<File> + CanWrite<File>> RandFile<'_, T, File> {
     pub fn mmap_mut(&mut self, offset: u64, size: usize) -> Result<mapping::MappingHandleMut> {
         mapping::MappingHandleMut::new(self, offset, size)
     }
 }
 
-impl<Mode: CanWrite<T>, T: Write + Seek> RandFile<'_, Mode, T> {
+impl<T: Write + Seek> RandFile<'_, T> {
     /// Append a block to the random accessing file
     /// the return value is the relative address compare to the last
     /// accessed block.
@@ -219,7 +210,8 @@ impl<Mode: CanWrite<T>, T: Write + Seek> RandFile<'_, Mode, T> {
         Ok(ret)
     }
 }
-impl<Mode: CanRead<T>, T: Read + Seek> RandFile<'_, Mode, T> {
+
+impl<T: Read + Seek> RandFile<'_, T> {
     pub fn size(&mut self) -> Result<u64> {
         let mut inner = self
             .inner
@@ -277,11 +269,7 @@ pub mod mapping {
     }
 
     impl MappingHandle {
-        pub(super) fn new<M: CanRead<File>>(
-            file: &RandFile<M, File>,
-            offset: u64,
-            size: usize,
-        ) -> Result<Self> {
+        pub(super) fn new(file: &RandFile<File>, offset: u64, size: usize) -> Result<Self> {
             let inner = file
                 .inner
                 .lock()
@@ -314,11 +302,7 @@ pub mod mapping {
     }
 
     impl MappingHandleMut {
-        pub(super) fn new<M: CanRead<File> + CanWrite<File>>(
-            file: &RandFile<M, File>,
-            offset: u64,
-            size: usize,
-        ) -> Result<Self> {
+        pub(super) fn new(file: &RandFile<File>, offset: u64, size: usize) -> Result<Self> {
             let inner = file
                 .inner
                 .lock()

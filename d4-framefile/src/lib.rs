@@ -10,4 +10,11 @@ pub use stream::Stream;
 
 #[cfg(all(feature = "mapped_io", not(target_arch = "wasm32")))]
 pub mod mapped;
-pub mod mode;
+//pub mod mode;
+
+use async_trait::async_trait;
+#[async_trait]
+pub trait AsyncReader {
+    fn seek(&mut self, pos: u64) -> std::io::Result<()>;
+    async fn read_async(&mut self, buf: &mut [u8]) -> std::io::Result<usize>;
+}

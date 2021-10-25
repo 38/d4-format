@@ -1,5 +1,4 @@
 use super::*;
-use d4_framefile::mode::{AccessMode, ReadOnly, ReadWrite};
 use d4_framefile::{Blob, Directory};
 use smallvec::{smallvec, SmallVec};
 use std::fs::File;
@@ -11,7 +10,6 @@ use crate::dict::{Dictionary, EncodeResult};
 use crate::header::Header;
 
 pub trait PrimaryTableMode: Sized {
-    type ChunkMode: AccessMode;
     type HandleType: Send + ?Sized;
     fn ensure_handle(this: &mut PrimaryTable<Self>) -> Result<()>;
     fn get_mapping_address(this: &mut PrimaryTable<Self>) -> *const u8;
@@ -20,7 +18,6 @@ pub trait PrimaryTableMode: Sized {
 pub struct Reader;
 pub struct Writer;
 impl PrimaryTableMode for Reader {
-    type ChunkMode = ReadOnly;
     type HandleType = dyn AsRef<[u8]> + Send;
     fn ensure_handle(this: &mut PrimaryTable<Self>) -> Result<()> {
         if this.mapping_handle.is_none() {
@@ -42,7 +39,6 @@ impl PrimaryTableMode for Reader {
 }
 
 impl PrimaryTableMode for Writer {
-    type ChunkMode = ReadWrite;
     type HandleType = dyn AsMut<[u8]> + Send;
     fn ensure_handle(this: &mut PrimaryTable<Self>) -> Result<()> {
         if this.mapping_handle.is_none() {
@@ -67,7 +63,7 @@ impl PrimaryTableMode for Writer {
 pub struct PrimaryTable<M: PrimaryTableMode> {
     bit_width: usize,
     dictionary: Dictionary,
-    data: Blob<'static, M::ChunkMode, File>,
+    data: Blob<'static, File>,
     mapping_handle: Option<Arc<Mutex<M::HandleType>>>,
 }
 
@@ -157,7 +153,7 @@ impl<M: PrimaryTableMode> PrimaryTable<M> {
 }
 impl PrimaryTable<Writer> {
     pub(crate) fn create(
-        directory: &mut Directory<'static, ReadWrite, File>,
+        directory: &mut Directory<'static, File>,
         header: &Header,
     ) -> Result<Self> {
         let size = header.primary_table_size();
@@ -172,10 +168,7 @@ impl PrimaryTable<Writer> {
 }
 
 impl PrimaryTable<Reader> {
-    pub(crate) fn open(
-        root_dir: &mut Directory<'static, ReadOnly, File>,
-        header: &Header,
-    ) -> Result<Self> {
+    pub(crate) fn open(root_dir: &mut Directory<'static, File>, header: &Header) -> Result<Self> {
         let chunk = root_dir.open_blob(".ptab")?;
         Ok(PrimaryTable {
             dictionary: header.dictionary.clone(),
@@ -397,10 +390,7 @@ impl PTablePartitionWriter for PartialPrimaryTable<Writer> {
 }
 impl PTableWriter for PrimaryTable<Writer> {
     type Partition = PartialPrimaryTable<Writer>;
-    fn create(
-        directory: &mut Directory<'static, ReadWrite, File>,
-        header: &Header,
-    ) -> Result<Self> {
+    fn create(directory: &mut Directory<'static, File>, header: &Header) -> Result<Self> {
         PrimaryTable::<Writer>::create(directory, header)
     }
 
@@ -478,7 +468,7 @@ impl PTablePartitionReader for PartialPrimaryTable<Reader> {
 }
 impl PTableReader for PrimaryTable<Reader> {
     type Partition = PartialPrimaryTable<Reader>;
-    fn create(directory: &mut Directory<'static, ReadOnly, File>, header: &Header) -> Result<Self> {
+    fn create(directory: &mut Directory<'static, File>, header: &Header) -> Result<Self> {
         PrimaryTable::open(directory, header)
     }
 

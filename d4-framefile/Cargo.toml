@@ -10,7 +10,7 @@ repository = "https://github.com/38/d4-format"
 
 [dependencies]
 memmap = {version = "0.7.0", optional = true}
+async-trait = {version = "0.1.51"}
 
 [features]
 mapped_io = ["memmap"]
-
