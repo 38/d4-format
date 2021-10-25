@@ -1,21 +1,19 @@
 use d4::ptab::DecodeResult;
 use d4::ptab::PTablePartitionReader;
 use d4::ptab::{
-    BitArrayDecoder, BitArrayEncoder, BitArrayPartReader, BitArrayPartWriter, BitArrayReader,
-    BitArrayWriter, PTablePartitionWriter,
+    BitArrayDecoder, BitArrayEncoder, BitArrayPartReader, BitArrayPartWriter, PTablePartitionWriter,
 };
 use d4::stab::{
     RangeRecord, RecordIterator, STablePartitionReader, STablePartitionWriter,
-    SimpleKeyValuePartialReader, SimpleKeyValuePartialWriter, SimpleKeyValueReader,
-    SimpleKeyValueWriter,
+    SimpleKeyValuePartialReader, SimpleKeyValuePartialWriter,
 };
 use d4::{D4FileWriter, D4TrackReader};
 
 use std::io::Result;
 use std::ops::Range;
 
-type D4Reader = D4TrackReader<BitArrayReader, SimpleKeyValueReader<RangeRecord>>;
-type D4Writer = D4FileWriter<BitArrayWriter, SimpleKeyValueWriter<RangeRecord>>;
+type D4Reader = D4TrackReader;
+type D4Writer = D4FileWriter;
 type D4ReaderParts = (BitArrayPartReader, SimpleKeyValuePartialReader<RangeRecord>);
 
 type D4WriterParts = (BitArrayPartWriter, SimpleKeyValuePartialWriter<RangeRecord>);

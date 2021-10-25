@@ -13,8 +13,8 @@ use d4_framefile::{mode::ReadOnly, Blob, Directory, OpenResult, Stream};
 #[cfg(feature = "http_reader")]
 pub mod http;
 
-#[cfg(feature = "wasm")]
-pub mod wasm;
+/*#[cfg(feature = "wasm")]
+pub mod wasm;*/
 
 struct DataStreamEntry<'a, R: Read + Seek + 'a>(Directory<'a, ReadOnly, R>, String);
 

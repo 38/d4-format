@@ -29,13 +29,18 @@ pub struct RandFile<'a, Mode: AccessMode, T: 'a> {
 impl<M: AccessMode, T> Drop for RandFile<'_, M, T> {
     fn drop(&mut self) {
         let mut inner = self.inner.lock().unwrap();
-        if inner.token_stack[self.token as usize].0 > 0 {
-            inner.token_stack[self.token as usize].0 -= 1;
+        if inner.token_stack[self.token as usize].ref_count > 0 {
+            inner.token_stack[self.token as usize].ref_count -= 1;
         }
         let mut update_callbacks = vec![];
-        while inner.current_token > 0 && inner.token_stack[inner.current_token as usize].0 == 0 {
+        while inner.current_token > 0
+            && inner.token_stack[inner.current_token as usize].ref_count == 0
+        {
             inner.current_token -= 1;
-            if let Some((_, update)) = inner.token_stack.pop() {
+            if let Some(TokenStackItem {
+                on_release: update, ..
+            }) = inner.token_stack.pop()
+            {
                 update_callbacks.push(update);
             }
         }
@@ -44,10 +49,19 @@ impl<M: AccessMode, T> Drop for RandFile<'_, M, T> {
     }
 }
 
-struct IoWrapper<'a, T: 'a> {
+struct TokenStackItem<'a> {
+    ref_count: u32,
+    on_release: Box<dyn FnOnce() + Send + 'a>,
+}
+
+/// This is the internal wrapper of an IO object that used by D4 randfile.
+/// It's used with mutex and enforces the lock policy D4 randfile is using.
+/// This wrapper is shared between different higher level IO objects, for instance: a directory in
+/// framefile.
+struct IoWrapper<'a, T> {
     inner: T,
     current_token: u32,
-    token_stack: Vec<(u32, Box<dyn FnOnce() + Send + 'a>)>,
+    token_stack: Vec<TokenStackItem<'a>>,
 }
 
 impl<T> IoWrapper<'_, T> {
@@ -72,7 +86,7 @@ impl<T> Deref for IoWrapper<'_, T> {
 
 impl<M: AccessMode, T> Clone for RandFile<'_, M, T> {
     fn clone(&self) -> Self {
-        self.inner.lock().unwrap().token_stack[self.token as usize].0 += 1;
+        self.inner.lock().unwrap().token_stack[self.token as usize].ref_count += 1;
         Self {
             inner: self.inner.clone(),
             token: self.token,
@@ -81,7 +95,7 @@ impl<M: AccessMode, T> Clone for RandFile<'_, M, T> {
     }
 }
 
-impl<'a, M: AccessMode, T: 'a> RandFile<'a, M, T> {
+impl<'a, M: AccessMode, T> RandFile<'a, M, T> {
     /// Create a new random access file wrapper
     ///
     /// - `inner`: The underlying implementation for the backend
@@ -90,7 +104,10 @@ impl<'a, M: AccessMode, T: 'a> RandFile<'a, M, T> {
         RandFile {
             inner: Arc::new(Mutex::new(IoWrapper {
                 current_token: 0,
-                token_stack: vec![(1, Box::new(|| ()))],
+                token_stack: vec![TokenStackItem {
+                    ref_count: 1,
+                    on_release: Box::new(|| ()),
+                }],
                 inner,
             })),
             token: 0,
@@ -98,13 +115,19 @@ impl<'a, M: AccessMode, T: 'a> RandFile<'a, M, T> {
         }
     }
 
+    /// Lock the current IO object and derive a fresh token
+    /// This will prevent any object that holds earlier token from locking this file again.
+    /// However, the freshly returned token can be cloned.
     pub fn lock(&mut self, update_fn: Box<dyn FnOnce() + Send + 'a>) -> Result<Self> {
         let mut inner = self
             .inner
             .lock()
             .map_err(|_| std::io::Error::new(std::io::ErrorKind::Other, "Lock Error"))?;
         inner.current_token += 1;
-        inner.token_stack.push((1, update_fn));
+        inner.token_stack.push(TokenStackItem {
+            ref_count: 1,
+            on_release: update_fn,
+        });
         let token = inner.current_token;
         drop(inner);
         Ok(RandFile {
@@ -278,7 +301,7 @@ pub mod mapping {
 
     impl AsRef<[u8]> for MappingHandleMut {
         fn as_ref(&self) -> &[u8] {
-            unsafe { std::slice::from_raw_parts(std::mem::transmute(self.base_addr), self.size) }
+            self.handle.as_ref().0.as_ref()
         }
     }
 
