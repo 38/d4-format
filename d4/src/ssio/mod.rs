@@ -16,29 +16,29 @@ pub mod http;
 /*#[cfg(feature = "wasm")]
 pub mod wasm;*/
 
-struct DataStreamEntry<'a, R: Read + Seek + 'a>(Directory<'a, R>, String);
+struct DataStreamEntry<R: Read + Seek>(Directory<R>, String);
 
-impl<'a, R: Read + Seek + 'a> Clone for DataStreamEntry<'a, R> {
+impl<R: Read + Seek> Clone for DataStreamEntry<R> {
     fn clone(&self) -> Self {
         Self(self.0.clone(), self.1.clone())
     }
 }
 
-impl<'a, R: Read + Seek + 'a> DataStreamEntry<'a, R> {
-    fn get_stream(&mut self) -> Result<Stream<'a, R>> {
+impl<R: Read + Seek> DataStreamEntry<R> {
+    fn get_stream(&mut self) -> Result<Stream<R>> {
         let DataStreamEntry(dir, name) = self;
         Ok(dir.open_stream(name)?)
     }
 }
 
-struct SecondaryTableStream<'a, R: Read + Seek + 'a> {
+struct SecondaryTableStream<R: Read + Seek> {
     chrom_id: usize,
     begin: u32,
     end: u32,
-    data_stream: DataStreamEntry<'a, R>,
+    data_stream: DataStreamEntry<R>,
 }
 
-impl<'a, R: Read + Seek + 'a> Clone for SecondaryTableStream<'a, R> {
+impl<R: Read + Seek> Clone for SecondaryTableStream<R> {
     fn clone(&self) -> Self {
         Self {
             data_stream: self.data_stream.clone(),
@@ -47,28 +47,28 @@ impl<'a, R: Read + Seek + 'a> Clone for SecondaryTableStream<'a, R> {
     }
 }
 
-pub struct D4TrackReader<'a, R: Read + Seek + 'a> {
+pub struct D4TrackReader<R: Read + Seek> {
     header: Header,
-    primary_table: Blob<'a, R>,
+    primary_table: Blob<R>,
     compression: CompressionMethod,
-    secondary_table: Vec<SecondaryTableStream<'a, R>>,
+    secondary_table: Vec<SecondaryTableStream<R>>,
 }
 
-pub struct D4TrackView<'a, R: Read + Seek + 'a> {
+pub struct D4TrackView<R: Read + Seek> {
     chrom: String,
     end: u32,
     cursor: u32,
-    primary_table: Blob<'a, R>,
+    primary_table: Blob<R>,
     primary_table_buffer: Option<(u32, Vec<u8>)>,
-    secondary_tables: VecDeque<SecondaryTableStream<'a, R>>,
-    stream: Option<Stream<'a, R>>,
+    secondary_tables: VecDeque<SecondaryTableStream<R>>,
+    stream: Option<Stream<R>>,
     rbp_state: RecordBlockParsingState<RangeRecord>,
     frame_decode_result: VecDeque<RangeRecord>,
     current_record: Option<RangeRecord>,
     dictionary: Dictionary,
 }
 
-impl<'a, R: Read + Seek + 'a> Iterator for D4TrackView<'a, R> {
+impl<'a, R: Read + Seek + 'a> Iterator for D4TrackView<R> {
     type Item = Result<(u32, i32)>;
     fn next(&mut self) -> Option<Self::Item> {
         if self.cursor >= self.end {
@@ -79,7 +79,7 @@ impl<'a, R: Read + Seek + 'a> Iterator for D4TrackView<'a, R> {
     }
 }
 
-impl<'a, R: Read + Seek + 'a> D4TrackView<'a, R> {
+impl<R: Read + Seek> D4TrackView<R> {
     pub fn chrom_name(&self) -> &str {
         self.chrom.as_ref()
     }
@@ -171,8 +171,8 @@ impl<'a, R: Read + Seek + 'a> D4TrackView<'a, R> {
     }
 }
 
-impl<'a, R: Read + Seek + 'a> D4TrackReader<'a, R> {
-    pub fn get_view(&'_ mut self, chrom: &str, begin: u32, end: u32) -> Result<D4TrackView<'a, R>> {
+impl<R: Read + Seek> D4TrackReader<R> {
+    pub fn get_view(&mut self, chrom: &str, begin: u32, end: u32) -> Result<D4TrackView<R>> {
         let primary_offset = self.header.primary_table_offset_of_chrom(chrom);
         let primary_size = self.header.primary_table_size_of_chrom(chrom);
         if primary_size == 0 {

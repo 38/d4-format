@@ -12,18 +12,15 @@ use std::sync::{Arc, Mutex};
 /// At the same time, this RandFile object is synchronized, which means we guarantee
 /// the thread safety that each block of data is written to file correctly.
 ///
-/// The type parameter `Mode` is served as a type marker that identify the ability of this
-/// file.
-///
 /// The rand file provides a offset-based file access API and data can be read and write from the
 /// specified address in blocks. But rand file itself doesn't tracking the block size and it's the
 /// upper layer's responsibility to determine the correct block beginning.
-pub struct RandFile<'a, T: 'a> {
-    inner: Arc<Mutex<IoWrapper<'a, T>>>,
+pub struct RandFile<T> {
+    inner: Arc<Mutex<IoWrapper<T>>>,
     token: u32,
 }
 
-impl<T> Drop for RandFile<'_, T> {
+impl<T> Drop for RandFile<T> {
     fn drop(&mut self) {
         let mut inner = self.inner.lock().unwrap();
         if inner.token_stack[self.token as usize].ref_count > 0 {
@@ -46,22 +43,22 @@ impl<T> Drop for RandFile<'_, T> {
     }
 }
 
-struct TokenStackItem<'a> {
+struct TokenStackItem {
     ref_count: u32,
-    on_release: Box<dyn FnOnce() + Send + 'a>,
+    on_release: Box<dyn FnOnce() + Send>,
 }
 
 /// This is the internal wrapper of an IO object that used by D4 randfile.
 /// It's used with mutex and enforces the lock policy D4 randfile is using.
 /// This wrapper is shared between different higher level IO objects, for instance: a directory in
 /// framefile.
-struct IoWrapper<'a, T> {
+struct IoWrapper<T> {
     inner: T,
     current_token: u32,
-    token_stack: Vec<TokenStackItem<'a>>,
+    token_stack: Vec<TokenStackItem>,
 }
 
-impl<T> IoWrapper<'_, T> {
+impl<T> IoWrapper<T> {
     fn try_borrow_mut(&mut self, token: u32) -> Result<&mut T> {
         if token == self.current_token {
             Ok(&mut self.inner)
@@ -74,14 +71,14 @@ impl<T> IoWrapper<'_, T> {
     }
 }
 
-impl<T> Deref for IoWrapper<'_, T> {
+impl<T> Deref for IoWrapper<T> {
     type Target = T;
     fn deref(&self) -> &T {
         &self.inner
     }
 }
 
-impl<T> Clone for RandFile<'_, T> {
+impl<T> Clone for RandFile<T> {
     fn clone(&self) -> Self {
         self.inner.lock().unwrap().token_stack[self.token as usize].ref_count += 1;
         Self {
@@ -91,7 +88,16 @@ impl<T> Clone for RandFile<'_, T> {
     }
 }
 
-impl<'a, T> RandFile<'a, T> {
+impl<T> RandFile<T> {
+    pub fn clone_inner(&self) -> Result<T>
+    where T: Clone
+    {
+        let inner = self
+            .inner
+            .lock()
+            .map_err(|_| std::io::Error::new(std::io::ErrorKind::Other, "Lock Error"))?;
+        Ok(inner.inner.clone())
+    }
     /// Create a new random access file wrapper
     ///
     /// - `inner`: The underlying implementation for the backend
@@ -113,7 +119,7 @@ impl<'a, T> RandFile<'a, T> {
     /// Lock the current IO object and derive a fresh token
     /// This will prevent any object that holds earlier token from locking this file again.
     /// However, the freshly returned token can be cloned.
-    pub fn lock(&mut self, update_fn: Box<dyn FnOnce() + Send + 'a>) -> Result<Self> {
+    pub fn lock(&mut self, update_fn: Box<dyn FnOnce() + Send>) -> Result<Self> {
         let mut inner = self
             .inner
             .lock()
@@ -132,7 +138,7 @@ impl<'a, T> RandFile<'a, T> {
     }
 }
 
-impl<T: Read + Seek> RandFile<'_, T> {
+impl<T: Read + Seek> RandFile<T> {
     /// The convenient helper function to create a read-only random file
     ///
     /// - `inner`: The underlying implementation for this backend
@@ -141,7 +147,7 @@ impl<T: Read + Seek> RandFile<'_, T> {
     }
 }
 
-impl<T: Read + Write + Seek> RandFile<'_, T> {
+impl<T: Read + Write + Seek> RandFile<T> {
     /// The convenient helper function to create a read-write random file
     ///
     /// - `inner`: The underlying implementation for this backend
@@ -151,7 +157,7 @@ impl<T: Read + Write + Seek> RandFile<'_, T> {
 }
 
 #[cfg(all(feature = "mapped_io", not(target_arch = "wasm32")))]
-impl RandFile<'_, File> {
+impl RandFile<File> {
     pub fn mmap(&self, offset: u64, size: usize) -> Result<mapping::MappingHandle> {
         mapping::MappingHandle::new(self, offset, size)
     }
@@ -161,7 +167,7 @@ impl RandFile<'_, File> {
     }
 }
 
-impl<T: Write + Seek> RandFile<'_, T> {
+impl<T: Write + Seek> RandFile<T> {
     /// Append a block to the random accessing file
     /// the return value is the relative address compare to the last
     /// accessed block.
@@ -211,7 +217,7 @@ impl<T: Write + Seek> RandFile<'_, T> {
     }
 }
 
-impl<T: Read + Seek> RandFile<'_, T> {
+impl<T: Read + Seek> RandFile<T> {
     pub fn size(&mut self) -> Result<u64> {
         let mut inner = self
             .inner

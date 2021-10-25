@@ -176,15 +176,15 @@ impl Frame {
     }
 }
 
-pub struct Stream<'a, T: 'a> {
-    file: RandFile<'a, T>,
+pub struct Stream<T> {
+    file: RandFile<T>,
     current_frame: Option<Frame>,
     cursor: usize,
     frame_size: usize,
     pre_alloc: bool,
     on_drop: Box<dyn FnOnce(&mut Self) + Send + Sync>,
 }
-impl<'a, T: 'a> Stream<'a, T> {
+impl<T> Stream<T> {
     pub fn double_frame_size(&mut self, limit: usize) {
         if self.frame_size * 2 > limit {
             self.frame_size = limit;
@@ -192,7 +192,7 @@ impl<'a, T: 'a> Stream<'a, T> {
         }
         self.frame_size *= 2;
     }
-    pub(crate) fn clone_underlying_file<'b>(&'b self) -> RandFile<'a, T> {
+    pub(crate) fn clone_underlying_file<'b>(&'b self) -> RandFile<T> {
         self.file.clone()
     }
 
@@ -210,7 +210,7 @@ impl<'a, T: 'a> Stream<'a, T> {
         self.frame_size - std::mem::size_of::<FrameHeader>()
     }
 }
-impl<T: Write + Seek> Stream<'_, T> {
+impl<T: Write + Seek> Stream<T> {
     pub fn flush(&mut self) -> Result<()> {
         let current_frame = std::mem::replace(&mut self.current_frame, None);
         self.current_frame = Some(Frame::alloc_new_frame(current_frame, &mut self.file, 0)?);
@@ -299,12 +299,12 @@ impl<T: Write + Seek> Stream<'_, T> {
         Ok(ret)
     }
 }
-impl<T: Read + Seek> Read for Stream<'_, T> {
+impl<T: Read + Seek> Read for Stream<T> {
     fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
         Stream::read(self, buf)
     }
 }
-impl<T: Read + Seek> AsRef<[u8]> for Stream<'_, T> {
+impl<T: Read + Seek> AsRef<[u8]> for Stream<T> {
     fn as_ref(&self) -> &[u8] {
         if let Some(r) = self.read_current_frame() {
             r
@@ -313,7 +313,7 @@ impl<T: Read + Seek> AsRef<[u8]> for Stream<'_, T> {
         }
     }
 }
-impl<T: Read + Seek> Stream<'_, T> {
+impl<T: Read + Seek> Stream<T> {
     pub fn load_next_frame(&mut self) -> Result<()> {
         if let Some(this_frame) = self.current_frame.take() {
             self.cursor = 0;
@@ -369,8 +369,8 @@ impl<T: Read + Seek> Stream<'_, T> {
         Ok(ret)
     }
 }
-impl<'a, T: Read + Seek> Stream<'a, T> {
-    pub(crate) fn open_ro(mut file: RandFile<'a, T>, primary_frame: (u64, usize)) -> Result<Self> {
+impl<T: Read + Seek> Stream<T> {
+    pub(crate) fn open_ro(mut file: RandFile<T>, primary_frame: (u64, usize)) -> Result<Self> {
         let current_frame = Some(Frame::load_from_file(
             &mut file,
             primary_frame.0,
@@ -389,8 +389,8 @@ impl<'a, T: Read + Seek> Stream<'a, T> {
     }
 }
 
-impl<'a, T: Read + Write + Seek> Stream<'a, T> {
-    pub(crate) fn create_rw(mut file: RandFile<'a, T>, frame_size: usize) -> Result<Self> {
+impl<'a, T: Read + Write + Seek> Stream<T> {
+    pub(crate) fn create_rw(mut file: RandFile<T>, frame_size: usize) -> Result<Self> {
         let current_frame = Some(Frame::alloc_new_frame(None, &mut file, frame_size)?);
         Ok(Self {
             file,
@@ -405,7 +405,7 @@ impl<'a, T: Read + Write + Seek> Stream<'a, T> {
     }
 }
 
-impl<T> Drop for Stream<'_, T> {
+impl<T> Drop for Stream<T> {
     fn drop(&mut self) {
         let drop_callback = std::mem::replace(&mut self.on_drop, Box::new(|_| {}));
         drop_callback(self);
@@ -421,7 +421,7 @@ mod test {
     #[test]
     fn test_stream_send() {
         fn check_send<T: Send>() {}
-        check_send::<Stream<'static, std::fs::File>>();
+        check_send::<Stream<std::fs::File>>();
     }
     #[test]
     fn test_compose_stream() -> TestResult<()> {

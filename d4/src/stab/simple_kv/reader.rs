@@ -388,7 +388,7 @@ mod mapped_io {
 
     impl<R: Record> STableReader for SimpleKeyValueReader<R> {
         type Partition = SimpleKeyValuePartialReader<R>;
-        fn create(root: &mut Directory<'static, File>, _header: &Header) -> Result<Self> {
+        fn create(root: &mut Directory<File>, _header: &Header) -> Result<Self> {
             Ok(Self {
                 s_table_root: Arc::new(root.map_directory(".stab")?),
                 _p: PhantomData,

@@ -22,7 +22,7 @@ pub trait PTableWriter: Sized {
     /// The writer type for a parallel chunk
     type Partition: PTablePartitionWriter;
     /// Create the primary table in the file
-    fn create(directory: &mut Directory<'static, File>, header: &Header) -> Result<Self>;
+    fn create(directory: &mut Directory<File>, header: &Header) -> Result<Self>;
     /// Split the primary table into parallel partitions
     fn split(&mut self, header: &Header, size_limit: Option<usize>)
         -> Result<Vec<Self::Partition>>;
@@ -53,7 +53,7 @@ pub trait PTableReader: Sized {
     /// The type for parallel reading one of the partition
     type Partition: PTablePartitionReader + Send;
     /// Create the reader instance
-    fn create(directory: &mut Directory<'static, File>, header: &Header) -> Result<Self>;
+    fn create(directory: &mut Directory<File>, header: &Header) -> Result<Self>;
     /// Split the reader to parallel chunks
     fn split(&mut self, header: &Header, size_limit: Option<usize>)
         -> Result<Vec<Self::Partition>>;

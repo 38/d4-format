@@ -13,14 +13,14 @@ use std::marker::PhantomData;
 
 /// The writer type for the simple sparse array based secondary table
 pub struct SimpleKeyValueWriter<R: Record>(
-    Directory<'static, File>,
+    Directory<File>,
     CompressionMethod,
     PhantomData<R>,
 );
 
 /// The partial writer type for the simple sparse array based secondary table
 pub struct SimpleKeyValuePartialWriter<R: Record> {
-    stream: Stream<'static, File>,
+    stream: Stream<File>,
     pending_record: Option<R>,
     compression: CompressionContext<R>,
 }
@@ -31,7 +31,7 @@ impl<R: Record> STableWriter for SimpleKeyValueWriter<R> {
         self.1 = CompressionMethod::Deflate(level);
         self
     }
-    fn create(root: &mut Directory<'static, File>, _header: &Header) -> Result<Self> {
+    fn create(root: &mut Directory<File>, _header: &Header) -> Result<Self> {
         Ok(SimpleKeyValueWriter(
             root.create_directory(".stab")?,
             Default::default(),

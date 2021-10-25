@@ -3,7 +3,7 @@ use std::fs::File;
 use std::io::Write;
 
 #[allow(clippy::print_literal)]
-pub fn dump_dir(dir: &Directory<'static, File>) {
+pub fn dump_dir(dir: &Directory<File>) {
     println!(
         "{:20}\t{:8}\t{}\t{}\n",
         "Name", "Type", "    Offset", "Primary-Size"

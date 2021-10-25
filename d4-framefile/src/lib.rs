@@ -13,8 +13,7 @@ pub mod mapped;
 //pub mod mode;
 
 use async_trait::async_trait;
-#[async_trait]
-pub trait AsyncReader {
-    fn seek(&mut self, pos: u64) -> std::io::Result<()>;
+#[async_trait(?Send)]
+pub trait AsyncRead {
     async fn read_async(&mut self, buf: &mut [u8]) -> std::io::Result<usize>;
 }

@@ -18,7 +18,7 @@ pub struct D4FileWriter<
     PT: PTableWriter = BitArrayWriter,
     ST: STableWriter = SimpleKeyValueWriter<RangeRecord>,
 > {
-    file_root: Directory<'static, File>,
+    file_root: Directory<File>,
     pub(crate) header: Header,
     pub(crate) p_table: PT,
     pub(crate) s_table: Option<ST>,
@@ -120,7 +120,7 @@ impl D4FileBuilder {
         &self.dict
     }
 
-    pub(crate) fn write_d4_header<P: AsRef<Path>>(path: P) -> Result<Directory<'static, File>> {
+    pub(crate) fn write_d4_header<P: AsRef<Path>>(path: P) -> Result<Directory<File>> {
         let mut target = OpenOptions::new()
             .create(true)
             .read(true)

@@ -4,13 +4,13 @@ use std::io::{Read, Result, Seek};
 #[cfg(all(feature = "mapped_io", not(target_arch = "wasm32")))]
 use std::fs::File;
 
-pub struct Blob<'a, T: 'a> {
-    file: RandFile<'a, T>,
+pub struct Blob<T> {
+    file: RandFile<T>,
     size: usize,
     offset: u64,
 }
 
-impl<'a, T: Read + Seek + 'a> Blob<'a, T> {
+impl<T: Read + Seek> Blob<T> {
     pub fn get_view(&self, offset: u64, size: usize) -> Self {
         let offset = self.offset + offset.min(self.size as u64);
         let size = (self.size - offset as usize).min(size);
@@ -34,14 +34,14 @@ impl<'a, T: Read + Seek + 'a> Blob<'a, T> {
     }
 }
 
-impl<'a, T> Blob<'a, T> {
-    pub(crate) fn new(file: RandFile<'a, T>, offset: u64, size: usize) -> Self {
+impl<T> Blob<T> {
+    pub(crate) fn new(file: RandFile<T>, offset: u64, size: usize) -> Self {
         Self { file, size, offset }
     }
 }
 
 #[cfg(all(feature = "mapped_io", not(target_arch = "wasm32")))]
-impl Blob<'_, File> {
+impl Blob<File> {
     pub fn mmap(&self) -> Result<impl AsRef<[u8]>> {
         self.file.mmap(self.offset, self.size)
     }

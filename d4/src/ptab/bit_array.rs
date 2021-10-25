@@ -63,7 +63,7 @@ impl PrimaryTableMode for Writer {
 pub struct PrimaryTable<M: PrimaryTableMode> {
     bit_width: usize,
     dictionary: Dictionary,
-    data: Blob<'static, File>,
+    data: Blob<File>,
     mapping_handle: Option<Arc<Mutex<M::HandleType>>>,
 }
 
@@ -153,7 +153,7 @@ impl<M: PrimaryTableMode> PrimaryTable<M> {
 }
 impl PrimaryTable<Writer> {
     pub(crate) fn create(
-        directory: &mut Directory<'static, File>,
+        directory: &mut Directory<File>,
         header: &Header,
     ) -> Result<Self> {
         let size = header.primary_table_size();
@@ -168,7 +168,7 @@ impl PrimaryTable<Writer> {
 }
 
 impl PrimaryTable<Reader> {
-    pub(crate) fn open(root_dir: &mut Directory<'static, File>, header: &Header) -> Result<Self> {
+    pub(crate) fn open(root_dir: &mut Directory<File>, header: &Header) -> Result<Self> {
         let chunk = root_dir.open_blob(".ptab")?;
         Ok(PrimaryTable {
             dictionary: header.dictionary.clone(),
@@ -390,7 +390,7 @@ impl PTablePartitionWriter for PartialPrimaryTable<Writer> {
 }
 impl PTableWriter for PrimaryTable<Writer> {
     type Partition = PartialPrimaryTable<Writer>;
-    fn create(directory: &mut Directory<'static, File>, header: &Header) -> Result<Self> {
+    fn create(directory: &mut Directory<File>, header: &Header) -> Result<Self> {
         PrimaryTable::<Writer>::create(directory, header)
     }
 
@@ -468,7 +468,7 @@ impl PTablePartitionReader for PartialPrimaryTable<Reader> {
 }
 impl PTableReader for PrimaryTable<Reader> {
     type Partition = PartialPrimaryTable<Reader>;
-    fn create(directory: &mut Directory<'static, File>, header: &Header) -> Result<Self> {
+    fn create(directory: &mut Directory<File>, header: &Header) -> Result<Self> {
         PrimaryTable::open(directory, header)
     }
 

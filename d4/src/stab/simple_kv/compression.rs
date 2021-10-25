@@ -62,7 +62,7 @@ impl<R: Record> CompressionContext<R> {
     pub(super) fn append_record(
         &mut self,
         record: Option<&R>,
-        stream: &mut Stream<'static, File>,
+        stream: &mut Stream<File>,
     ) -> Result<()> {
         match self {
             Self::NoCompression => {
