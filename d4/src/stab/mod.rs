@@ -7,16 +7,21 @@ use std::io::Result;
 
 use crate::header::Header;
 
-mod simple_kv;
+mod sparse_array;
 
-pub use simple_kv::RangeRecord;
+pub use sparse_array::RangeRecord;
 
-pub(crate) use simple_kv::{CompressionMethod, Record, RecordBlockParsingState, SimpleKvMetadata};
+pub(crate) use sparse_array::{
+    CompressionMethod, Record, RecordBlockParsingState, SparseArraryMetadata,
+};
+
+pub const SECONDARY_TABLE_NAME: &'static str = ".stab";
+pub const SECONDARY_TABLE_METADATA_NAME: &'static str = ".metadata";
 
 /// Any type that is used to write a secondary table for D4 file
-pub trait STableWriter: Sized {
+pub trait SecondaryTableWriter: Sized {
     /// The writer type to write a single parallel partition for the secondary table
-    type Partition: STablePartitionWriter;
+    type Partition: SecondaryTablePartWriter;
     /// Create the secondary table in the D4 file
     fn create(root: &mut Directory<File>, header: &Header) -> Result<Self>;
     /// Split the secondary table into parallel partitions
@@ -26,7 +31,7 @@ pub trait STableWriter: Sized {
 }
 
 /// A type that is used to write a single parallel partition of a secondary table
-pub trait STablePartitionWriter: Send {
+pub trait SecondaryTablePartWriter: Send {
     /// Encode a single value
     fn encode(&mut self, pos: u32, value: i32) -> Result<()>;
     /// Encode a range with same value
@@ -40,9 +45,9 @@ pub trait STablePartitionWriter: Send {
 }
 
 /// Type usd as a secondary table reader
-pub trait STableReader: Sized {
+pub trait SecondaryTableReader: Sized {
     /// The type used to read a single parallel partition
-    type Partition: STablePartitionReader;
+    type Partition: SecondaryTablePartReader;
     /// Create a new reader instance
     fn create(root: &mut Directory<File>, header: &Header) -> Result<Self>;
     /// Split the reader into parts
@@ -50,7 +55,7 @@ pub trait STableReader: Sized {
 }
 
 /// A type that can be used as a partition reader for a secondary table
-pub trait STablePartitionReader: Sized {
+pub trait SecondaryTablePartReader: Sized {
     /// The type for additional data used for the iterator interface
     type IteratorState: Sized;
     /// Decode the value at given location
@@ -68,8 +73,8 @@ pub trait STablePartitionReader: Sized {
 }
 
 /// The iterator over all the intervals
-pub struct RecordIterator<'a, S: STablePartitionReader>(&'a S, S::IteratorState);
-impl<'a, S: STablePartitionReader> RecordIterator<'a, S> {
+pub struct RecordIterator<'a, S: SecondaryTablePartReader>(&'a S, S::IteratorState);
+impl<'a, S: SecondaryTablePartReader> RecordIterator<'a, S> {
     /// Cast the record into the iterator state
     pub fn into_state(self) -> S::IteratorState {
         self.1
@@ -79,7 +84,7 @@ impl<'a, S: STablePartitionReader> RecordIterator<'a, S> {
         Self(parent, state)
     }
 }
-impl<'a, S: STablePartitionReader> Iterator for RecordIterator<'a, S> {
+impl<'a, S: SecondaryTablePartReader> Iterator for RecordIterator<'a, S> {
     type Item = (u32, u32, i32);
     fn next(&mut self) -> Option<Self::Item> {
         self.0.next_record(&mut self.1)
@@ -88,12 +93,12 @@ impl<'a, S: STablePartitionReader> Iterator for RecordIterator<'a, S> {
 
 #[cfg(all(feature = "mapped_io", not(target_arch = "wasm32")))]
 pub mod mapped {
-    use super::simple_kv;
-    pub use simple_kv::RangeRecord;
-    pub use simple_kv::SimpleKeyValuePartialReader;
-    pub use simple_kv::SimpleKeyValuePartialWriter;
-    pub use simple_kv::SimpleKeyValueReader;
-    pub use simple_kv::SimpleKeyValueWriter;
+    use super::sparse_array;
+    pub use sparse_array::RangeRecord;
+    pub use sparse_array::SparseArrayPartReader;
+    pub use sparse_array::SparseArrayPartWriter;
+    pub use sparse_array::SparseArrayReader;
+    pub use sparse_array::SparseArrayWriter;
 }
 
 #[cfg(all(feature = "mapped_io", not(target_arch = "wasm32")))]

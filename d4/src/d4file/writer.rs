@@ -8,7 +8,7 @@ use crate::chrom::Chrom;
 use crate::dict::Dictionary;
 use crate::header::Header;
 use crate::ptab::{BitArrayWriter, PTablePartitionWriter, PTableWriter};
-use crate::stab::{RangeRecord, STableWriter, SimpleKeyValueWriter};
+use crate::stab::{RangeRecord, SecondaryTableWriter, SparseArrayWriter};
 
 use super::FILE_MAGIC_NUM;
 
@@ -16,7 +16,7 @@ use super::FILE_MAGIC_NUM;
 #[allow(dead_code)]
 pub struct D4FileWriter<
     PT: PTableWriter = BitArrayWriter,
-    ST: STableWriter = SimpleKeyValueWriter<RangeRecord>,
+    ST: SecondaryTableWriter = SparseArrayWriter<RangeRecord>,
 > {
     file_root: Directory<File>,
     pub(crate) header: Header,
@@ -24,7 +24,7 @@ pub struct D4FileWriter<
     pub(crate) s_table: Option<ST>,
 }
 
-impl<PT: PTableWriter, ST: STableWriter> D4FileWriter<PT, ST> {
+impl<PT: PTableWriter, ST: SecondaryTableWriter> D4FileWriter<PT, ST> {
     /// Split the file writer into parts for parallel writing
     pub fn parallel_parts(
         &mut self,
@@ -32,7 +32,7 @@ impl<PT: PTableWriter, ST: STableWriter> D4FileWriter<PT, ST> {
     ) -> Result<
         Vec<(
             <PT as PTableWriter>::Partition,
-            <ST as STableWriter>::Partition,
+            <ST as SecondaryTableWriter>::Partition,
         )>,
     > {
         let p_table_parts = self.p_table.split(&self.header, size_limit)?;
@@ -54,7 +54,7 @@ impl<PT: PTableWriter, ST: STableWriter> D4FileWriter<PT, ST> {
     }
 }
 
-impl<PT: PTableWriter, ST: STableWriter> Drop for D4FileWriter<PT, ST> {
+impl<PT: PTableWriter, ST: SecondaryTableWriter> Drop for D4FileWriter<PT, ST> {
     fn drop(&mut self) {
         drop(std::mem::replace(&mut self.s_table, None));
     }
@@ -133,7 +133,9 @@ impl D4FileBuilder {
     }
 
     /// Create the D4 file writer for this file
-    pub fn create<PT: PTableWriter, ST: STableWriter>(&mut self) -> Result<D4FileWriter<PT, ST>> {
+    pub fn create<PT: PTableWriter, ST: SecondaryTableWriter>(
+        &mut self,
+    ) -> Result<D4FileWriter<PT, ST>> {
         let mut directory = Self::write_d4_header(self.path.as_path())?;
         let mut metadata_stream = directory.create_stream(".metadata", 512)?;
         let header = Header {

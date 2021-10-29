@@ -47,7 +47,7 @@ pub(crate) fn load_compressed_frame<'a, R: Record>(
     };
     if is_compressed {
         buffer.push(RecordBlock::CompressedBlock {
-            raw: unsafe { std::mem::transmute(data) },
+            raw: data,
             start: first_pos,
             limit: last_pos,
             block_count: block_count as usize,
@@ -55,7 +55,9 @@ pub(crate) fn load_compressed_frame<'a, R: Record>(
             decompressed: RefCell::new(vec![]),
         });
     } else {
-        buffer.push(RecordBlock::Block(unsafe { std::mem::transmute(data) }));
+        buffer.push(RecordBlock::Block(unsafe { 
+            std::slice::from_raw_parts(data.as_ptr() as *const R, block_count as usize) 
+        }));
     }
 }
 pub(crate) fn load_frame<'a, R: Record>(
@@ -119,8 +121,9 @@ mod mapped_io {
 
     use crate::{
         stab::{
-            simple_kv::{record_block::RecordBlock, Record},
-            RecordIterator, STablePartitionReader, STableReader, SimpleKvMetadata,
+            sparse_array::{record_block::RecordBlock, Record},
+            RecordIterator, SecondaryTablePartReader, SecondaryTableReader, SparseArraryMetadata,
+            SECONDARY_TABLE_METADATA_NAME, SECONDARY_TABLE_NAME,
         },
         Header,
     };
@@ -128,13 +131,13 @@ mod mapped_io {
     use super::RecordBlockParsingState;
 
     /// The reader for simple sparse array based secondary table
-    pub struct SimpleKeyValueReader<R: Record> {
+    pub struct SparseArrayReader<R: Record> {
         s_table_root: Arc<MappedDirectory>,
         _p: PhantomData<R>,
     }
 
     /// The parallel partial reader for simple sparse array based secondary table
-    pub struct SimpleKeyValuePartialReader<R: Record> {
+    pub struct SparseArrayPartReader<R: Record> {
         // We need to hold the mapped memory,
         // thus we have to hold a ticket of the root directory to prevent
         // the mapped memory from being unmapped
@@ -151,9 +154,11 @@ mod mapped_io {
         next: Option<R>,
     }
 
-    impl<R: Record> SimpleKeyValueReader<R> {
-        fn load_metadata(&mut self) -> Option<SimpleKvMetadata> {
-            let metadata = self.s_table_root.open_dir(".metadata")?;
+    impl<R: Record> SparseArrayReader<R> {
+        fn load_metadata(&mut self) -> Option<SparseArraryMetadata> {
+            let metadata = self
+                .s_table_root
+                .open_stream(SECONDARY_TABLE_METADATA_NAME)?;
             let metadata = String::from_utf8_lossy(metadata.copy_content().as_ref()).to_string();
             let actual_data = metadata.trim_end_matches(|c| c == '\0');
             serde_json::from_str(actual_data).ok()
@@ -166,7 +171,7 @@ mod mapped_io {
             for stream in metadata.streams() {
                 let chr = &stream.chr;
                 // For each stream under the stab directory
-                let stream = self.s_table_root.open_dir(&stream.id).unwrap();
+                let stream = self.s_table_root.open_stream(&stream.id).unwrap();
 
                 let mut next_frame = Some(stream.get_primary_frame());
 
@@ -196,7 +201,7 @@ mod mapped_io {
         }
     }
 
-    impl<R: Record> SimpleKeyValuePartialReader<R> {
+    impl<R: Record> SparseArrayPartReader<R> {
         #[inline(always)]
         fn load_cache(&mut self, inc: bool) {
             if inc {
@@ -279,7 +284,7 @@ mod mapped_io {
         }
     }
 
-    impl<R: Record> STablePartitionReader for SimpleKeyValuePartialReader<R> {
+    impl<R: Record> SecondaryTablePartReader for SparseArrayPartReader<R> {
         type IteratorState = (usize, usize);
         fn iter(&self) -> RecordIterator<Self> {
             RecordIterator(self, self.cursor)
@@ -386,11 +391,11 @@ mod mapped_io {
         }
     }
 
-    impl<R: Record> STableReader for SimpleKeyValueReader<R> {
-        type Partition = SimpleKeyValuePartialReader<R>;
+    impl<R: Record> SecondaryTableReader for SparseArrayReader<R> {
+        type Partition = SparseArrayPartReader<R>;
         fn create(root: &mut Directory<File>, _header: &Header) -> Result<Self> {
             Ok(Self {
-                s_table_root: Arc::new(root.map_directory(".stab")?),
+                s_table_root: Arc::new(root.map_directory(SECONDARY_TABLE_NAME)?),
                 _p: PhantomData,
             })
         }
@@ -538,17 +543,13 @@ mod mapped_io {
             }
             let mut buffer: Vec<_> = displacement
                 .into_iter()
-                .zip(
-                    partitions
-                        .into_iter()
-                        .map(|part| SimpleKeyValuePartialReader {
-                            _root: root.clone(),
-                            records: unsafe { std::mem::transmute(part.blocks) },
-                            cursor: (0, 0),
-                            next: None,
-                            last_pos: None,
-                        }),
-                )
+                .zip(partitions.into_iter().map(|part| SparseArrayPartReader {
+                    _root: root.clone(),
+                    records: unsafe { std::mem::transmute(part.blocks) },
+                    cursor: (0, 0),
+                    next: None,
+                    last_pos: None,
+                }))
                 .collect();
             buffer.sort_by_key(|item| item.0);
             Ok(buffer.into_iter().map(|item| item.1).collect())

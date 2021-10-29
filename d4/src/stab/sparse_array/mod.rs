@@ -10,7 +10,7 @@ use serde_derive::{Deserialize, Serialize};
 
 /// The metadata of the Key Value table
 #[derive(Serialize, Deserialize)]
-pub(crate) struct SimpleKvMetadata {
+pub(crate) struct SparseArraryMetadata {
     /// The format identifier
     format: String,
     /// The record format identifier
@@ -29,7 +29,7 @@ pub(crate) struct StreamInfo {
     pub(crate) range: (u32, u32),
 }
 
-impl SimpleKvMetadata {
+impl SparseArraryMetadata {
     pub(crate) fn compression(&self) -> CompressionMethod {
         self.compression
     }
@@ -48,9 +48,9 @@ impl SimpleKvMetadata {
 
 pub use compression::CompressionMethod;
 #[cfg(all(feature = "mapped_io", not(target_arch = "wasm32")))]
-pub use reader::{SimpleKeyValuePartialReader, SimpleKeyValueReader};
+pub use reader::{SparseArrayPartReader, SparseArrayReader};
 #[cfg(all(feature = "mapped_io", not(target_arch = "wasm32")))]
-pub use writer::{SimpleKeyValuePartialWriter, SimpleKeyValueWriter};
+pub use writer::{SparseArrayPartWriter, SparseArrayWriter};
 
 pub(crate) use reader::RecordBlockParsingState;
 pub use record::{RangeRecord, Record};

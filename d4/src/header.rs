@@ -18,6 +18,7 @@ impl Default for Header {
 }
 
 impl Header {
+    pub const HEADER_STREAM_NAME: &'static str = ".metadata";
     /// Build a new header
     pub fn new() -> Self {
         Header {

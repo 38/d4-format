@@ -82,9 +82,9 @@ impl Record for RangeRecord {
             None
         } else {
             Some(Self {
-                left: (new_left + 1).max(self.left),
-                size_enc: (self.effective_range().1 - new_left - 1) as u16,
-                value: self.value,
+                left: (new_left + 1).max(self.left).to_le(),
+                size_enc: ((self.effective_range().1 - new_left - 1) as u16).to_le(),
+                value: self.value.to_le(),
             })
         }
     }
@@ -94,9 +94,9 @@ impl Record for RangeRecord {
             None
         } else {
             Some(Self {
-                left: self.left,
-                size_enc: (new_right - self.effective_range().0 - 1) as u16,
-                value: self.value,
+                left: self.left.to_le(),
+                size_enc: ((new_right - self.effective_range().0 - 1) as u16).to_le(),
+                value: self.value.to_le(),
             })
         }
     }
@@ -108,8 +108,8 @@ impl Record for RangeRecord {
     #[inline(always)]
     fn encode(this: Option<&mut Self>, pos: u32, value: i32) -> Option<Self> {
         if let Some(this) = this {
-            if this.value == value && this.left + this.size_enc as u32 == pos && this.size_enc != !0
-            {
+            let (_, right) = this.effective_range();
+            if this.value == value && right == pos && this.size_enc != u16::MAX {
                 this.size_enc += 1;
                 return None;
             }
@@ -132,15 +132,15 @@ impl Record for RangeRecord {
             let size = (right - left).min(65536);
             left += size;
             ops(Self {
-                left: left + 1,
-                size_enc: (size - 1) as u16,
-                value,
+                left: (left + 1).to_le(),
+                size_enc: ((size - 1) as u16).to_le(),
+                value: value.to_le(),
             })?;
         }
         Ok(())
     }
 
     fn is_valid(&self) -> bool {
-        self.left > 0
+        self.left.to_le() > 0
     }
 }

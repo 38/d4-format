@@ -62,7 +62,7 @@ impl MappedStreamFrame {
 }
 
 impl MappedDirectory {
-    pub fn open_dir(&self, name: &str) -> Option<MappedStream> {
+    pub fn open_stream(&self, name: &str) -> Option<MappedStream> {
         if let Some((ptr, size)) = self.streams.get(name) {
             Some(unsafe { MappedStream::new(std::mem::transmute(*ptr), *size) })
         } else {

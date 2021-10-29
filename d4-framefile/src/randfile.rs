@@ -90,7 +90,8 @@ impl<T> Clone for RandFile<T> {
 
 impl<T> RandFile<T> {
     pub fn clone_inner(&self) -> Result<T>
-    where T: Clone
+    where
+        T: Clone,
     {
         let inner = self
             .inner
@@ -289,9 +290,11 @@ pub mod mapping {
     #[derive(Clone)]
     pub struct MappingHandleMut {
         handle: Arc<SyncGuard>,
-        base_addr: usize,
+        base_addr: *mut u8,
         size: usize,
     }
+
+    unsafe impl Send for MappingHandleMut {}
 
     impl AsRef<[u8]> for MappingHandleMut {
         fn as_ref(&self) -> &[u8] {
@@ -301,9 +304,7 @@ pub mod mapping {
 
     impl AsMut<[u8]> for MappingHandleMut {
         fn as_mut(&mut self) -> &mut [u8] {
-            unsafe {
-                std::slice::from_raw_parts_mut(std::mem::transmute(self.base_addr), self.size)
-            }
+            unsafe { std::slice::from_raw_parts_mut(self.base_addr, self.size) }
         }
     }
 
@@ -320,7 +321,7 @@ pub mod mapping {
                     .map_mut(&*inner)?
             };
             drop(inner);
-            let base_addr = mapped.as_mut().as_mut_ptr() as usize;
+            let base_addr = mapped.as_mut().as_mut_ptr();
             Ok(MappingHandleMut {
                 handle: Arc::new(SyncGuard(mapped)),
                 base_addr,

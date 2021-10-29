@@ -1,14 +1,7 @@
 use smallvec::SmallVec;
 
 use super::D4TrackReader;
-use crate::{
-    ptab::{
-        BitArrayPartReader, BitArrayReader, DecodeResult, Decoder, MatrixDecoder,
-        PTablePartitionReader, PTableReader,
-    },
-    stab::{STablePartitionReader, STableReader},
-    task::{IntoTaskVec, Task, TaskContext, TaskOutputVec},
-};
+use crate::{ptab::{BitArrayPartReader, BitArrayReader, DecodeBlockHandle, DecodeResult, Decoder, MatrixDecoder, PrimaryTablePartReader, PrimaryTableReader}, stab::{SecondaryTablePartReader, SecondaryTableReader}, task::{IntoTaskVec, Task, TaskContext, TaskOutputVec}};
 
 use std::{
     cmp::Ordering,
@@ -131,12 +124,41 @@ pub trait MultiTrackReader {
     }
 }
 
-pub struct D4FilePartition<P: PTableReader, S: STableReader> {
+pub struct D4FilePartition<P: PrimaryTableReader, S: SecondaryTableReader> {
     primary: P::Partition,
     secondary: S::Partition,
 }
 
-impl<P: PTableReader, S: STableReader> MultiTrackPartitionReader for D4FilePartition<P, S> {
+struct ScanPartitionBlockHandler<'a, 'b, S: SecondaryTableReader, DS> {
+    secondary: &'a mut S::Partition,
+    active_handles: &'a mut [&'b mut DS],
+}
+
+impl <'a, 'b, S:SecondaryTableReader, DS> DecodeBlockHandle for ScanPartitionBlockHandler<'a, 'b, S, DS> 
+where
+    DS: DataScanner<Once<i32>>
+{
+    #[inline(always)]
+    fn handle(&mut self, pos: usize, res: DecodeResult) {
+        let value = match res {
+            DecodeResult::Definitely(value) => value,
+            DecodeResult::Maybe(back) => {
+                if let Some(value) = self.secondary.decode(pos as u32) {
+                    value
+                } else {
+                    back
+                }
+            }
+        };
+        for handle in self.active_handles.iter_mut() {
+            handle.feed_row(pos as u32, &mut std::iter::once(value));
+        }
+    }
+}
+
+impl<P: PrimaryTableReader, S: SecondaryTableReader> MultiTrackPartitionReader
+    for D4FilePartition<P, S>
+{
     type RowType = Once<i32>;
 
     fn scan_partition<DS: DataScanner<Self::RowType>>(&mut self, handles: &mut [DS]) {
@@ -145,24 +167,14 @@ impl<P: PTableReader, S: STableReader> MultiTrackPartitionReader for D4FileParti
 
         scan_partition_impl(handles, |part_left, part_right, active_handles| {
             if per_base {
+                let block_handler = ScanPartitionBlockHandler::<S, DS> {
+                    secondary: &mut self.secondary,
+                    active_handles,
+                };
                 decoder.decode_block(
                     part_left as usize,
                     (part_right - part_left) as usize,
-                    |pos, res| {
-                        let value = match res {
-                            DecodeResult::Definitely(value) => value,
-                            DecodeResult::Maybe(back) => {
-                                if let Some(value) = self.secondary.decode(pos as u32) {
-                                    value
-                                } else {
-                                    back
-                                }
-                            }
-                        };
-                        for handle in active_handles.iter_mut() {
-                            handle.feed_row(pos as u32, &mut std::iter::once(value));
-                        }
-                    },
+                    block_handler,
                 );
             } else {
                 let iter = self.secondary.seek_iter(part_left);
@@ -194,7 +206,7 @@ impl<P: PTableReader, S: STableReader> MultiTrackPartitionReader for D4FileParti
 }
 
 /// Of course single track reader can be unified here
-impl<P: PTableReader, S: STableReader> MultiTrackReader for D4TrackReader<P, S> {
+impl<P: PrimaryTableReader, S: SecondaryTableReader> MultiTrackReader for D4TrackReader<P, S> {
     type PartitionType = D4FilePartition<P, S>;
     fn split(&mut self, size_limit: Option<usize>) -> Result<Vec<Self::PartitionType>> {
         Ok(self
@@ -205,11 +217,11 @@ impl<P: PTableReader, S: STableReader> MultiTrackReader for D4TrackReader<P, S> 
     }
 }
 
-pub struct D4MatrixReader<S: STableReader> {
+pub struct D4MatrixReader<S: SecondaryTableReader> {
     tracks: Vec<D4TrackReader<BitArrayReader, S>>,
 }
 
-pub struct D4MatrixReaderPartition<S: STableReader> {
+pub struct D4MatrixReaderPartition<S: SecondaryTableReader> {
     primary: Vec<BitArrayPartReader>,
     secondary: Vec<S::Partition>,
 }
@@ -249,7 +261,7 @@ impl Iterator for MatrixRow {
 }
 
 impl ExactSizeIterator for MatrixRow {}
-impl<S: STableReader> D4MatrixReaderPartition<S> {
+impl<S: SecondaryTableReader> D4MatrixReaderPartition<S> {
     fn decode_secondary<H: FnMut(u32, &mut MatrixRow)>(
         &mut self,
         pos: u32,
@@ -388,7 +400,7 @@ impl<S: STableReader> D4MatrixReaderPartition<S> {
     }
 }
 
-impl<S: STableReader> MultiTrackPartitionReader for D4MatrixReaderPartition<S> {
+impl<S: SecondaryTableReader> MultiTrackPartitionReader for D4MatrixReaderPartition<S> {
     type RowType = MatrixRow;
 
     fn scan_partition<DS: DataScanner<Self::RowType>>(&mut self, handles: &mut [DS]) {
@@ -417,7 +429,7 @@ impl<S: STableReader> MultiTrackPartitionReader for D4MatrixReaderPartition<S> {
     }
 }
 
-impl<S: STableReader> D4MatrixReader<S> {
+impl<S: SecondaryTableReader> D4MatrixReader<S> {
     pub fn chrom_regions(&self) -> Vec<(&str, u32, u32)> {
         self.tracks[0].chrom_regions()
     }
@@ -448,7 +460,7 @@ impl<S: STableReader> D4MatrixReader<S> {
     }
 }
 
-impl<S: STableReader> MultiTrackReader for D4MatrixReader<S> {
+impl<S: SecondaryTableReader> MultiTrackReader for D4MatrixReader<S> {
     type PartitionType = D4MatrixReaderPartition<S>;
 
     fn split(&mut self, size_limit: Option<usize>) -> Result<Vec<Self::PartitionType>> {

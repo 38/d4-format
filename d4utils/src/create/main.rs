@@ -1,6 +1,6 @@
 use clap::{load_yaml, App, ArgMatches};
 use d4::ptab::PTablePartitionWriter;
-use d4::stab::STablePartitionWriter;
+use d4::stab::SecondaryTablePartWriter;
 use d4::{Chrom, D4FileWriter, Dictionary};
 use d4_hts::{BamFile, DepthIter};
 use log::info;

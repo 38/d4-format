@@ -1,7 +1,7 @@
 use clap::{load_yaml, App};
 use d4::{
-    ptab::{DecodeResult, PTablePartitionReader},
-    stab::STablePartitionReader,
+    ptab::{DecodeResult, PrimaryTablePartReader},
+    stab::SecondaryTablePartReader,
     D4TrackReader,
 };
 use regex::Regex;

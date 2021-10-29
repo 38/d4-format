@@ -9,6 +9,8 @@ use std::io::Result;
 
 mod bit_array;
 
+pub const PRIMARY_TABLE_NAME: &'static str = ".ptab";
+
 /// The result of decoding a value from a primary table
 pub enum DecodeResult {
     /// Value at this location is definitely the value returned
@@ -49,9 +51,9 @@ pub trait Encoder {
 }
 
 /// Type that reads a D4 primary table
-pub trait PTableReader: Sized {
+pub trait PrimaryTableReader: Sized {
     /// The type for parallel reading one of the partition
-    type Partition: PTablePartitionReader + Send;
+    type Partition: PrimaryTablePartReader + Send;
     /// Create the reader instance
     fn create(directory: &mut Directory<File>, header: &Header) -> Result<Self>;
     /// Split the reader to parallel chunks
@@ -60,7 +62,7 @@ pub trait PTableReader: Sized {
 }
 
 /// The type that decodes one part of the primary table in parallel
-pub trait PTablePartitionReader: Send {
+pub trait PrimaryTablePartReader: Send {
     /// The decoder type
     type DecoderType: Decoder;
     /// Create decoder for current chunk
@@ -71,19 +73,35 @@ pub trait PTablePartitionReader: Send {
     fn bit_width(&self) -> usize;
 }
 
+/// Logically this is not needed, as it's just FnMut. 
+/// Unfortunately, today's Rust doesn't allow us to put 
+/// inline directive for closure. Thus that makes the code
+/// outlines the handler for some case. 
+/// We need to find a place to put inline directive, and this
+/// is the reason why we have this function here.
+pub trait DecodeBlockHandle {
+    fn handle(&mut self, size: usize, result: DecodeResult);
+}
+
+impl <F: FnMut(usize, DecodeResult)> DecodeBlockHandle for F {
+    fn handle(&mut self, size: usize, result: DecodeResult) {
+        self(size, result)
+    }
+}
+
 /// Any type that used for decoding the primary table
 pub trait Decoder {
     /// Decode the value at one location
     fn decode(&mut self, pos: usize) -> DecodeResult;
     /// Decode a block of values - this is just a default implementation
-    fn decode_block<F: FnMut(usize, DecodeResult)>(
+    fn decode_block<F: DecodeBlockHandle>(
         &mut self,
         pos: usize,
         count: usize,
         mut handle: F,
     ) {
         for idx in 0..count {
-            handle(pos + idx, self.decode(pos + idx));
+            handle.handle(pos + idx, self.decode(pos + idx));
         }
     }
 }

@@ -271,7 +271,7 @@ impl<T: Write + Seek> Stream<T> {
 
             if bytes_can_write == 0 {
                 callback(self);
-                let current_frame = std::mem::replace(&mut self.current_frame, None);
+                let current_frame = self.current_frame.take();
                 self.current_frame =
                     Some(Frame::alloc_new_frame(current_frame, &mut self.file, 0)?);
                 if self.frame_size > 0 && self.pre_alloc {

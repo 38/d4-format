@@ -229,8 +229,9 @@ impl<T: Read + Write + Seek> Directory<T> {
         Ok(stream)
     }
 }
+
+#[cfg(all(feature = "mapped_io", not(target_arch = "wasm32")))]
 impl Directory<File> {
-    #[cfg(all(feature = "mapped_io", not(target_arch = "wasm32")))]
     pub fn copy_directory_from_file<T: Read + Seek>(
         &mut self,
         name: &str,
@@ -255,10 +256,7 @@ impl Directory<File> {
         source.seek(SeekFrom::Start(offset))?;
         source.read_exact(object_data.as_mut())
     }
-}
 
-impl Directory<File> {
-    #[cfg(all(feature = "mapped_io", not(target_arch = "wasm32")))]
     pub fn map_directory(&self, name: &str) -> Result<MappedDirectory> {
         let inner = self
             .0

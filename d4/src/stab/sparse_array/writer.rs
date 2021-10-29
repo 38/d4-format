@@ -1,48 +1,44 @@
 use d4_framefile::{Directory, Stream};
 
-use crate::stab::{STablePartitionWriter, STableWriter};
+use crate::stab::{
+    SecondaryTablePartWriter, SecondaryTableWriter, SECONDARY_TABLE_METADATA_NAME,
+    SECONDARY_TABLE_NAME,
+};
 use crate::Header;
 
 use super::compression::{CompressionContext, CompressionMethod};
 use super::record::Record;
-use super::SimpleKvMetadata;
+use super::SparseArraryMetadata;
 
 use std::fs::File;
 use std::io::Result;
 use std::marker::PhantomData;
 
 /// The writer type for the simple sparse array based secondary table
-pub struct SimpleKeyValueWriter<R: Record>(
-    Directory<File>,
-    CompressionMethod,
-    PhantomData<R>,
-);
+pub struct SparseArrayWriter<R: Record>(Directory<File>, CompressionMethod, PhantomData<R>);
 
 /// The partial writer type for the simple sparse array based secondary table
-pub struct SimpleKeyValuePartialWriter<R: Record> {
+pub struct SparseArrayPartWriter<R: Record> {
     stream: Stream<File>,
     pending_record: Option<R>,
     compression: CompressionContext<R>,
 }
 
-impl<R: Record> STableWriter for SimpleKeyValueWriter<R> {
-    type Partition = SimpleKeyValuePartialWriter<R>;
+impl<R: Record> SecondaryTableWriter for SparseArrayWriter<R> {
+    type Partition = SparseArrayPartWriter<R>;
     fn enable_deflate_encoding(&mut self, level: u32) -> &mut Self {
         self.1 = CompressionMethod::Deflate(level);
         self
     }
     fn create(root: &mut Directory<File>, _header: &Header) -> Result<Self> {
-        Ok(SimpleKeyValueWriter(
-            root.create_directory(".stab")?,
+        Ok(SparseArrayWriter(
+            root.create_directory(SECONDARY_TABLE_NAME)?,
             Default::default(),
             PhantomData,
         ))
     }
-    fn split(
-        &mut self,
-        partitions: &[(&str, u32, u32)],
-    ) -> Result<Vec<SimpleKeyValuePartialWriter<R>>> {
-        let metadata = SimpleKvMetadata {
+    fn split(&mut self, partitions: &[(&str, u32, u32)]) -> Result<Vec<SparseArrayPartWriter<R>>> {
+        let metadata = SparseArraryMetadata {
             format: "SimpleKV".to_string(),
             record_format: R::FORMAT_NAME.to_string(),
             partitions: {
@@ -53,13 +49,13 @@ impl<R: Record> STableWriter for SimpleKeyValueWriter<R> {
             },
             compression: self.1,
         };
-        let mut metadata_stream = self.0.create_stream(".metadata", 512)?;
+        let mut metadata_stream = self.0.create_stream(SECONDARY_TABLE_METADATA_NAME, 512)?;
         metadata_stream.write(serde_json::to_string(&metadata).unwrap().as_bytes())?;
         let compression = self.1;
         Ok(partitions
             .iter()
             .enumerate()
-            .map(|(idx, _)| SimpleKeyValuePartialWriter {
+            .map(|(idx, _)| SparseArrayPartWriter {
                 stream: self
                     .0
                     .create_stream(format!("{}", idx).as_ref(), 512)
@@ -71,7 +67,7 @@ impl<R: Record> STableWriter for SimpleKeyValueWriter<R> {
     }
 }
 
-impl<R: Record> STablePartitionWriter for SimpleKeyValuePartialWriter<R> {
+impl<R: Record> SecondaryTablePartWriter for SparseArrayPartWriter<R> {
     #[inline(always)]
     fn flush(&mut self) -> Result<()> {
         if let Some(record) = self.pending_record {

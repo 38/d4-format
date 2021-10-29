@@ -106,16 +106,6 @@ where
     T::Output: Clone,
 {
     open_file_parse_region_and_then(matches, |inputs, region_spec| {
-        /*
-          let tasks: Vec<_> = region_spec
-                .iter()
-                .map(|(chr, begin, end)| {
-                    VectorStat::create_vector_task(inputs.len(), T::new(chr, *begin, *end))
-                })
-                .collect();
-            let mut inputs = D4MatrixReader::new(inputs)?;
-            Ok(TaskContext::new(&mut inputs, tasks)?.run())
-        */
         let mut ret = vec![];
         for mut input in inputs {
             let result = T::create_task(&mut input, &region_spec)?.run();

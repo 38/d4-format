@@ -152,10 +152,7 @@ impl<M: PrimaryTableMode> PrimaryTable<M> {
     }
 }
 impl PrimaryTable<Writer> {
-    pub(crate) fn create(
-        directory: &mut Directory<File>,
-        header: &Header,
-    ) -> Result<Self> {
+    pub(crate) fn create(directory: &mut Directory<File>, header: &Header) -> Result<Self> {
         let size = header.primary_table_size();
         let data = directory.create_blob(".ptab", size)?;
         Ok(PrimaryTable {
@@ -169,7 +166,7 @@ impl PrimaryTable<Writer> {
 
 impl PrimaryTable<Reader> {
     pub(crate) fn open(root_dir: &mut Directory<File>, header: &Header) -> Result<Self> {
-        let chunk = root_dir.open_blob(".ptab")?;
+        let chunk = root_dir.open_blob(PRIMARY_TABLE_NAME)?;
         Ok(PrimaryTable {
             dictionary: header.dictionary.clone(),
             bit_width: header.dictionary.bit_width(),
@@ -408,8 +405,8 @@ impl Decoder for PrimaryTableCodec<Reader> {
     fn decode(&mut self, offset: usize) -> DecodeResult {
         PrimaryTableCodec::<Reader>::decode(self, offset)
     }
-    #[inline(always)]
-    fn decode_block<F: FnMut(usize, DecodeResult)>(
+
+    fn decode_block<F: DecodeBlockHandle>(
         &mut self,
         pos: usize,
         count: usize,
@@ -417,7 +414,7 @@ impl Decoder for PrimaryTableCodec<Reader> {
     ) {
         if self.bit_width == 0 {
             for pos in pos..pos + count {
-                handle(pos, DecodeResult::Maybe(self.dict.first_value()));
+                handle.handle(pos, DecodeResult::Maybe(self.dict.first_value()));
             }
         } else {
             let actual_offset = pos - self.base_offset;
@@ -448,13 +445,13 @@ impl Decoder for PrimaryTableCodec<Reader> {
                         None => DecodeResult::Maybe(0),
                     }
                 };
-                handle(pos + idx, result);
+                handle.handle(pos + idx, result);
             }
         }
     }
 }
 
-impl PTablePartitionReader for PartialPrimaryTable<Reader> {
+impl PrimaryTablePartReader for PartialPrimaryTable<Reader> {
     type DecoderType = PrimaryTableCodec<Reader>;
     fn bit_width(&self) -> usize {
         self.bit_width
@@ -466,7 +463,7 @@ impl PTablePartitionReader for PartialPrimaryTable<Reader> {
         PartialPrimaryTable::region(self)
     }
 }
-impl PTableReader for PrimaryTable<Reader> {
+impl PrimaryTableReader for PrimaryTable<Reader> {
     type Partition = PartialPrimaryTable<Reader>;
     fn create(directory: &mut Directory<File>, header: &Header) -> Result<Self> {
         PrimaryTable::open(directory, header)

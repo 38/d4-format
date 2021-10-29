@@ -3,8 +3,13 @@ use flate2::read::DeflateDecoder;
 use std::cell::RefCell;
 use std::io::{Read, Result};
 
+/// The secondary table is represented by a list of record blocks
+/// Each record blocks carries multiple records.
 pub(crate) enum RecordBlock<'a, R: Record> {
+    /// The record block is backed by a memory region
     Block(&'a [R]),
+    /// The record block is backed by a memory region but compressed
+    /// We gradually decompress the data block when it's need
     CompressedBlock {
         raw: &'a [u8],
         decompressed: RefCell<Vec<R>>,
@@ -13,7 +18,11 @@ pub(crate) enum RecordBlock<'a, R: Record> {
         limit: u32,
         block_count: usize,
     },
+    /// The record block that carried by a owned vector of records
     OwnedBlock(Vec<R>),
+    /// A block that has only one record. This is useful when a record
+    /// is across the frame boundary, so that we need to assemble the record
+    /// in memory
     Record(R),
 }
 impl<'a, R: Record> RecordBlock<'a, R> {
@@ -84,7 +93,19 @@ impl<'a, R: Record> AsRef<[R]> for RecordBlock<'a, R> {
                 decompressed,
                 unused,
                 ..
-            } => unsafe { std::mem::transmute(&decompressed.borrow()[*unused..]) },
+            } => unsafe { 
+                // The only way that decompressed data gets modified is
+                // call self.decompress. However, when we call as_ref, 
+                // at this point, self.decompress(-1) has been called already
+                // which indicates we have fully decompressed the data block
+                // at this point. Thus, nothing can be changed after this
+                // reference be returned. 
+                // Thus the data inside the decompressed RefCell is logically
+                // immutable since this point.
+                // So it won't volidate the borrow rule even we drop the RefCell
+                // ticket.
+                std::mem::transmute(&decompressed.borrow()[*unused..]) 
+            },
             Self::OwnedBlock(blk) => blk.as_ref(),
         }
     }
@@ -192,7 +213,6 @@ impl<'a, R: Record> RecordBlock<'a, R> {
         }
     }
     pub fn range(&self) -> (u32, u32) {
-        //self.decompress(1).unwrap();
         match self {
             Self::Block(what) => (
                 what.first().unwrap().effective_range().0,

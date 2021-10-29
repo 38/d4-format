@@ -5,16 +5,17 @@ use std::{
 
 use crate::{
     d4file::validate_header,
-    stab::{CompressionMethod, RangeRecord, Record, RecordBlockParsingState, SimpleKvMetadata},
-    Dictionary, Header,
+    ptab::PRIMARY_TABLE_NAME,
+    stab::{
+        CompressionMethod, RangeRecord, Record, RecordBlockParsingState, SparseArraryMetadata,
+        SECONDARY_TABLE_METADATA_NAME, SECONDARY_TABLE_NAME,
+    },
+    Chrom, Dictionary, Header,
 };
 use d4_framefile::{Blob, Directory, OpenResult, Stream};
 
 #[cfg(feature = "http_reader")]
 pub mod http;
-
-/*#[cfg(feature = "wasm")]
-pub mod wasm;*/
 
 struct DataStreamEntry<R: Read + Seek>(Directory<R>, String);
 
@@ -172,6 +173,9 @@ impl<R: Read + Seek> D4TrackView<R> {
 }
 
 impl<R: Read + Seek> D4TrackReader<R> {
+    pub fn chrom_list(&self) -> &[Chrom] {
+        self.header.chrom_list()
+    }
     pub fn get_view(&mut self, chrom: &str, begin: u32, end: u32) -> Result<D4TrackView<R>> {
         let primary_offset = self.header.primary_table_offset_of_chrom(chrom);
         let primary_size = self.header.primary_table_size_of_chrom(chrom);
@@ -221,16 +225,16 @@ impl<R: Read + Seek> D4TrackReader<R> {
             file_root
         };
 
-        let header_stream = track_root.open_stream(".metadata")?;
+        let header_stream = track_root.open_stream(Header::HEADER_STREAM_NAME)?;
         let header = Header::read(header_stream)?;
-        let primary_table = track_root.open_blob(".ptab")?;
+        let primary_table = track_root.open_blob(PRIMARY_TABLE_NAME)?;
 
         let chrom_list = header.chrom_list();
 
         let (secondary_table, compression) = {
-            let root = track_root.open_directory(".stab")?;
-            let metadata: SimpleKvMetadata = {
-                let mut stream = root.open_stream(".metadata")?;
+            let root = track_root.open_directory(SECONDARY_TABLE_NAME)?;
+            let metadata: SparseArraryMetadata = {
+                let mut stream = root.open_stream(SECONDARY_TABLE_METADATA_NAME)?;
                 let mut buf = vec![];
                 loop {
                     let mut buffer = [0; 4096];

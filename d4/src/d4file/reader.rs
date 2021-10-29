@@ -6,13 +6,13 @@ use std::path::Path;
 
 use crate::find_tracks_in_file;
 use crate::header::Header;
-use crate::ptab::{BitArrayReader, PTablePartitionReader, PTableReader};
-use crate::stab::{RangeRecord, STableReader, SimpleKeyValueReader};
+use crate::ptab::{BitArrayReader, PrimaryTablePartReader, PrimaryTableReader};
+use crate::stab::{RangeRecord, SecondaryTableReader, SparseArrayReader};
 
 /// The reader that reads a D4 file
 pub struct D4TrackReader<
-    P: PTableReader = BitArrayReader,
-    S: STableReader = SimpleKeyValueReader<RangeRecord>,
+    P: PrimaryTableReader = BitArrayReader,
+    S: SecondaryTableReader = SparseArrayReader<RangeRecord>,
 > {
     _root: Directory<File>,
     header: Header,
@@ -20,7 +20,7 @@ pub struct D4TrackReader<
     s_table: S,
 }
 
-impl<P: PTableReader, S: STableReader> D4TrackReader<P, S> {
+impl<P: PrimaryTableReader, S: SecondaryTableReader> D4TrackReader<P, S> {
     /// Split the input D4 file into small chunks
     pub fn split(
         &mut self,
@@ -46,8 +46,8 @@ impl<P: PTableReader, S: STableReader> D4TrackReader<P, S> {
     pub fn create_reader_for_root(mut root: Directory<File>) -> Result<Self> {
         let stream = root.open_stream(".metadata")?;
         let header = Header::read(stream)?;
-        let p_table = PTableReader::create(&mut root, &header)?;
-        let s_table = STableReader::create(&mut root, &header)?;
+        let p_table = PrimaryTableReader::create(&mut root, &header)?;
+        let s_table = SecondaryTableReader::create(&mut root, &header)?;
         Ok(Self {
             _root: root,
             header,

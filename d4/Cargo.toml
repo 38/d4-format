@@ -58,6 +58,7 @@ writer = ["mapped_io"]
 http_reader = ["reqwest"]
 wasm = ["wasm-bindgen", "js-sys", "web-sys"]
 default = ["depth_profiler", "task", "writer", "http_reader"]
+seq-task = []
 
 [dev-dependencies]
 env_logger = "*"
