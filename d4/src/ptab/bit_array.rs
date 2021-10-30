@@ -406,12 +406,7 @@ impl Decoder for PrimaryTableCodec<Reader> {
         PrimaryTableCodec::<Reader>::decode(self, offset)
     }
 
-    fn decode_block<F: DecodeBlockHandle>(
-        &mut self,
-        pos: usize,
-        count: usize,
-        mut handle: F,
-    ) {
+    fn decode_block<F: DecodeBlockHandle>(&mut self, pos: usize, count: usize, mut handle: F) {
         if self.bit_width == 0 {
             for pos in pos..pos + count {
                 handle.handle(pos, DecodeResult::Maybe(self.dict.first_value()));

@@ -55,8 +55,8 @@ pub(crate) fn load_compressed_frame<'a, R: Record>(
             decompressed: RefCell::new(vec![]),
         });
     } else {
-        buffer.push(RecordBlock::Block(unsafe { 
-            std::slice::from_raw_parts(data.as_ptr() as *const R, block_count as usize) 
+        buffer.push(RecordBlock::Block(unsafe {
+            std::slice::from_raw_parts(data.as_ptr() as *const R, block_count as usize)
         }));
     }
 }

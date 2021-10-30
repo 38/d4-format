@@ -370,7 +370,12 @@ impl<T: Read + Seek> Stream<T> {
     }
 }
 impl<T: Read + Seek> Stream<T> {
-    pub(crate) fn open_ro(mut file: RandFile<T>, primary_frame: (u64, usize)) -> Result<Self> {
+    fn open_impl<F: FnOnce(&mut Stream<T>) + Send + Sync + 'static>(
+        mut file: RandFile<T>, 
+        primary_frame: (u64, usize), 
+        on_drop: F
+    ) -> Result<Self> 
+    {
         let current_frame = Some(Frame::load_from_file(
             &mut file,
             primary_frame.0,
@@ -383,13 +388,21 @@ impl<T: Read + Seek> Stream<T> {
             current_frame,
             cursor: 0,
             frame_size: 0,
-            on_drop: Box::new(|_| {}),
+            on_drop: Box::new(on_drop),
             pre_alloc: true,
         })
+    }
+    pub(crate) fn open_ro(file: RandFile<T>, primary_frame: (u64, usize)) -> Result<Self> {
+        Self::open_impl(file, primary_frame, |_|{})
     }
 }
 
 impl<'a, T: Read + Write + Seek> Stream<T> {
+    pub(crate) fn open_rw(file: RandFile<T>, primary_frame: (u64, usize)) -> Result<Self> {
+        Self::open_impl(file, primary_frame, |this| {
+                this.flush().unwrap();
+        })
+    }
     pub(crate) fn create_rw(mut file: RandFile<T>, frame_size: usize) -> Result<Self> {
         let current_frame = Some(Frame::alloc_new_frame(None, &mut file, frame_size)?);
         Ok(Self {

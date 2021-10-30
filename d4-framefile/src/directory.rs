@@ -80,6 +80,13 @@ impl<T: Read + Seek> Directory<T> {
         let randfile = RandFile::for_read_only(back);
         Self::open_directory_impl(randfile, offset)
     }
+    pub fn open_root_rw(back: T, offset: u64) -> Result<Directory<T>> 
+    where
+        T: Write
+    {
+        let randfile = RandFile::for_read_write(back);
+        Self::open_directory_rw_impl(randfile, offset)
+    }
     pub(crate) fn read_next_entry<R: Read>(base: u64, input: &mut R) -> Result<Option<Entry>> {
         let mut has_next = [0u8];
         if input.read(&mut has_next)? != 1 || has_next[0] == 0 {
@@ -141,6 +148,21 @@ impl<T: Read + Write + Seek> Directory<T> {
     }
 }
 
+impl<T: Read + Write + Seek> Directory<T> {
+    fn open_directory_rw_impl(randfile: RandFile<T>, offset: u64) -> Result<Directory<T>> {
+        let mut stream = Stream::open_rw(randfile, (offset, Self::INIT_BLOCK_SIZE))?;
+        let mut entries = vec![];
+        while let Some(entry) = Self::read_next_entry(offset, &mut stream)? {
+            entries.push(entry);
+        }
+        Ok(Directory(Arc::new(RwLock::new(DirectoryImpl {
+            offset,
+            entries,
+            stream,
+        }))))
+    }
+}
+
 impl<T: Write + Seek> DirectoryImpl<T> {
     fn append_directory(&mut self, new_entry: Entry) -> Result<()> {
         self.stream.write(&[1, new_entry.kind as u8])?;
@@ -175,6 +197,17 @@ impl<T: Read + Write + Seek> Directory<T> {
             name: name.to_string(),
         })?;
         Ok(Blob::new(file, offset, size))
+    }
+
+    pub fn open_or_create_directory(&mut self, name: &str) -> Result<Directory<T>>
+    where
+        T: Send + 'static,
+    {
+        if let Ok(ret) = self.open_directory_rw(name) {
+            Ok(ret)
+        } else {
+            self.create_directory(name)
+        }
     }
 
     pub fn create_directory(&mut self, name: &str) -> Result<Directory<T>>
@@ -316,6 +349,24 @@ impl<T: Read + Seek> Directory<T> {
         {
             let file = inner.stream.clone_underlying_file();
             return Stream::open_ro(file, (entry.primary_offset, entry.primary_size as usize));
+        }
+        Err(Error::new(ErrorKind::Other, "Stream not found"))
+    }
+
+    pub fn open_directory_rw(&self, name: &str) -> Result<Directory<T>> 
+    where T: Write
+    {
+        let inner = self
+            .0
+            .read()
+            .map_err(|_| Error::new(ErrorKind::Other, "Lock Error"))?;
+        if let Some(entry) = inner
+            .entries
+            .iter()
+            .find(|e| e.name == name && e.kind == EntryKind::SubDir)
+        {
+            let file = inner.stream.clone_underlying_file();
+            return Directory::open_directory_rw_impl(file, entry.primary_offset);
         }
         Err(Error::new(ErrorKind::Other, "Stream not found"))
     }

@@ -1,7 +1,14 @@
 use smallvec::SmallVec;
 
 use super::D4TrackReader;
-use crate::{ptab::{BitArrayPartReader, BitArrayReader, DecodeBlockHandle, DecodeResult, Decoder, MatrixDecoder, PrimaryTablePartReader, PrimaryTableReader}, stab::{SecondaryTablePartReader, SecondaryTableReader}, task::{IntoTaskVec, Task, TaskContext, TaskOutputVec}};
+use crate::{
+    ptab::{
+        BitArrayPartReader, BitArrayReader, DecodeBlockHandle, DecodeResult, Decoder,
+        MatrixDecoder, PrimaryTablePartReader, PrimaryTableReader,
+    },
+    stab::{SecondaryTablePartReader, SecondaryTableReader},
+    task::{IntoTaskVec, Task, TaskContext, TaskOutputVec},
+};
 
 use std::{
     cmp::Ordering,
@@ -134,9 +141,10 @@ struct ScanPartitionBlockHandler<'a, 'b, S: SecondaryTableReader, DS> {
     active_handles: &'a mut [&'b mut DS],
 }
 
-impl <'a, 'b, S:SecondaryTableReader, DS> DecodeBlockHandle for ScanPartitionBlockHandler<'a, 'b, S, DS> 
+impl<'a, 'b, S: SecondaryTableReader, DS> DecodeBlockHandle
+    for ScanPartitionBlockHandler<'a, 'b, S, DS>
 where
-    DS: DataScanner<Once<i32>>
+    DS: DataScanner<Once<i32>>,
 {
     #[inline(always)]
     fn handle(&mut self, pos: usize, res: DecodeResult) {

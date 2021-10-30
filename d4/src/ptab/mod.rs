@@ -73,17 +73,17 @@ pub trait PrimaryTablePartReader: Send {
     fn bit_width(&self) -> usize;
 }
 
-/// Logically this is not needed, as it's just FnMut. 
-/// Unfortunately, today's Rust doesn't allow us to put 
+/// Logically this is not needed, as it's just FnMut.
+/// Unfortunately, today's Rust doesn't allow us to put
 /// inline directive for closure. Thus that makes the code
-/// outlines the handler for some case. 
+/// outlines the handler for some case.
 /// We need to find a place to put inline directive, and this
 /// is the reason why we have this function here.
 pub trait DecodeBlockHandle {
     fn handle(&mut self, size: usize, result: DecodeResult);
 }
 
-impl <F: FnMut(usize, DecodeResult)> DecodeBlockHandle for F {
+impl<F: FnMut(usize, DecodeResult)> DecodeBlockHandle for F {
     fn handle(&mut self, size: usize, result: DecodeResult) {
         self(size, result)
     }
@@ -94,12 +94,7 @@ pub trait Decoder {
     /// Decode the value at one location
     fn decode(&mut self, pos: usize) -> DecodeResult;
     /// Decode a block of values - this is just a default implementation
-    fn decode_block<F: DecodeBlockHandle>(
-        &mut self,
-        pos: usize,
-        count: usize,
-        mut handle: F,
-    ) {
+    fn decode_block<F: DecodeBlockHandle>(&mut self, pos: usize, count: usize, mut handle: F) {
         for idx in 0..count {
             handle.handle(pos + idx, self.decode(pos + idx));
         }

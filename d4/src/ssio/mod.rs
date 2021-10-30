@@ -1,3 +1,10 @@
+/// # The Seek-able Stream Input and Output
+/// Currently normal local D4 file reading is heavily relies on mapped IO
+/// This gives D4 amazing performance, however, when we want to deal with
+/// some other types of data sources rather than the local file system,
+/// we need a reader that is purely written with random IO APIs with seek and
+/// read.
+/// This module is used in this purpose
 use std::{
     collections::VecDeque,
     io::{Error, ErrorKind, Read, Result, Seek},
