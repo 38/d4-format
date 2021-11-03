@@ -11,52 +11,34 @@ use crate::header::Header;
 
 pub trait PrimaryTableMode: Sized {
     type HandleType: Send + ?Sized;
-    fn ensure_handle(this: &mut PrimaryTable<Self>) -> Result<()>;
-    fn get_mapping_address(this: &mut PrimaryTable<Self>) -> *const u8;
+    fn get_mapping_address(this: &mut PrimaryTable<Self>) -> Result<*const u8>;
 }
 
 pub struct Reader;
 pub struct Writer;
 impl PrimaryTableMode for Reader {
     type HandleType = dyn AsRef<[u8]> + Send;
-    fn ensure_handle(this: &mut PrimaryTable<Self>) -> Result<()> {
-        if this.mapping_handle.is_none() {
+    fn get_mapping_address(this: &mut PrimaryTable<Self>) -> Result<*const u8> {
+        let mapping_handle = if let Some(ref handle) = this.mapping_handle {
+            handle
+        } else {
             this.mapping_handle = Some(Arc::new(Mutex::new(this.data.mmap()?)));
-        }
-        Ok(())
-    }
-    fn get_mapping_address(this: &mut PrimaryTable<Self>) -> *const u8 {
-        let data = this
-            .mapping_handle
-            .as_ref()
-            .unwrap()
-            .lock()
-            .unwrap()
-            .as_ref()
-            .as_ptr();
-        data
+            this.mapping_handle.as_ref().unwrap()
+        };
+        Ok(mapping_handle.lock().unwrap().as_ref().as_ptr())
     }
 }
 
 impl PrimaryTableMode for Writer {
     type HandleType = dyn AsMut<[u8]> + Send;
-    fn ensure_handle(this: &mut PrimaryTable<Self>) -> Result<()> {
-        if this.mapping_handle.is_none() {
+    fn get_mapping_address(this: &mut PrimaryTable<Self>) -> Result<*const u8> {
+        let mapping_handle = if let Some(ref handle) = this.mapping_handle {
+            handle
+        } else {
             this.mapping_handle = Some(Arc::new(Mutex::new(this.data.mmap_mut()?)));
-        }
-        Ok(())
-    }
-
-    fn get_mapping_address(this: &mut PrimaryTable<Self>) -> *const u8 {
-        let data = this
-            .mapping_handle
-            .as_ref()
-            .unwrap()
-            .lock()
-            .unwrap()
-            .as_mut()
-            .as_ptr();
-        data
+            this.mapping_handle.as_ref().unwrap()
+        };
+        Ok(mapping_handle.lock().unwrap().as_mut().as_ptr())
     }
 }
 
@@ -112,9 +94,8 @@ impl<M: PrimaryTableMode> PrimaryTable<M> {
         header: &Header,
         mut max_chunk_size: Option<usize>,
     ) -> Result<Vec<PartialPrimaryTable<M>>> {
-        M::ensure_handle(self)?;
 
-        let data = M::get_mapping_address(self);
+        let data = M::get_mapping_address(self)?;
 
         if let Some(ref mut max_chunk_size) = max_chunk_size {
             *max_chunk_size -= *max_chunk_size % 8;

@@ -103,7 +103,7 @@ impl<T> RandFile<T> {
     ///
     /// - `inner`: The underlying implementation for the backend
     /// - `returns`: The newly created random file object
-    fn new(inner: T) -> Self {
+    pub(crate) fn new(inner: T) -> Self {
         RandFile {
             inner: Arc::new(Mutex::new(IoWrapper {
                 current_token: 0,
@@ -136,15 +136,6 @@ impl<T> RandFile<T> {
             inner: self.inner.clone(),
             token,
         })
-    }
-}
-
-impl<T: Read + Seek> RandFile<T> {
-    /// The convenient helper function to create a read-only random file
-    ///
-    /// - `inner`: The underlying implementation for this backend
-    pub fn for_read_only(inner: T) -> Self {
-        Self::new(inner)
     }
 }
 
@@ -338,16 +329,16 @@ mod test {
     #[test]
     fn test_from_inner() {
         let backend = Cursor::new(vec![0; 1024]);
-        let _rand_file = RandFile::for_read_only(backend);
+        let _rand_file = RandFile::new(backend);
 
         let backend = Cursor::new(vec![0; 1024]);
-        let _rand_file = RandFile::for_read_write(backend);
+        let _rand_file = RandFile::new(backend);
     }
 
     #[test]
     fn test_read_write_blocks() {
         let backend = Cursor::new(vec![0; 0]);
-        let mut rand_file = RandFile::for_read_write(backend);
+        let mut rand_file = RandFile::new(backend);
         assert_eq!(0, rand_file.append_block(b"This is a test block").unwrap());
         assert_eq!(20, rand_file.append_block(b"This is a test block").unwrap());
 
@@ -359,7 +350,7 @@ mod test {
     #[test]
     fn test_lock() {
         let backend = Cursor::new(vec![0; 0]);
-        let mut rand_file = RandFile::for_read_write(backend);
+        let mut rand_file = RandFile::new(backend);
         let flag = Arc::new(std::sync::Mutex::new(false));
         {
             let flag = flag.clone();
