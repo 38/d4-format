@@ -86,6 +86,9 @@ pub(crate) struct RecordBlockParsingState<R: Record> {
 }
 
 impl<R: Record> RecordBlockParsingState<R> {
+    pub fn first_record_offset(&self) -> usize {
+        std::mem::size_of::<R>() - self.excess.len()
+    }
     pub fn parse_frame<'a>(&mut self, data: &'a [u8], buf: &mut Vec<RecordBlock<'a, R>>) {
         match self.compression {
             CompressionMethod::NoCompression => {
@@ -101,9 +104,13 @@ impl<R: Record> RecordBlockParsingState<R> {
         Self {
             compression,
             excess: Default::default(),
-            first: false,
+            first: true,
             _phantom: Default::default(),
         }
+    }
+    #[allow(dead_code)]
+    pub fn set_is_first_frame(&mut self, value: bool) {
+        self.first = value;
     }
     pub fn reset(&mut self) {
         *self = Self::new(self.compression);

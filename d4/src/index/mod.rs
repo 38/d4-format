@@ -1,23 +1,44 @@
-use std::{
-    fs::{File, OpenOptions},
-    io::Result,
-    path::Path,
-};
+use std::{fs::{File, OpenOptions}, io::{Read, Result, Seek}, path::Path};
 
 use d4_framefile::Directory;
 
-use crate::d4file::validate_header;
+use crate::{Header, d4file::validate_header};
+
+use self::sfi::SeconaryFrameIndex;
 
 pub const INDEX_ROOT_NAME: &'static str = ".index";
 pub const SECONDARY_FRAME_INDEX_NAME: &'static str = "s_frame_index";
 
+mod sfi;
+
 #[allow(dead_code)]
-pub struct D4IndexCollection {
-    track_root: Directory<File>,
-    index_root: Directory<File>,
+pub struct D4IndexCollection<T> {
+    track_root: Directory<T>,
+    index_root: Directory<T>,
 }
 
-impl D4IndexCollection {
+impl <T: Read + Seek> D4IndexCollection<T>{
+    pub fn from_reader(mut reader: T) -> Result<Self> {
+        validate_header(&mut reader)?;
+        let file_root = Directory::open_root(reader, 8)?;
+        let track_root = file_root.clone();
+        let index_root = file_root.open_directory(INDEX_ROOT_NAME)?;
+        Ok(Self {
+            track_root,
+            index_root,
+        })
+    }
+    pub fn load_seconary_frame_index(&self) -> Result<SeconaryFrameIndex> {
+        let header = Header::read(self.track_root.open_stream(Header::HEADER_STREAM_NAME)?)?;
+
+        SeconaryFrameIndex::from_reader(
+            self.index_root.open_stream(SeconaryFrameIndex::STREAM_NAME)?,
+            header,
+        )
+    }
+}
+
+impl D4IndexCollection<File> {
     pub fn open_for_write<P: AsRef<Path>>(path: P) -> Result<Self> {
         let mut fp = OpenOptions::new()
             .read(true)
@@ -27,7 +48,7 @@ impl D4IndexCollection {
             .open(path.as_ref())?;
         // TODO: Currently we assume that only single track file can be indexed. This means we need to index the file before merge otherwise we can not add any index to the file, but later this might be changed
         validate_header(&mut fp)?;
-        let mut file_root = Directory::open_root_rw(fp, 8)?;
+        let mut file_root = Directory::open_root_for_update(fp, 8)?;
 
         // TODO: For mutliple track support, we need find the track root first
         let track_root = file_root.clone();
@@ -39,12 +60,27 @@ impl D4IndexCollection {
             index_root,
         })
     }
-    pub fn create_secondary_frame_index(&mut self) -> ! {
-        todo!()
+    pub fn create_secondary_frame_index(&mut self) -> Result<()> {
+        let sfi_index = sfi::SeconaryFrameIndex::from_data_track(&self.track_root)?;
+        sfi_index.write(self.index_root.create_stream(SeconaryFrameIndex::STREAM_NAME, 511)?)
     }
 }
 
 #[test]
 fn test_main() {
-    D4IndexCollection::open_for_write("/tmp/hg002.d4").unwrap();
+    let mut idx = D4IndexCollection::open_for_write("/tmp/hg002.d4").unwrap();
+    idx.create_secondary_frame_index().unwrap();
+}
+
+#[test]
+fn test_read() {
+    let idx = D4IndexCollection::from_reader(File::open("/tmp/hg002.d4").unwrap()).unwrap();
+    let sfi = idx.load_seconary_frame_index().unwrap();
+    //let stab = idx.track_root.open_directory(SECONDARY_TABLE_NAME).unwrap();
+
+    let addr = sfi.find_partial_seconary_table("1", 0).unwrap().unwrap();
+    assert_eq!(addr.first_frame, true);
+
+    let addr = sfi.find_partial_seconary_table("1", 123456).unwrap().unwrap();
+    assert_eq!(addr.first_frame, false);
 }

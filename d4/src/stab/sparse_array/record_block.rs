@@ -111,6 +111,9 @@ impl<'a, R: Record> AsRef<[R]> for RecordBlock<'a, R> {
     }
 }
 impl<'a, R: Record> RecordBlock<'a, R> {
+    pub fn is_single_record(&self) -> bool {
+        matches!(self, RecordBlock::Record(_))
+    }
     pub fn binary_search_by_key<KeyFunc: Fn(&R) -> K, K: Ord>(
         &self,
         key: K,

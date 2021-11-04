@@ -9,7 +9,7 @@ use std::io::Result;
 /// A memory mapped data structure for a directory object in frame file
 pub struct MappedDirectory {
     streams: HashMap<String, (usize, usize)>,
-    _handle: MappingHandle,
+    handle: MappingHandle,
 }
 
 /// A memory mapped stream object
@@ -50,6 +50,9 @@ impl<'a> MappedStream<'a> {
 }
 
 impl MappedStreamFrame {
+    pub unsafe fn offset_from(&self, base: *const u8) -> isize {
+        (self as *const _ as *const u8).offset_from(base)
+    }
     pub fn next_frame(&self) -> Option<&MappedStreamFrame> {
         self.header.linked_frame.map(|offset| unsafe {
             std::mem::transmute((
@@ -62,6 +65,9 @@ impl MappedStreamFrame {
 }
 
 impl MappedDirectory {
+    pub fn get_base_addr(&self) -> *const u8 {
+        self.handle.as_ref().as_ptr()
+    }
     pub fn open_stream(&self, name: &str) -> Option<MappedStream> {
         if let Some((ptr, size)) = self.streams.get(name) {
             Some(unsafe { MappedStream::new(std::mem::transmute(*ptr), *size) })
@@ -93,7 +99,7 @@ impl MappedDirectory {
         }
         Ok(MappedDirectory {
             streams: dir_table,
-            _handle: handle,
+            handle,
         })
     }
 }
