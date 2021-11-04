@@ -55,8 +55,8 @@ pub(crate) fn load_compressed_frame<'a, R: Record>(
             decompressed: RefCell::new(vec![]),
         });
     } else {
-        buffer.push(RecordBlock::Block(unsafe { 
-            std::slice::from_raw_parts(data.as_ptr() as *const R, block_count as usize) 
+        buffer.push(RecordBlock::Block(unsafe {
+            std::slice::from_raw_parts(data.as_ptr() as *const R, block_count as usize)
         }));
     }
 }
@@ -82,11 +82,17 @@ pub(crate) struct RecordBlockParsingState<R: Record> {
     compression: CompressionMethod,
     excess: Vec<u8>,
     first: bool,
+    skip_bytes: usize,
     _phantom: PhantomData<R>,
 }
 
 impl<R: Record> RecordBlockParsingState<R> {
+    pub fn first_record_offset(&self) -> usize {
+        let size: usize = std::mem::size_of::<R>();
+        (size - self.excess.len()) % size
+    }
     pub fn parse_frame<'a>(&mut self, data: &'a [u8], buf: &mut Vec<RecordBlock<'a, R>>) {
+        let data = &data[self.skip_bytes..];
         match self.compression {
             CompressionMethod::NoCompression => {
                 self.excess = load_frame(data, std::mem::take(&mut self.excess), buf);
@@ -95,18 +101,28 @@ impl<R: Record> RecordBlockParsingState<R> {
                 load_compressed_frame(data, self.first, buf);
             }
         }
+        self.skip_bytes = 0;
         self.first = false;
     }
+
+    pub fn set_skip_bytes(mut self, bytes: usize) -> Self {
+        self.skip_bytes = bytes;
+        self
+    }
+
     pub fn new(compression: CompressionMethod) -> Self {
         Self {
             compression,
             excess: Default::default(),
-            first: false,
+            first: true,
+            skip_bytes: 0,
             _phantom: Default::default(),
         }
     }
-    pub fn reset(&mut self) {
-        *self = Self::new(self.compression);
+
+    pub fn set_is_first_frame(mut self, value: bool) -> Self {
+        self.first = value;
+        self
     }
 }
 

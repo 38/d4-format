@@ -14,6 +14,8 @@ pub mod task;
 
 pub mod ssio;
 
+pub mod index;
+
 pub use chrom::Chrom;
 
 #[cfg(all(feature = "mapped_io", not(target_arch = "wasm32")))]

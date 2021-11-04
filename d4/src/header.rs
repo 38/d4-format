@@ -72,6 +72,14 @@ impl Header {
             .sum()
     }
 
+    pub fn get_chrom_id(&self, chrom: &str) -> Option<usize> {
+        self.chrom_list
+            .iter()
+            .enumerate()
+            .find(|(_, chr)| chr.name == chrom)
+            .map(|(id, _)| id)
+    }
+
     pub(crate) fn primary_table_size_of_chrom(&self, chrom: &str) -> usize {
         let bw = self.dictionary.bit_width();
         self.chrom_list

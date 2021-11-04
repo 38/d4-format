@@ -1,3 +1,6 @@
+use crate::utils::{
+    make_dictionary, parse_bed_file, parse_genome_file, setup_thread_pool, InputType,
+};
 use clap::{load_yaml, App, ArgMatches};
 use d4::ptab::PTablePartitionWriter;
 use d4::stab::SecondaryTablePartWriter;
@@ -5,83 +8,14 @@ use d4::{Chrom, D4FileWriter, Dictionary};
 use d4_hts::{BamFile, DepthIter};
 use log::info;
 use rayon::prelude::*;
-use std::fs::File;
-use std::io::{BufRead, BufReader};
+use regex::Regex;
 use std::path::Path;
 
-fn parse_genome_file<P: AsRef<Path>>(file: P) -> std::io::Result<Vec<Chrom>> {
-    let file = BufReader::new(File::open(file)?);
-    Ok(file
-        .lines()
-        .filter_map(|line| {
-            if let Ok(line) = line {
-                let tokenized: Vec<_> = line.split(|c| c == '\t').take(2).collect();
-                if tokenized.len() == 2 {
-                    if let Ok(size) = tokenized[1].parse() {
-                        return Some((tokenized[0].to_owned(), size));
-                    }
-                }
-            }
-            None
-        })
-        .map(|(name, size)| Chrom { name, size })
-        .collect())
-}
-fn parse_text_file<P: AsRef<Path>>(
-    file: P,
-) -> std::io::Result<impl Iterator<Item = (String, u32, u32, i32)>> {
-    let file = BufReader::new(File::open(file)?);
-    Ok(file.lines().filter_map(|line| {
-        if let Ok(line) = line {
-            let tokenized: Vec<_> = line.split(|c| c == '\t').take(4).collect();
-            if tokenized.len() == 3 {
-                if let Ok(pos) = tokenized[1].parse() {
-                    if let Ok(dep) = tokenized[2].parse() {
-                        return Some((tokenized[0].to_owned(), pos, pos + 1, dep));
-                    }
-                }
-            } else if tokenized.len() == 4 {
-                if let Ok(begin) = tokenized[1].parse() {
-                    if let Ok(end) = tokenized[2].parse() {
-                        if let Ok(dep) = tokenized[3].parse() {
-                            return Some((tokenized[0].to_owned(), begin, end, dep));
-                        }
-                    }
-                }
-            }
-        }
-        None
-    }))
-}
-fn make_dictionary(
-    range_spec: Option<&str>,
-    file_spec: Option<&str>,
-) -> std::io::Result<d4::Dictionary> {
-    if let Some(spec) = range_spec {
-        let pattern = regex::Regex::new(r"(?P<from>\d*)-(?P<to>\d*)").unwrap();
-        if let Some(caps) = pattern.captures(spec) {
-            let from = caps.name("from").unwrap().as_str().parse().unwrap();
-            let to = caps.name("to").unwrap().as_str().parse().unwrap();
-            return d4::Dictionary::new_simple_range_dict(from, to);
-        }
-    }
-    if let Some(spec) = file_spec {
-        let fp = File::open(spec)?;
-        return d4::Dictionary::new_dictionary_from_file(fp);
-    }
-    d4::Dictionary::new_simple_range_dict(0, 64)
-}
-
 fn main_impl(matches: ArgMatches) -> Result<(), Box<dyn std::error::Error>> {
-    if let Some(threads) = matches.value_of("threads") {
-        if let Ok(threads) = threads.parse() {
-            rayon::ThreadPoolBuilder::new()
-                .num_threads(threads)
-                .build_global()?;
-        }
-    }
+    setup_thread_pool(&matches)?;
+
     let input_path: &Path = matches.value_of("input-file").unwrap().as_ref();
-    let ext = input_path.extension().unwrap();
+    let input_type = InputType::detect(input_path);
 
     let min_mq = matches.value_of("min-mqual").map_or(60, |v| {
         v.parse().expect("Invalid minimal mapping quality option")
@@ -110,50 +44,31 @@ fn main_impl(matches: ArgMatches) -> Result<(), Box<dyn std::error::Error>> {
         d4_builder.set_dictionary(d4::Dictionary::new_simple_range_dict(0, 1)?);
     }
 
+    let chr_filter = Regex::new(matches.value_of("filter").unwrap_or(".*"))?;
+
     if matches.values_of("dict-auto").is_some() {
-        if let Some(pattern) = matches
-            .value_of("filter")
-            .map(|pattern| regex::Regex::new(pattern).expect("Invalid filter regex"))
-        {
-            d4_builder.set_dictionary(Dictionary::from_sample_bam(
-                input_path,
-                move |chr, _size| pattern.is_match(chr),
-                matches.value_of("ref"),
-                min_mq,
-            )?);
-        } else {
-            d4_builder.set_dictionary(Dictionary::from_sample_bam(
-                input_path,
-                |_, _| true,
-                matches.value_of("ref"),
-                min_mq,
-            )?);
-        }
+        d4_builder.set_dictionary(Dictionary::from_sample_bam(
+            input_path,
+            |chr, _size| chr_filter.is_match(chr),
+            matches.value_of("ref"),
+            min_mq,
+        )?);
     }
+
+    d4_builder.set_filter(move |chr, _size| chr_filter.is_match(chr));
 
     if matches.values_of("dump-dict").is_some() {
         println!("{}", d4_builder.dictionary().pretty_print()?);
         std::process::exit(0);
     }
 
-    if let Some(pattern) = matches
-        .value_of("filter")
-        .map(|pattern| regex::Regex::new(pattern).expect("Invalid filter regex"))
-    {
-        d4_builder.set_filter(move |chr, _size| pattern.is_match(chr));
-    }
-
     let reference = matches.value_of("ref");
 
     let enable_compression = matches.is_present("deflate") || matches.is_present("sparse");
-    let compression_level: u32 = matches
-        .value_of("deflate-level")
-        .unwrap_or("5")
-        .parse()
-        .unwrap();
+    let compression_level: u32 = matches.value_of("deflate-level").unwrap_or("5").parse()?;
 
-    match ext.to_str().unwrap().to_lowercase().as_ref() {
-        "sam" | "bam" | "cram" => {
+    match input_type {
+        InputType::Alignment => {
             d4_builder.load_chrom_info_from_bam(input_path)?;
             let mut d4_writer: D4FileWriter = d4_builder.create()?;
 
@@ -208,7 +123,7 @@ fn main_impl(matches: ArgMatches) -> Result<(), Box<dyn std::error::Error>> {
                     );
                 });
         }
-        "bw" | "bigwig" => {
+        InputType::BiwWig => {
             let bw_file = d4_bigwig::BigWigFile::open(input_path)?;
             d4_builder.append_chrom(
                 bw_file
@@ -253,7 +168,7 @@ fn main_impl(matches: ArgMatches) -> Result<(), Box<dyn std::error::Error>> {
                 }
             }
         }
-        "txt" | "bedgraph" => {
+        InputType::BedGraph => {
             d4_builder.append_chrom(
                 parse_genome_file(
                     matches
@@ -267,7 +182,7 @@ fn main_impl(matches: ArgMatches) -> Result<(), Box<dyn std::error::Error>> {
                 d4_writer.enable_secondary_table_compression(compression_level);
             }
             let mut partition = d4_writer.parallel_parts(None)?;
-            let input = parse_text_file(input_path)?;
+            let input = parse_bed_file(input_path)?;
             let mut current = 0;
             for (chr, from, to, depth) in input {
                 for pos in from..to {

@@ -1,4 +1,4 @@
-#[cfg(not(feature="seq-task"))]
+#[cfg(not(feature = "seq-task"))]
 use rayon::prelude::*;
 use std::{collections::HashMap, io::Result};
 
@@ -125,9 +125,9 @@ where
 
     /// Run the task in parallel
     pub fn run(self) -> TaskOutputVec<T::Output> {
-        #[cfg(not(feature="seq-task"))]
+        #[cfg(not(feature = "seq-task"))]
         let part_iter = self.partitions.into_par_iter();
-        #[cfg(feature="seq-task")]
+        #[cfg(feature = "seq-task")]
         let part_iter = self.partitions.into_iter();
         let mut task_result: Vec<_> = part_iter
             .map(|mut partition| partition.execute())

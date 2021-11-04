@@ -69,6 +69,19 @@ impl<T> IoWrapper<T> {
             ))
         }
     }
+    fn seek(&mut self, addr: u64) -> Result<()>
+    where
+        T: Seek,
+    {
+        self.inner.seek(SeekFrom::Start(addr))?;
+        Ok(())
+    }
+    fn read(&mut self, buf: &mut [u8]) -> Result<usize>
+    where
+        T: Read,
+    {
+        self.inner.read(buf)
+    }
 }
 
 impl<T> Deref for IoWrapper<T> {
@@ -226,12 +239,10 @@ impl<T: Read + Seek> RandFile<T> {
             .inner
             .lock()
             .map_err(|_| std::io::Error::new(std::io::ErrorKind::Other, "LockError"))?;
-        inner
-            .try_borrow_mut(self.token)?
-            .seek(SeekFrom::Start(addr))?;
+        inner.seek(addr)?;
         let mut ret = 0;
         loop {
-            let bytes_read = inner.try_borrow_mut(self.token)?.read(&mut buf[ret..])?;
+            let bytes_read = inner.read(&mut buf[ret..])?;
             if bytes_read == 0 {
                 break Ok(ret);
             }

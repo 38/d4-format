@@ -93,24 +93,27 @@ impl<'a, R: Record> AsRef<[R]> for RecordBlock<'a, R> {
                 decompressed,
                 unused,
                 ..
-            } => unsafe { 
+            } => unsafe {
                 // The only way that decompressed data gets modified is
-                // call self.decompress. However, when we call as_ref, 
+                // call self.decompress. However, when we call as_ref,
                 // at this point, self.decompress(-1) has been called already
                 // which indicates we have fully decompressed the data block
                 // at this point. Thus, nothing can be changed after this
-                // reference be returned. 
+                // reference be returned.
                 // Thus the data inside the decompressed RefCell is logically
                 // immutable since this point.
                 // So it won't volidate the borrow rule even we drop the RefCell
                 // ticket.
-                std::mem::transmute(&decompressed.borrow()[*unused..]) 
+                std::mem::transmute(&decompressed.borrow()[*unused..])
             },
             Self::OwnedBlock(blk) => blk.as_ref(),
         }
     }
 }
 impl<'a, R: Record> RecordBlock<'a, R> {
+    pub fn is_single_record(&self) -> bool {
+        matches!(self, RecordBlock::Record(_))
+    }
     pub fn binary_search_by_key<KeyFunc: Fn(&R) -> K, K: Ord>(
         &self,
         key: K,
