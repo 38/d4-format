@@ -7,12 +7,14 @@ mod server;
 mod show;
 mod stat;
 mod utils;
+mod index;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<_> = std::env::args().skip(1).collect();
     let ret = match args.get(0).map(AsRef::as_ref) {
         Some("create") => create::entry_point(args),
         Some("framedump") => framedump::entry_point(args),
+        Some("index") => index::entry_point(args),
         Some("ls-track") => ls_track::entry_point(args),
         Some("merge") => merge::entry_point(args),
         Some("plot") => plot::entry_point(args),
@@ -25,6 +27,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             eprintln!("Possible subcommands are:");
             eprintln!("\tcreate   \tCreate a new D4 depth profile");
             eprintln!("\tframedump\tDump The container data");
+            eprintln!("\tindex    \tIndex related operations");
             eprintln!("\tls-track \tList all available tracks in the D4 file");
             eprintln!("\tmerge    \tMerge existing D4 file as a multi-track D4 file");
             eprintln!("\tplot     \tPlot the specified region");

@@ -1,0 +1,15 @@
+name: d4-index - Operations on D4 file's index
+author: Hao Hou <haohou302@gmail.com>
+subcommands:
+    - build:
+        about: Build a new index in given D4 file
+        args:
+            - FILE:
+                help: The file to index
+                required: true
+                index: 1
+            - secondary-frame:
+                help: Build the secondary frame index (SFI), this will allow faster random HTTP access
+                long: secondary-frame
+                short: s
+

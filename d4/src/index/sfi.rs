@@ -53,7 +53,7 @@ pub struct SeconaryFrameIndex {
     items: Vec<FrameIndexEntry>,
 }
 impl SeconaryFrameIndex {
-    pub const STREAM_NAME: &'static str = "seconary_frame_index";
+    pub const STREAM_NAME: &'static str = "secondary_frame_index";
 
     pub fn find_partial_seconary_table(
         &self, 

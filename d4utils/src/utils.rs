@@ -5,6 +5,8 @@ use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::Path;
 
+pub type AppResult<T> = Result<T, Box<dyn std::error::Error>>;
+
 pub enum InputType {
     Alignment,
     BedGraph,
