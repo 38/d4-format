@@ -12,4 +12,15 @@ subcommands:
                 help: Build the secondary frame index (SFI), this will allow faster random HTTP access
                 long: secondary-frame
                 short: s
+    - show:
+        about: Print infomation about the index
+        args: 
+            - FILE:
+                help: Input file
+                required: true
+                index: 1
+            - INDEX_TYPE:
+                help: "Specify what type of index to show, possible vlaue: SFI"
+                required: true
+                index: 2
 

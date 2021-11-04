@@ -16,7 +16,12 @@ pub enum InputType {
 
 impl InputType {
     pub fn detect(path: &Path) -> InputType {
-        let ext = path.extension().map(|e| e.to_str()).flatten().unwrap_or("").to_lowercase();
+        let ext = path
+            .extension()
+            .map(|e| e.to_str())
+            .flatten()
+            .unwrap_or("")
+            .to_lowercase();
         match ext.as_str() {
             "sam" | "bam" | "cram" => Self::Alignment,
             "bw" | "bigwig" => Self::BiwWig,
@@ -70,7 +75,6 @@ pub fn parse_bed_file<P: AsRef<Path>>(
         None
     }))
 }
-
 
 pub fn make_dictionary(
     range_spec: Option<&str>,

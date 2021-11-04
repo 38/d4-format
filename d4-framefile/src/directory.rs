@@ -6,7 +6,7 @@ use crate::Blob;
 use std::io::{Error, ErrorKind, Read, Result, Seek, Write};
 
 #[cfg(all(feature = "mapped_io", not(target_arch = "wasm32")))]
-use std::{io::SeekFrom, fs::File};
+use std::{fs::File, io::SeekFrom};
 
 use std::path::{Component, Path, PathBuf};
 use std::sync::{Arc, RwLock};
@@ -52,11 +52,13 @@ pub enum OpenResult<T: Read + Seek> {
     SubDir(Directory<T>),
 }
 
-
 impl<T: Read + Write + Seek> DirectoryImpl<T> {
     fn append_directory(&mut self, new_entry: Entry) -> Result<()> {
         if self.entries.iter().any(|x| x.name == new_entry.name) {
-            return Err(Error::new(ErrorKind::Other, "Directory entry already exists"));
+            return Err(Error::new(
+                ErrorKind::Other,
+                "Directory entry already exists",
+            ));
         }
         //self.stream.write(&[1, new_entry.kind as u8])?;
         self.stream.update_current_byte(1)?;
@@ -77,7 +79,6 @@ impl<T: Read + Write + Seek> DirectoryImpl<T> {
         Ok(())
     }
 }
-
 
 pub struct Directory<T>(Arc<RwLock<DirectoryImpl<T>>>);
 
@@ -100,9 +101,12 @@ impl<T> Directory<T> {
     }
 }
 
-impl <T: Clone> Directory<T> {
+impl<T: Clone> Directory<T> {
     pub fn clone_underlying_file(&self) -> Result<RandFile<T>> {
-        let inner = self.0.read().map_err(|_| Error::new(ErrorKind::Other, "Lock Error"))?;
+        let inner = self
+            .0
+            .read()
+            .map_err(|_| Error::new(ErrorKind::Other, "Lock Error"))?;
         Ok(inner.stream.clone_underlying_file())
     }
 }
@@ -147,8 +151,9 @@ impl<T: Read + Write + Seek> Directory<T> {
         Ok(Blob::new(file, offset, size))
     }
 
-    pub fn open_or_create_directory(&mut self, name: &str) -> Result<Directory<T>> 
-    where T: Send + 'static
+    pub fn open_or_create_directory(&mut self, name: &str) -> Result<Directory<T>>
+    where
+        T: Send + 'static,
     {
         if let Ok(dir) = self.open_directory_for_update(name) {
             Ok(dir)
@@ -321,8 +326,9 @@ impl<T: Read + Seek> Directory<T> {
         let stream = Stream::open_for_read(randfile, (offset, Self::INIT_BLOCK_SIZE))?;
         Self::open_directory_with_stream(stream, offset)
     }
-    fn open_directory_rw_impl(randfile: RandFile<T>, offset: u64) -> Result<Directory<T>> 
-    where T:Write
+    fn open_directory_rw_impl(randfile: RandFile<T>, offset: u64) -> Result<Directory<T>>
+    where
+        T: Write,
     {
         let stream = Stream::open_for_update(randfile, (offset, Self::INIT_BLOCK_SIZE))?;
         Self::open_directory_with_stream(stream, offset)
@@ -366,14 +372,19 @@ impl<T: Read + Seek> Directory<T> {
             .find(|e| e.name == name && e.kind == EntryKind::Stream)
         {
             let file = inner.stream.clone_underlying_file();
-            return Stream::open_for_read(file, (entry.primary_offset, entry.primary_size as usize));
+            return Stream::open_for_read(
+                file,
+                (entry.primary_offset, entry.primary_size as usize),
+            );
         }
         Err(Error::new(ErrorKind::Other, "Stream not found"))
     }
 
-    fn open_directory_impl<
-        H: FnOnce(RandFile<T>, u64) -> Result<Directory<T>>
-    >(&self, name: &str, handle: H) -> Result<Directory<T>> {
+    fn open_directory_impl<H: FnOnce(RandFile<T>, u64) -> Result<Directory<T>>>(
+        &self,
+        name: &str,
+        handle: H,
+    ) -> Result<Directory<T>> {
         let inner = self
             .0
             .read()
@@ -557,7 +568,7 @@ mod test {
                     test_stream.write("this is a test stream".as_bytes())?;
                 }
             }
-            
+
             root.flush()?;
             root.clone_underlying_file()?.clone_inner()?.into_inner()
         };

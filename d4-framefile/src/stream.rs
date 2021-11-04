@@ -19,9 +19,7 @@ impl FrameHeader {
     }
     fn from_bytes(data: &[u8]) -> FrameHeader {
         assert!(data.len() >= std::mem::size_of::<Self>());
-        let data = *unsafe {
-            std::mem::transmute::<_, &FrameHeader>(data.as_ptr())
-        };
+        let data = *unsafe { std::mem::transmute::<_, &FrameHeader>(data.as_ptr()) };
         let offset = data.linked_frame.map_or(0, |x| x.get().to_le());
         let size = data.linked_frame_size;
         Self::new(offset, size)
@@ -192,7 +190,8 @@ impl Frame {
             if let Some(rel_addr) = self.header.linked_frame.map(i64::from) {
                 let size = self.header.linked_frame_size as usize;
                 let addr = (offset as i64 + rel_addr) as u64;
-                return Self::load_from_file(file, addr, size, read_payload, Some(self), false).map(Some);
+                return Self::load_from_file(file, addr, size, read_payload, Some(self), false)
+                    .map(Some);
             }
         }
         Ok(None)
@@ -204,7 +203,15 @@ impl Frame {
         read_payload: bool,
     ) -> Result<Option<Self>> {
         if let Some((parent_ofs, parent_size)) = self.parent_frame {
-            return Self::load_from_file(file, parent_ofs, parent_size, read_payload, Some(self), true).map(Some);
+            return Self::load_from_file(
+                file,
+                parent_ofs,
+                parent_size,
+                read_payload,
+                Some(self),
+                true,
+            )
+            .map(Some);
         }
         Ok(None)
     }
@@ -311,7 +318,7 @@ impl<T: Read + Write + Seek> Stream<T> {
                 } else {
                     callback(self);
                     let current_frame = self.current_frame.take();
-                    self.current_frame = 
+                    self.current_frame =
                         Some(Frame::alloc_new_frame(current_frame, &mut self.file, 0)?);
                     if self.frame_size > 0 && self.pre_alloc {
                         let frame = self.current_frame.as_mut().unwrap();
@@ -319,7 +326,7 @@ impl<T: Read + Write + Seek> Stream<T> {
                         frame.zero_frame();
                     }
                 }
-               self.cursor = 0;
+                self.cursor = 0;
                 continue;
             }
 
@@ -418,17 +425,18 @@ impl<T: Read + Seek> Stream<T> {
         }
         Ok(ret)
     }
-   
+
     pub(crate) fn open_for_read(file: RandFile<T>, primary_frame: (u64, usize)) -> Result<Self> {
-        Self::open_with_ondrop(file, primary_frame, |_|{})
+        Self::open_with_ondrop(file, primary_frame, |_| {})
     }
-    pub(crate) fn open_for_update(file: RandFile<T>, primary_frame: (u64, usize)) -> Result<Self> 
-    where T: Write
+    pub(crate) fn open_for_update(file: RandFile<T>, primary_frame: (u64, usize)) -> Result<Self>
+    where
+        T: Write,
     {
         Self::open_with_ondrop(file, primary_frame, |s| s.flush().unwrap())
     }
     pub(crate) fn open_with_ondrop<D: FnOnce(&mut Self) + Send + Sync + 'static>(
-        mut file: RandFile<T>, 
+        mut file: RandFile<T>,
         primary_frame: (u64, usize),
         on_drop: D,
     ) -> Result<Self> {
@@ -457,7 +465,7 @@ impl<'a, T: Read + Write + Seek> Stream<T> {
     pub fn update_current_byte(&mut self, byte: u8) -> Result<usize> {
         if let Some(current_frame) = &self.current_frame {
             if self.cursor > 0 {
-                self.cursor -= 1;       
+                self.cursor -= 1;
             } else {
                 if current_frame.parent_frame.is_some() {
                     let this_frame = self.current_frame.take().unwrap();
@@ -553,16 +561,14 @@ mod test {
 
         Ok(())
     }
-   
+
     #[test]
     fn test_modify_stream() -> TestResult<()> {
         let test_blob: Vec<_> = vec![
             19, 0, 0, 0, 0, 0, 0, 0, //Linked Frame
             20, 0, 0, 0, 0, 0, 0, 0, // Linked Frame size
             0xdd, 0xdd, 0x00, // Frame data
-            0, 0, 0, 0, 0, 0, 0, 0, 
-            0, 0, 0, 0, 0, 0, 0, 0, 
-            0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         ];
         let reader = Cursor::new(test_blob);
         let file = RandFile::new(reader);
@@ -570,7 +576,7 @@ mod test {
         let mut stream = Stream::open_for_read(file, (0, 19))?;
 
         loop {
-            let mut buf = [0;1];
+            let mut buf = [0; 1];
             stream.read(&mut buf[..]).unwrap();
             if buf[0] == 0 {
                 break;
@@ -581,7 +587,11 @@ mod test {
         stream.write(&[0xdd]).unwrap();
         stream.flush().unwrap();
 
-        let test_blob = stream.clone_underlying_file().clone_inner().unwrap().into_inner();
+        let test_blob = stream
+            .clone_underlying_file()
+            .clone_inner()
+            .unwrap()
+            .into_inner();
 
         assert_eq!(test_blob[18], 0xdd);
         assert_eq!(test_blob[35], 0xdd);
@@ -589,5 +599,4 @@ mod test {
 
         Ok(())
     }
-
 }

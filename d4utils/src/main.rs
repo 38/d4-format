@@ -1,5 +1,6 @@
 mod create;
 mod framedump;
+mod index;
 mod ls_track;
 mod merge;
 mod plot;
@@ -7,7 +8,6 @@ mod server;
 mod show;
 mod stat;
 mod utils;
-mod index;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<_> = std::env::args().skip(1).collect();

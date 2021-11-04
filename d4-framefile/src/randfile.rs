@@ -70,13 +70,15 @@ impl<T> IoWrapper<T> {
         }
     }
     fn seek(&mut self, addr: u64) -> Result<()>
-    where T: Seek 
+    where
+        T: Seek,
     {
         self.inner.seek(SeekFrom::Start(addr))?;
         Ok(())
     }
-    fn read(&mut self, buf: &mut[u8]) -> Result<usize> 
-    where T: Read
+    fn read(&mut self, buf: &mut [u8]) -> Result<usize>
+    where
+        T: Read,
     {
         self.inner.read(buf)
     }

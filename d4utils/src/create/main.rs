@@ -1,3 +1,6 @@
+use crate::utils::{
+    make_dictionary, parse_bed_file, parse_genome_file, setup_thread_pool, InputType,
+};
 use clap::{load_yaml, App, ArgMatches};
 use d4::ptab::PTablePartitionWriter;
 use d4::stab::SecondaryTablePartWriter;
@@ -7,11 +10,10 @@ use log::info;
 use rayon::prelude::*;
 use regex::Regex;
 use std::path::Path;
-use crate::utils::{InputType, make_dictionary, parse_bed_file, parse_genome_file, setup_thread_pool};
 
 fn main_impl(matches: ArgMatches) -> Result<(), Box<dyn std::error::Error>> {
     setup_thread_pool(&matches)?;
-    
+
     let input_path: &Path = matches.value_of("input-file").unwrap().as_ref();
     let input_type = InputType::detect(input_path);
 
@@ -41,7 +43,7 @@ fn main_impl(matches: ArgMatches) -> Result<(), Box<dyn std::error::Error>> {
     if matches.is_present("sparse") {
         d4_builder.set_dictionary(d4::Dictionary::new_simple_range_dict(0, 1)?);
     }
-    
+
     let chr_filter = Regex::new(matches.value_of("filter").unwrap_or(".*"))?;
 
     if matches.values_of("dict-auto").is_some() {
@@ -63,10 +65,7 @@ fn main_impl(matches: ArgMatches) -> Result<(), Box<dyn std::error::Error>> {
     let reference = matches.value_of("ref");
 
     let enable_compression = matches.is_present("deflate") || matches.is_present("sparse");
-    let compression_level: u32 = matches
-        .value_of("deflate-level")
-        .unwrap_or("5")
-        .parse()?;
+    let compression_level: u32 = matches.value_of("deflate-level").unwrap_or("5").parse()?;
 
     match input_type {
         InputType::Alignment => {
