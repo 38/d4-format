@@ -105,3 +105,19 @@ pub fn setup_thread_pool(matches: &ArgMatches) -> Result<(), ThreadPoolBuildErro
     }
     Ok(())
 }
+
+pub fn check_reference_consistency<'a, I: Iterator<Item = &'a [Chrom]>>(iter: I) -> bool {
+    let chrom_matrix: Vec<_> = iter.collect();
+
+    if chrom_matrix.len() > 1 {
+        for (i, chrom) in chrom_matrix[0].iter().enumerate() {
+            for j in 1..chrom_matrix.len() {
+                if &chrom_matrix[j][i] != chrom {
+                    return false;
+                }
+            }
+        }
+    }
+
+    true
+}

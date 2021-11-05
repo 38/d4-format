@@ -4,8 +4,6 @@
 	// For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
 	"version": "0.2.0",
 	"configurations": [
-		
-
 
 
 
@@ -20,7 +18,7 @@
 				]
 			},
 			"program": "target/debug/d4tools",
-			"args": ["stat", "/home/haohou/base2/data/hg002.d4", " -r", "/tmp/region.bed"]
+			"args": ["show", "https://home.chpc.utah.edu/~u0875014/hg002.d4", "Y"]
 		}
 
 	]

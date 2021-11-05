@@ -16,6 +16,7 @@ pub struct D4TrackView<R: Read + Seek> {
     pub(super) chrom: String,
     pub(super) end: u32,
     pub(super) cursor: u32,
+    pub(super) fetch_size: usize,
     pub(super) primary_table: Blob<R>,
     pub(super) primary_table_buffer: Option<(u32, Vec<u8>)>,
     pub(super) secondary_tables: VecDeque<SecondaryTableRef<R>>,
@@ -55,7 +56,11 @@ impl<R: Read + Seek> D4TrackView<R> {
             let start_pos = self.cursor - self.cursor % 8;
             let start_byte = start_pos as usize * self.dictionary.bit_width() / 8;
             let end_pos = start_pos as usize
-                + (4096 * 8 / self.dictionary.bit_width()).min((self.end - start_pos) as usize);
+                + (self.fetch_size * 8 / self.dictionary.bit_width())
+                    .min((self.end - start_pos) as usize);
+            self.fetch_size = (self.fetch_size * 2)
+                .min(self.primary_table.size())
+                .min(1 * 1024 * 1024);
             let end_byte = (end_pos * self.dictionary.bit_width() + 7) / 8;
             let size = end_byte - start_byte;
             let mut buf = vec![0; size];

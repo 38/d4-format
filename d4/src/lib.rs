@@ -20,8 +20,8 @@ pub use chrom::Chrom;
 
 #[cfg(all(feature = "mapped_io", not(target_arch = "wasm32")))]
 pub use d4file::{
-    find_tracks_in_file, D4FileBuilder, D4FileMerger, D4FileWriter, D4MatrixReader, D4TrackReader,
-    MultiTrackReader,
+    find_tracks, find_tracks_in_file, D4FileBuilder, D4FileMerger, D4FileWriter, D4MatrixReader,
+    D4TrackReader, MultiTrackReader,
 };
 
 pub use dict::Dictionary;

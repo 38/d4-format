@@ -1,9 +1,11 @@
+use d4::ssio::http::HttpReader;
 use d4_framefile::*;
+use d4tools::AppResult;
 use std::fs::File;
-use std::io::Write;
+use std::io::{Read, Seek, Write};
 
 #[allow(clippy::print_literal)]
-pub fn dump_dir(dir: &Directory<File>) {
+pub fn dump_dir<R: Read + Seek>(dir: &Directory<R>) {
     println!(
         "{:20}\t{:8}\t{}\t{}\n",
         "Name", "Type", "    Offset", "Primary-Size"
@@ -22,14 +24,8 @@ pub fn dump_dir(dir: &Directory<File>) {
         );
     }
 }
-pub fn entry_point(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
-    let file = std::fs::File::open(args.get(1).map_or("out.d4", |x| x.as_ref())).unwrap();
-    let path: Vec<_> = args
-        .get(2)
-        .map_or("", |x| x.as_ref())
-        .split(|x| x == '/')
-        .collect();
-    let mut dir = Directory::open_root(file, 8).unwrap();
+fn show_impl<R: Read + Seek>(stream: R, path: Vec<&str>) -> AppResult<()> {
+    let mut dir = Directory::open_root(stream, 8).unwrap();
     let lc = path.len();
     if path == [""] {
         dump_dir(&dir);
@@ -55,8 +51,15 @@ pub fn entry_point(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> 
                 }
             }
             Some(EntryKind::Blob) => {
-                let chunk = dir.open_blob(name)?;
-                std::io::stdout().write_all(chunk.mmap()?.as_ref())?;
+                let mut blob = dir.open_blob(name)?;
+                let mut offset = 0;
+                let mut buffer = [0; 40960];
+                let mut stdout = std::io::stdout();
+                while offset < blob.size() {
+                    let actual_read = blob.read_block(offset as u64, &mut buffer)?;
+                    offset += actual_read;
+                    stdout.write_all(&buffer[..actual_read])?;
+                }
             }
             Some(EntryKind::SubDir) => {
                 let dir = dir.open_directory(name)?;
@@ -66,4 +69,22 @@ pub fn entry_point(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> 
         }
     }
     Ok(())
+}
+pub fn entry_point(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
+    let frame_path: Vec<_> = args
+        .get(2)
+        .map_or("", |x| x.as_ref())
+        .split(|x| x == '/')
+        .collect();
+    match args.get(1) {
+        Some(url) if url.starts_with("http://") || url.starts_with("https://") => {
+            let http_reader = HttpReader::new(url)?;
+            show_impl(http_reader, frame_path)
+        }
+        Some(fs_path) => {
+            let file_reader = File::open(fs_path)?;
+            show_impl(file_reader, frame_path)
+        }
+        _ => panic!("Usage: d4tools framedump <path-or-url> <frame-path>"),
+    }
 }

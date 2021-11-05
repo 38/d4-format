@@ -1,11 +1,9 @@
-use crate::utils::{
-    make_dictionary, parse_bed_file, parse_genome_file, setup_thread_pool, InputType,
-};
 use clap::{load_yaml, App, ArgMatches};
 use d4::ptab::PTablePartitionWriter;
 use d4::stab::SecondaryTablePartWriter;
 use d4::{Chrom, D4FileWriter, Dictionary};
 use d4_hts::{BamFile, DepthIter};
+use d4tools::{make_dictionary, parse_bed_file, parse_genome_file, setup_thread_pool, InputType};
 use log::info;
 use rayon::prelude::*;
 use regex::Regex;

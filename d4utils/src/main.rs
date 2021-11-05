@@ -7,7 +7,6 @@ mod plot;
 mod server;
 mod show;
 mod stat;
-mod utils;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<_> = std::env::args().skip(1).collect();

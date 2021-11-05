@@ -94,7 +94,6 @@ impl<M: PrimaryTableMode> PrimaryTable<M> {
         header: &Header,
         mut max_chunk_size: Option<usize>,
     ) -> Result<Vec<PartialPrimaryTable<M>>> {
-
         let data = M::get_mapping_address(self)?;
 
         if let Some(ref mut max_chunk_size) = max_chunk_size {

@@ -326,7 +326,7 @@ impl<T: Read + Write + Seek> Stream<T> {
                         frame.zero_frame();
                     }
                 }
-               self.cursor = 0;
+                self.cursor = 0;
                 continue;
             }
 
@@ -560,15 +560,15 @@ mod test {
 
         Ok(())
     }
-    
+
     #[test]
     fn test_modify_stream() -> TestResult<()> {
         let test_blob: Vec<_> = vec![
             19, 0, 0, 0, 0, 0, 0, 0, //Linked Frame
             20, 0, 0, 0, 0, 0, 0, 0, // Linked Frame size
-            0xdd, 0xdd, 0x00,        // Frame data
-            0, 0, 0, 0, 0, 0, 0, 0,  // Linked Frame
-            0, 0, 0, 0, 0, 0, 0, 0,  // Linked Frame size 
+            0xdd, 0xdd, 0x00, // Frame data
+            0, 0, 0, 0, 0, 0, 0, 0, // Linked Frame
+            0, 0, 0, 0, 0, 0, 0, 0, // Linked Frame size
             0, 0, 0, 0,
         ];
         let reader = Cursor::new(test_blob);

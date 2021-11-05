@@ -1,7 +1,7 @@
 use clap::{load_yaml, App, ArgMatches};
 use d4::index::D4IndexCollection;
 
-use crate::utils::AppResult;
+use d4tools::AppResult;
 
 fn build_main(args: &ArgMatches) -> AppResult<()> {
     let input_path = args.value_of("FILE").unwrap();

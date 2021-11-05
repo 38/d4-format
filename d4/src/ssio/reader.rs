@@ -62,6 +62,7 @@ impl<R: Read + Seek> D4TrackReader<R> {
             }
         }
         Ok(D4TrackView {
+            fetch_size: 8192.min(primary_view.size()),
             primary_table: primary_view,
             secondary_tables: secondary_view.into(),
             chrom: chrom.to_string(),
@@ -76,23 +77,7 @@ impl<R: Read + Seek> D4TrackReader<R> {
         })
     }
 
-    pub fn from_reader(mut reader: R, track_name: Option<&str>) -> Result<Self> {
-        validate_header(&mut reader)?;
-        let file_root = Directory::open_root(reader, 8)?;
-        let track_root = if let Some(track_name) = track_name {
-            match file_root.open(track_name)? {
-                OpenResult::SubDir(root) => root,
-                _ => {
-                    return Err(Error::new(
-                        std::io::ErrorKind::Other,
-                        "track root not found",
-                    ));
-                }
-            }
-        } else {
-            file_root
-        };
-
+    pub fn from_track_root(track_root: Directory<R>) -> Result<Self> {
         let header_stream = track_root.open_stream(Header::HEADER_STREAM_NAME)?;
         let header = Header::read(header_stream)?;
         let primary_table = track_root.open_blob(PRIMARY_TABLE_NAME)?;
@@ -112,5 +97,24 @@ impl<R: Read + Seek> D4TrackReader<R> {
             secondary_table,
             sfi,
         })
+    }
+
+    pub fn from_reader(mut reader: R, track_name: Option<&str>) -> Result<Self> {
+        validate_header(&mut reader)?;
+        let file_root = Directory::open_root(reader, 8)?;
+        let track_root = if let Some(track_name) = track_name {
+            match file_root.open(track_name)? {
+                OpenResult::SubDir(root) => root,
+                _ => {
+                    return Err(Error::new(
+                        std::io::ErrorKind::Other,
+                        "track root not found",
+                    ));
+                }
+            }
+        } else {
+            file_root
+        };
+        Self::from_track_root(track_root)
     }
 }

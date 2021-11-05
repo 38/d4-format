@@ -11,6 +11,9 @@ pub struct Blob<T> {
 }
 
 impl<T: Read + Seek> Blob<T> {
+    pub fn size(&self) -> usize {
+        self.size
+    }
     pub fn get_view(&self, offset: u64, size: usize) -> Self {
         let offset = self.offset + offset.min(self.size as u64);
         let size = (self.size - offset as usize).min(size);
@@ -22,7 +25,7 @@ impl<T: Read + Seek> Blob<T> {
         }
     }
     pub fn read_block(&mut self, offset: u64, buf: &mut [u8]) -> Result<usize> {
-        if self.size < self.offset as usize {
+        if self.size < offset as usize {
             return Ok(0);
         }
 

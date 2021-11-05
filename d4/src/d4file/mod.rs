@@ -53,9 +53,9 @@ fn open_file_and_validate_header<P: AsRef<Path>>(path: P) -> Result<File> {
     Ok(fp)
 }
 
-pub fn find_tracks<Pat: Fn(Option<&Path>) -> bool, R: Read + Seek>(
+pub fn find_tracks<Pat: FnMut(Option<&Path>) -> bool, R: Read + Seek>(
     mut input: R,
-    pattern: Pat,
+    mut pattern: Pat,
     buf: &mut Vec<PathBuf>,
 ) -> Result<()> {
     validate_header(&mut input)?;
@@ -74,7 +74,7 @@ pub fn find_tracks<Pat: Fn(Option<&Path>) -> bool, R: Read + Seek>(
     Ok(())
 }
 
-pub fn find_tracks_in_file<Pat: Fn(Option<&Path>) -> bool, PathType: AsRef<Path>>(
+pub fn find_tracks_in_file<Pat: FnMut(Option<&Path>) -> bool, PathType: AsRef<Path>>(
     path: PathType,
     pattern: Pat,
     buf: &mut Vec<PathBuf>,
