@@ -28,5 +28,4 @@ jobs:
        with:
          context: ./
          file: ./Dockerfile
-         push: true
-         tags: "clinicalgenomics/d4tools:latest"
+         push: false
