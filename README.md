@@ -6,7 +6,7 @@ Modern DNA sequencing is used as a readout for diverse assays, with the count of
 
 To learn more, please read the publication: [https://www.nature.com/articles/s43588-021-00085-0](https://www.nature.com/articles/s43588-021-00085-0)
 
-Also, check out the [https://docs.google.com/presentation/d/1vqs6mnfiVryfMAxqDyJrZsX6HI39NbwWqvB7DUCLTgw/edit?usp=sharing](slide deck) that describes the motivation, performance and toolkits for D4
+Also, check out the [https://docs.google.com/presentation/d/1vqs6mnfiVryfMAxqDyJrZsX6HI39NbwWqvB7DUCLTgw](slide deck) that describes the motivation, performance and toolkits for D4
 
 We runs the experiment on a server with following hardward and software  
  - Processor: Intel(R) Xeon(R) Gold 6230 CPU @ 2.10GHz
