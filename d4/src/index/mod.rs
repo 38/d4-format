@@ -11,9 +11,13 @@ use crate::{d4file::validate_header, Header};
 pub const INDEX_ROOT_NAME: &'static str = ".index";
 pub const SECONDARY_FRAME_INDEX_NAME: &'static str = "s_frame_index";
 
+mod data_index;
 mod sfi;
 
+pub use data_index::{DataIndexQueryResult, DataIndexRef, DataSummary, Sum};
 pub use sfi::{RecordFrameAddress, SecondaryFrameIndex};
+
+use self::data_index::DataIndex;
 
 #[allow(dead_code)]
 pub struct D4IndexCollection<T> {
@@ -43,6 +47,11 @@ impl<T: Read + Seek> D4IndexCollection<T> {
                 .open_stream(SecondaryFrameIndex::STREAM_NAME)?,
             header,
         )
+    }
+    pub fn load_data_index<S: DataSummary>(&self) -> Result<DataIndexRef<S>> {
+        let header = Header::read(self.track_root.open_stream(Header::HEADER_STREAM_NAME)?)?;
+        let mut data_index_blob = self.index_root.open_blob(S::INDEX_NAME)?;
+        DataIndex::<S>::from_blob(&mut data_index_blob, header.chrom_list())
     }
 }
 
@@ -75,22 +84,21 @@ impl D4IndexCollection<File> {
                 .create_stream(SecondaryFrameIndex::STREAM_NAME, 511)?,
         )
     }
+    pub fn create_sum_index(&mut self) -> Result<()> {
+        DataIndex::<Sum>::build(&mut self.track_root, &mut self.index_root, 65536)?;
+        Ok(())
+    }
 }
 
 #[test]
-fn test_read() {
-    let idx = D4IndexCollection::from_reader(File::open("/tmp/hg002.d4").unwrap()).unwrap();
-    let sfi = idx.load_seconary_frame_index().unwrap();
-    //let stab = idx.track_root.open_directory(SECONDARY_TABLE_NAME).unwrap();
-
-    let addr = sfi.find_partial_seconary_table("1", 0).unwrap().unwrap();
-    assert_eq!(addr.first_frame, true);
-
-    let addr = sfi
-        .find_partial_seconary_table("1", 123456)
-        .unwrap()
-        .unwrap();
-    assert_eq!(addr.first_frame, false);
-
-    sfi.print_secondary_table_index(std::io::stdout()).unwrap();
+fn test_load_sum_index() {
+    /*let mut index = D4IndexCollection::open_for_write("/tmp/hg002.d4").unwrap();
+    index.create_sum_index().unwrap();*/
+    let file_root = Directory::open_root(File::open("/tmp/hg002.d4").unwrap(), 8).unwrap();
+    let index = D4IndexCollection::from_root_container(&file_root).unwrap();
+    let data_index = index.load_data_index::<Sum>().unwrap();
+    let mut reader = crate::ssio::D4TrackReader::from_track_root(index.track_root.clone()).unwrap();
+    let result = data_index.query("1", 0, 100_0000).unwrap();
+    let full_result = result.get_result(&mut reader).unwrap();
+    println!("{:?}", full_result.mean(result.query_size()));
 }

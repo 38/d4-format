@@ -12,6 +12,10 @@ subcommands:
                 help: Build the secondary frame index (SFI), this will allow faster random HTTP access
                 long: secondary-frame
                 short: s
+            - sum:
+                help: "Build the data index for sum aggregation, this will allow faster mean depth report via HTTP [Note: this also implies --secondary-frame]"
+                long: sum
+                short: S
     - show:
         about: Print infomation about the index
         args: 
@@ -20,7 +24,7 @@ subcommands:
                 required: true
                 index: 1
             - INDEX_TYPE:
-                help: "Specify what type of index to show, possible vlaue: SFI"
+                help: "Specify what type of index to show, possible vlaue: SFI, SUM"
                 required: true
                 index: 2
 

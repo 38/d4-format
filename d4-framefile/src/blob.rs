@@ -10,7 +10,26 @@ pub struct Blob<T> {
     offset: u64,
 }
 
+pub struct BlobReader<'a, T> {
+    cursor: u64,
+    blob: &'a mut Blob<T>,
+}
+
+impl<'a, T: Read + Seek> Read for BlobReader<'a, T> {
+    fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
+        let bytes_read = self.blob.read_block(self.cursor, buf)?;
+        self.cursor += bytes_read as u64;
+        Ok(bytes_read)
+    }
+}
+
 impl<T: Read + Seek> Blob<T> {
+    pub fn get_reader(&mut self) -> BlobReader<T> {
+        BlobReader {
+            cursor: 0,
+            blob: self,
+        }
+    }
     pub fn size(&self) -> usize {
         self.size
     }

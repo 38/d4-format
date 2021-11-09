@@ -195,6 +195,7 @@ pub fn entry_point(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> 
             .num_threads(threads)
             .build_global()?;
     }
+    //TODO: make this also works with HTTP
     match matches.value_of("stat") {
         None | Some("mean") | Some("avg") => {
             for result in run_task::<Mean>(matches)? {

@@ -54,12 +54,27 @@ impl MappedStreamFrame {
         (self as *const _ as *const u8).offset_from(base)
     }
     pub fn next_frame(&self) -> Option<&MappedStreamFrame> {
-        self.header.linked_frame.map(|offset| unsafe {
-            std::mem::transmute((
-                (&self.header as *const FrameHeader as *const u8)
-                    .offset(i64::from(offset).to_le() as isize),
-                self.header.linked_frame_size.to_le() - std::mem::size_of::<FrameHeader>() as u64,
-            ))
+        self.header.linked_frame.map(|offset| {
+            let payload_size =
+                self.header.linked_frame_size.to_le() - std::mem::size_of::<FrameHeader>() as u64;
+            let next_frame_addr = unsafe {
+                (self as *const _ as *const u8).offset(i64::from(offset).to_le() as isize)
+            };
+            // Actually, this is the only reliable way to construct a custom DST reference from raw memory address
+            // It's not obvious and hacky:
+            // - First, we use `std::ptr::slice_from_raw_parts` that make a DST fat pointer by introducing size
+            //   information to the pointer. At this point, the pointer doesn't actually points to the correct memory region.
+            //   Because returned *const [u8] actually describes memory region from frame_addr to frame_addr + payload_size
+            //   thus, there are exactly sizeof(Header) bytes of payload data is out of the range. But this doesn't matter.
+            // - Then, we cast the pointer to *const MappedStreamFrame, which is a DST pointer as well. But this time, the
+            //   pointer will be interpreted correctly, as it points to the correct location, plus it carries correct size info.
+            // Thus the purpose of calling slice_from_raw_parts is not yield a well-formed pointer, but a compiler supported
+            // way to introduce size information to a thin pointer. After that we then cast the pointer make sure that the
+            // pointer can be dereferenced correctly.
+            // See https://github.com/rust-lang/unsafe-code-guidelines/issues/288 for details
+            let frame_ptr = std::ptr::slice_from_raw_parts(next_frame_addr, payload_size as usize)
+                as *const Self;
+            unsafe { &*frame_ptr }
         })
     }
 }

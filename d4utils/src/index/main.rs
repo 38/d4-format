@@ -11,6 +11,12 @@ fn build_main(args: &ArgMatches) -> AppResult<()> {
         index_collection.create_secondary_frame_index()?;
         log::info!("Finish creating SFI");
     }
+    if args.is_present("sum") {
+        if !args.is_present("secondary-frame") {
+            index_collection.create_secondary_frame_index().ok();
+        }
+        index_collection.create_sum_index()?;
+    }
     Ok(())
 }
 

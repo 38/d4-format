@@ -52,6 +52,7 @@ impl<T: Task<R>, R: Iterator<Item = i32> + ExactSizeIterator> IntoTaskVec<R, T> 
 
 pub struct TaskOutput<'a, T> {
     pub chrom: &'a str,
+    pub chrom_id: usize,
     pub begin: u32,
     pub end: u32,
     pub output: &'a T,
@@ -65,6 +66,12 @@ pub struct TaskOutputVec<T> {
 pub struct TaskOutputIter<'a, T> {
     idx: usize,
     data: &'a TaskOutputVec<T>,
+}
+
+impl<T> TaskOutputVec<T> {
+    pub fn len(&self) -> usize {
+        self.results.len()
+    }
 }
 
 impl<'a, T> IntoIterator for &'a TaskOutputVec<T> {
@@ -83,6 +90,7 @@ impl<'a, T> Iterator for TaskOutputIter<'a, T> {
             self.idx += 1;
             return Some(TaskOutput {
                 chrom: &self.data.chrom_list[self.data.results[idx].0],
+                chrom_id: self.data.results[idx].0,
                 begin: self.data.results[idx].1,
                 end: self.data.results[idx].2,
                 output: &self.data.results[idx].3,

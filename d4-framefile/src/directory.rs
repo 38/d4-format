@@ -89,6 +89,7 @@ impl<T> Clone for Directory<T> {
 }
 
 impl<T> Directory<T> {
+    // TODO: For internet accessing, this init block size seems too small.
     pub const INIT_BLOCK_SIZE: usize = 512;
     /// Get the type of the child object
     pub fn entry_kind(&self, name: &str) -> Option<EntryKind> {
