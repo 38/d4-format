@@ -1,7 +1,7 @@
 # `d4` - Dense Depth Data Dump
 
 ## Synopsis
-The Dense Depth Data Dump (D4) format and tool suite provide an alternative to BigWig for fast analysis and compact storage of quantitative genomes datasets (e.g., RNA-seq, ChIP-seq, WGS depths, etc.)
+The Dense Depth Data Dump (D4) format and tool suite provide an alternative to BigWig for fast analysis and compact storage of quantitative genomics datasets (e.g., RNA-seq, ChIP-seq, WGS depths, etc.)
 
 Usage axamples are provided below. Also, check out the [slide deck](https://docs.google.com/presentation/d/1vqs6mnfiVryfMAxqDyJrZsX6HI39NbwWqvB7DUCLTgw) that describes the motivation, performance and toolkits for D4
 
