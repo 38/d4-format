@@ -1,11 +1,8 @@
 use clap::{load_yaml, App, ArgMatches};
 
-use d4::{
-    task::{Histogram, Mean, SimpleTask, Task, TaskOutput},
-    D4TrackReader,
-};
+use d4::{Chrom, D4TrackReader, find_tracks, index::{D4IndexCollection, Sum}, ssio::http::HttpReader, task::{Histogram, Mean, SimpleTask, Task, TaskOutput}};
 
-use std::path::Path;
+use std::{io::{Read, Seek}, path::Path};
 use std::{
     borrow::{Borrow, Cow},
     io::{BufRead, BufReader},
@@ -29,6 +26,18 @@ fn parse_bed_file<P: AsRef<Path>>(
         }
         None
     }))
+}
+
+fn parse_region_spec(region_file: Option<&str>, chrom_list: &[Chrom]) -> Result<Vec<(String, u32, u32)>, Box<dyn std::error::Error>> {
+    Ok(if let Some(path) = region_file {
+        parse_bed_file(path)?
+            .map(|(chr, left, right)| (chr, left, right))
+            .collect()
+    } else {
+        chrom_list.iter()
+            .map(|chrom| (chrom.name.clone(), 0u32, chrom.size as u32))
+            .collect()
+    })
 }
 
 fn open_file_parse_region_and_then<T, F>(
@@ -76,18 +85,8 @@ where
         })?
     };
 
-    let region_spec: Vec<_> = if let Some(path) = matches.value_of("region") {
-        parse_bed_file(path)?
-            .map(|(chr, left, right)| (chr, left, right))
-            .collect()
-    } else {
-        d4files[0]
-            .header()
-            .chrom_list()
-            .iter()
-            .map(|chrom| (chrom.name.clone(), 0u32, chrom.size as u32))
-            .collect()
-    };
+    let region_spec = parse_region_spec(matches.value_of("region"), d4files[0].header().chrom_list())?;
+
     func(d4files, region_spec)
 }
 
@@ -184,6 +183,41 @@ fn hist_stat(matches: ArgMatches) -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
+fn mean_stat_index<'a, R: Read + Seek>(
+    mut reader: R, 
+    region_file: Option<&str>,
+) -> Result<bool, Box<dyn std::error::Error>> {
+    let mut tracks = Vec::with_capacity(1);
+    let mut found = false;
+    find_tracks(&mut reader, |_| {
+        let ret = !found;
+        found = true;
+        ret
+    }, &mut tracks)?;
+    if tracks.len() != 1 {
+        panic!("At least one track should be present in the file");
+    }
+    let file_root = d4_framefile::Directory::open_root(reader, 8)?;
+    let root_dir = match file_root.open(&tracks[0])? {
+        d4_framefile::OpenResult::SubDir(dir) => dir,
+        _ => panic!("Invalid track root"),
+    };
+    if let Ok(index_root) = D4IndexCollection::from_root_container(&root_dir) {
+        if let Ok(sum_index) = index_root.load_data_index::<Sum>() {
+            let mut ssio_reader = d4::ssio::D4TrackReader::from_track_root(root_dir)?;
+            let regions = parse_region_spec(region_file, ssio_reader.chrom_list())?;
+            for (chr, begin, end) in regions {
+                let index_res = sum_index.query(chr.as_str(), begin, end).unwrap();
+                let sum_res = index_res.get_result(&mut ssio_reader)?;
+                let mean = sum_res.mean(index_res.query_size());
+                println!("{}\t{}\t{}\t{}", chr, begin, end, mean);
+            }
+            return Ok(true)
+        }
+    }
+    Ok(false)
+}
+
 pub fn entry_point(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
     let yaml = load_yaml!("cli.yml");
     let matches = App::from_yaml(yaml)
@@ -195,7 +229,32 @@ pub fn entry_point(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> 
             .num_threads(threads)
             .build_global()?;
     }
-    //TODO: make this also works with HTTP
+    
+    if !matches.is_present("no-index") &&
+        (matches.value_of("stat") == Some("mean") ||
+         matches.value_of("stat") == Some("avg") ||
+         !matches.is_present("stat")) &&
+        matches.values_of("input").unwrap().len() == 1
+    {
+        let path = matches.value_of("input").unwrap();
+        let region_file = matches.value_of("regions");
+        if path.starts_with("http://") || path.starts_with("https://") {
+            let reader = HttpReader::new(path)?;
+            if mean_stat_index(reader, region_file)? {
+                return Ok(());
+            }
+        } else {
+            let reader = File::open(path)?;
+            if mean_stat_index(reader, region_file)? {
+                return Ok(());
+            }
+        }
+    } 
+
+    if matches.values_of("input").unwrap().any(|x| x.starts_with("http://") || x.starts_with("https://")) {
+        panic!("For HTTP/HTTPS stat, we currently only support single track and only for mean dpeth");
+    }
+
     match matches.value_of("stat") {
         None | Some("mean") | Some("avg") => {
             for result in run_task::<Mean>(matches)? {

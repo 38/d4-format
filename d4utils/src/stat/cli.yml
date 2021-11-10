@@ -27,6 +27,9 @@ args:
         short: f
         long: first
         help: "Show first data track from the given file"
+    - no-index:
+        long: no-index
+        help: "Do not use index even it's present"
     - filter:
         short: F
         long: filter

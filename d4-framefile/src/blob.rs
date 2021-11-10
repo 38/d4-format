@@ -34,13 +34,14 @@ impl<T: Read + Seek> Blob<T> {
         self.size
     }
     pub fn get_view(&self, offset: u64, size: usize) -> Self {
-        let offset = self.offset + offset.min(self.size as u64);
-        let size = (self.size - offset as usize).min(size);
+        let rel_offset = offset.min(self.size as u64);
+        let abs_offset = self.offset + rel_offset;
+        let size = (self.size - rel_offset as usize).min(size);
 
         Self {
             file: self.file.clone(),
             size,
-            offset,
+            offset: abs_offset,
         }
     }
     pub fn read_block(&mut self, offset: u64, buf: &mut [u8]) -> Result<usize> {

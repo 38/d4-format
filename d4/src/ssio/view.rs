@@ -86,6 +86,7 @@ impl<R: Read + Seek> D4TrackView<R> {
                         self.frame_decode_result.push_back(rec);
                     }
                 }
+                stream.load_next_frame()?;
                 return self.load_next_secondary_record();
             }
         }

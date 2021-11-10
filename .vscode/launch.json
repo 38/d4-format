@@ -18,7 +18,8 @@
 				]
 			},
 			"program": "target/debug/d4tools",
-			"args": ["show", "https://home.chpc.utah.edu/~u0875014/hg002.d4", "Y"]
+			"args": ["stat", "http://localhost:8000/hg002.d4"]
+			//"args": ["show", "https://home.chpc.utah.edu/~u0875014/hg002.d4", "Y"]
 		}
 
 	]

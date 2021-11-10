@@ -50,7 +50,7 @@ impl<'a, T: DataSummary> DataIndexQueryResult<'a, T> {
     fn get_incomplete_regions(&self) -> [(u32, u32); 2] {
         [
             (self.query_begin, self.actual_begin),
-            (self.query_end, self.actual_end),
+            (self.actual_end, self.query_end),
         ]
     }
     fn do_per_base_query<R: Read + Seek>(
@@ -99,7 +99,7 @@ impl<T: DataSummary> DataIndexRef<T> {
         let actual_end: u32 = if end % grand == 0 {
             end
         } else {
-            end - grand + begin % grand
+            end - end % grand
         };
         let actual_begin_idx = (actual_begin / grand) as usize + base_offset;
         let actual_end_idx = (actual_end / grand) as usize + base_offset;
