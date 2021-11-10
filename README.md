@@ -1,11 +1,11 @@
 # `d4` - Dense Depth Data Dump
 
-# Synopsis
+## Synopsis
 The Dense Depth Data Dump (D4) format and tool suite provide an alternative to BigWig for fast analysis and compact storage of quantitative genomics datasets (e.g., RNA-seq, ChIP-seq, WGS depths, etc.). It supports random access, multiple tracks (e.g., RNA-seq, ChiP-seq, etc. from the same sample), HTTP range requests, and statistics on arbitrary genome intervals. The D4tools software is built on a [Rust crate](https://docs.rs/d4/0.2.18/d4/). We provide both a [C-API](https://github.com/38/d4-format/tree/master/d4binding/include) and a [Python API](https://github.com/38/pyd4) that allows users to read and query D4 files.
 
 Usage examples are provided below. Also, check out the [slide deck](https://docs.google.com/presentation/d/1vqs6mnfiVryfMAxqDyJrZsX6HI39NbwWqvB7DUCLTgw) that describes the motivation, performance and toolkits for D4
 
-# Motivation
+## Motivation
 
 Modern DNA sequencing is used as a readout for diverse assays, with the count of aligned sequences, or "read depth", serving as the quantitative signal for many underlying cellular phenomena. Despite wide use and thousands of datasets, existing formats used for the storage and analysis of read depths are limited with respect to both size and speed. For example, it is faster to recalculate sequencing depth from an alignment file than it is to analyze the text output from that calculation. We sought to improve on existing formats such as BigWig and compressed BED files by creating the Dense Depth Data Dump (D4) format and tool suite. The D4 format is adaptive in that it profiles a random sample of aligned sequence depth from the input BAM or CRAM file to determine an optimal encoding that  minimizes file size, while also enabling fast data access. We show that D4 uses less disk space for both RNA-Seq and whole-genome sequencing and offers 3 to 440 fold speed improvements over existing formats for random access, aggregation and summarization for scalable downstream analyses that would be otherwise intractable.
 
