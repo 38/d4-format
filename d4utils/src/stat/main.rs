@@ -1,13 +1,22 @@
 use clap::{load_yaml, App, ArgMatches};
 
-use d4::{Chrom, D4TrackReader, find_tracks, index::{D4IndexCollection, Sum}, ssio::http::HttpReader, task::{Histogram, Mean, SimpleTask, Task, TaskOutput}};
+use d4::{
+    find_tracks,
+    index::{D4IndexCollection, Sum},
+    ssio::http::HttpReader,
+    task::{Histogram, Mean, SimpleTask, Task, TaskOutput},
+    Chrom, D4TrackReader,
+};
 
-use std::{io::{Read, Seek}, path::Path};
 use std::{
     borrow::{Borrow, Cow},
     io::{BufRead, BufReader},
 };
 use std::{fs::File, iter::Once};
+use std::{
+    io::{Read, Seek},
+    path::Path,
+};
 
 fn parse_bed_file<P: AsRef<Path>>(
     file: P,
@@ -28,13 +37,17 @@ fn parse_bed_file<P: AsRef<Path>>(
     }))
 }
 
-fn parse_region_spec(region_file: Option<&str>, chrom_list: &[Chrom]) -> Result<Vec<(String, u32, u32)>, Box<dyn std::error::Error>> {
+fn parse_region_spec(
+    region_file: Option<&str>,
+    chrom_list: &[Chrom],
+) -> Result<Vec<(String, u32, u32)>, Box<dyn std::error::Error>> {
     Ok(if let Some(path) = region_file {
         parse_bed_file(path)?
             .map(|(chr, left, right)| (chr, left, right))
             .collect()
     } else {
-        chrom_list.iter()
+        chrom_list
+            .iter()
             .map(|chrom| (chrom.name.clone(), 0u32, chrom.size as u32))
             .collect()
     })
@@ -85,7 +98,8 @@ where
         })?
     };
 
-    let region_spec = parse_region_spec(matches.value_of("region"), d4files[0].header().chrom_list())?;
+    let region_spec =
+        parse_region_spec(matches.value_of("region"), d4files[0].header().chrom_list())?;
 
     func(d4files, region_spec)
 }
@@ -184,16 +198,20 @@ fn hist_stat(matches: ArgMatches) -> Result<(), Box<dyn std::error::Error>> {
 }
 
 fn mean_stat_index<'a, R: Read + Seek>(
-    mut reader: R, 
+    mut reader: R,
     region_file: Option<&str>,
 ) -> Result<bool, Box<dyn std::error::Error>> {
     let mut tracks = Vec::with_capacity(1);
     let mut found = false;
-    find_tracks(&mut reader, |_| {
-        let ret = !found;
-        found = true;
-        ret
-    }, &mut tracks)?;
+    find_tracks(
+        &mut reader,
+        |_| {
+            let ret = !found;
+            found = true;
+            ret
+        },
+        &mut tracks,
+    )?;
     if tracks.len() != 1 {
         panic!("At least one track should be present in the file");
     }
@@ -212,7 +230,7 @@ fn mean_stat_index<'a, R: Read + Seek>(
                 let mean = sum_res.mean(index_res.query_size());
                 println!("{}\t{}\t{}\t{}", chr, begin, end, mean);
             }
-            return Ok(true)
+            return Ok(true);
         }
     }
     Ok(false)
@@ -229,15 +247,15 @@ pub fn entry_point(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> 
             .num_threads(threads)
             .build_global()?;
     }
-    
-    if !matches.is_present("no-index") &&
-        (matches.value_of("stat") == Some("mean") ||
-         matches.value_of("stat") == Some("avg") ||
-         !matches.is_present("stat")) &&
-        matches.values_of("input").unwrap().len() == 1
+
+    if !matches.is_present("no-index")
+        && (matches.value_of("stat") == Some("mean")
+            || matches.value_of("stat") == Some("avg")
+            || !matches.is_present("stat"))
+        && matches.values_of("input").unwrap().len() == 1
     {
         let path = matches.value_of("input").unwrap();
-        let region_file = matches.value_of("regions");
+        let region_file = matches.value_of("region");
         if path.starts_with("http://") || path.starts_with("https://") {
             let reader = HttpReader::new(path)?;
             if mean_stat_index(reader, region_file)? {
@@ -249,10 +267,16 @@ pub fn entry_point(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> 
                 return Ok(());
             }
         }
-    } 
+    }
 
-    if matches.values_of("input").unwrap().any(|x| x.starts_with("http://") || x.starts_with("https://")) {
-        panic!("For HTTP/HTTPS stat, we currently only support single track and only for mean dpeth");
+    if matches
+        .values_of("input")
+        .unwrap()
+        .any(|x| x.starts_with("http://") || x.starts_with("https://"))
+    {
+        panic!(
+            "For HTTP/HTTPS stat, we currently only support single track and only for mean dpeth"
+        );
     }
 
     match matches.value_of("stat") {

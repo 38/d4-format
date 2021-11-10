@@ -81,7 +81,6 @@ async fn main(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
 }
 
 pub fn entry_point(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
-    env_logger::init();
     tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()?

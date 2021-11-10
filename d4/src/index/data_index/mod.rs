@@ -147,8 +147,8 @@ impl<T: DataSummary> DataIndex<T> {
         blob: &mut Blob<R>,
         chrom: &[Chrom],
     ) -> Result<DataIndexRef<T>> {
-        let mut data_buffer = Vec::new();
-        blob.get_reader().read_to_end(&mut data_buffer)?;
+        let mut data_buffer = vec![0; blob.size()];
+        blob.get_reader().read_exact(&mut data_buffer)?;
         let mut ret = DataIndexRef {
             raw_data: data_buffer,
             offset_table: HashMap::new(),

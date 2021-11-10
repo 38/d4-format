@@ -122,13 +122,14 @@ impl SecondaryFrameIndex {
             header,
         };
 
-        for _ in 0..size {
-            let mut item_buf = [0; std::mem::size_of::<FrameIndexEntry>()];
-            reader.read_exact(&mut item_buf)?;
-            let mut item = unsafe { *std::mem::transmute::<_, &FrameIndexEntry>(&item_buf[0]) };
-            item.ensure_byte_odering();
-            ret.items.push(item);
-        }
+        let mut buffer = vec![0; std::mem::size_of::<FrameIndexEntry>() * size];
+        reader.read_exact(&mut buffer)?;
+        let items = unsafe {
+            std::slice::from_raw_parts_mut(buffer.as_mut_ptr() as *mut FrameIndexEntry, size)
+        };
+        items.iter_mut().for_each(|item| item.ensure_byte_odering());
+        ret.items.extend_from_slice(items);
+
         Ok(ret)
     }
     pub(crate) fn write<W: Write>(&self, mut out: W) -> Result<()> {
@@ -145,6 +146,9 @@ impl SecondaryFrameIndex {
             out.write_all(bytes)?;
         }
         Ok(())
+    }
+    pub(crate) fn get_blob_size(&self) -> usize {
+        std::mem::size_of::<FrameIndexEntry>() * self.items.len() + std::mem::size_of::<usize>()
     }
     pub(crate) fn from_data_track(track_root: &Directory<File>) -> Result<Self> {
         let header = Header::read(track_root.open_stream(Header::HEADER_STREAM_NAME)?)?;

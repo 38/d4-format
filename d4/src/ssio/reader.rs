@@ -62,7 +62,7 @@ impl<R: Read + Seek> D4TrackReader<R> {
             }
         }
         Ok(D4TrackView {
-            fetch_size: 8192.min(primary_view.size()),
+            fetch_size: 65536.min(primary_view.size()),
             primary_table: primary_view,
             secondary_tables: secondary_view.into(),
             chrom: chrom.to_string(),

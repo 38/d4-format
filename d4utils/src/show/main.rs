@@ -235,7 +235,6 @@ fn show_impl<'a, R: Read + Seek, I: Iterator<Item = &'a str>>(
 }
 
 pub fn entry_point(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
-    env_logger::init();
     let yaml = load_yaml!("cli.yml");
     let matches = App::from_yaml(yaml)
         .version(d4::VERSION)

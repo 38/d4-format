@@ -1,6 +1,6 @@
 use std::{
     fs::{File, OpenOptions},
-    io::{Read, Result, Seek},
+    io::{Cursor, Read, Result, Seek},
     path::Path,
 };
 
@@ -41,12 +41,11 @@ impl<T: Read + Seek> D4IndexCollection<T> {
     }
     pub fn load_seconary_frame_index(&self) -> Result<SecondaryFrameIndex> {
         let header = Header::read(self.track_root.open_stream(Header::HEADER_STREAM_NAME)?)?;
+        let mut blob = self
+            .index_root
+            .open_blob(SecondaryFrameIndex::STREAM_NAME)?;
 
-        SecondaryFrameIndex::from_reader(
-            self.index_root
-                .open_stream(SecondaryFrameIndex::STREAM_NAME)?,
-            header,
-        )
+        SecondaryFrameIndex::from_reader(blob.get_reader(), header)
     }
     pub fn load_data_index<S: DataSummary>(&self) -> Result<DataIndexRef<S>> {
         let header = Header::read(self.track_root.open_stream(Header::HEADER_STREAM_NAME)?)?;
@@ -79,10 +78,14 @@ impl D4IndexCollection<File> {
     }
     pub fn create_secondary_frame_index(&mut self) -> Result<()> {
         let sfi_index = sfi::SecondaryFrameIndex::from_data_track(&self.track_root)?;
-        sfi_index.write(
-            self.index_root
-                .create_stream(SecondaryFrameIndex::STREAM_NAME, 511)?,
-        )
+        let blob_size = sfi_index.get_blob_size();
+        let mut blob = self
+            .index_root
+            .create_blob(SecondaryFrameIndex::STREAM_NAME, blob_size)?;
+        let mut mapped_blob = blob.mmap_mut()?;
+        let writer = Cursor::new(mapped_blob.as_mut());
+        sfi_index.write(writer)?;
+        Ok(())
     }
     pub fn create_sum_index(&mut self) -> Result<()> {
         DataIndex::<Sum>::build(&mut self.track_root, &mut self.index_root, 65536)?;

@@ -34,6 +34,7 @@ pub struct HttpReader {
     url: Url,
     size: usize,
     cursor: usize,
+    head_buf: Vec<u8>,
 }
 
 fn map_result<T, E: std::error::Error + Sync + Send + 'static>(
@@ -51,16 +52,20 @@ impl HttpReader {
     pub fn new<U: IntoUrl>(url: U) -> Result<Self> {
         let url = map_result(url.into_url())?;
         let client = Client::new();
-
+        let mut head_buf = Vec::with_capacity(16384);
         let size: usize = {
-            let response = map_result(
+            let mut response = map_result(
                 client
-                    .head(url.clone())
+                    .get(url.clone())
                     .header("connection", "keep-alive")
+                    .header("range", "bytes=0-16383")
                     .send(),
             )?;
-            let size_text = response.headers()["content-length"].as_bytes();
-            let size_text = String::from_utf8_lossy(size_text);
+            response.read_to_end(&mut head_buf)?;
+            let range_response = response.headers()["content-range"].as_bytes();
+            let range_response = String::from_utf8_lossy(range_response);
+            let size_text = range_response.split('/').skip(1).next().unwrap();
+
             map_result(size_text.parse())?
         };
 
@@ -69,6 +74,7 @@ impl HttpReader {
             url,
             size,
             cursor: 0,
+            head_buf,
         })
     }
 }
@@ -76,9 +82,22 @@ impl HttpReader {
 impl Read for HttpReader {
     fn read(&mut self, mut buf: &mut [u8]) -> Result<usize> {
         let to = self.size.min(self.cursor + buf.len() - 1);
-        if self.cursor > to {
-            return Ok(0);
+        let mut sz = 0;
+        if self.cursor < self.head_buf.len() {
+            let head_to = (to + 1).min(self.head_buf.len());
+            sz = head_to - self.cursor;
+            buf[..sz].copy_from_slice(&self.head_buf[self.cursor..head_to]);
+            self.cursor = head_to;
         }
+        if self.cursor > to {
+            return Ok(sz);
+        }
+        log::info!(
+            "Sending HTTP request for block {}-{} ({} bytes)",
+            self.cursor,
+            to,
+            to - self.cursor + 1
+        );
         let mut request = map_result(
             self.client
                 .get(self.url.as_ref())
@@ -86,7 +105,6 @@ impl Read for HttpReader {
                 .header("connection", "keep-alive")
                 .send(),
         )?;
-        let mut sz = 0;
         while !buf.is_empty() {
             let read = request.read(buf)?;
             if read == 0 {

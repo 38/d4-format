@@ -29,6 +29,5 @@ fn main(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
 }
 
 pub fn entry_point(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
-    env_logger::init();
     main(args)
 }

@@ -47,7 +47,6 @@ fn main_impl(args: ArgMatches) -> AppResult<bool> {
 }
 
 pub fn entry_point(args: Vec<String>) -> AppResult<()> {
-    env_logger::init();
     let yaml = load_yaml!("cli.yml");
     let mut app = App::from_yaml(yaml).version(d4::VERSION);
 
