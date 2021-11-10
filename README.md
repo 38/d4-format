@@ -203,6 +203,52 @@ $ d4tools stat -s percentile=95 -r region.bed hg002.d4
 2       0       150000000       38
 ```
 
+### Reading D4 File Served by static HTTP Server
+
+D4 now supports showing and run statistics for D4 files that is served on a HTTP server without downloading the file to local.
+For printing the file content, simple use the following command:
+
+```
+$ d4tools show https://d4-format-testing.s3.us-west-1.amazonaws.com/hg002.d4 | head -n 10
+1       0       9998    0
+1       9998    9999    6
+1       9999    10000   10
+1       10000   10001   38
+1       10001   10002   55
+1       10002   10003   72
+1       10003   10004   93
+1       10004   10005   110
+1       10005   10006   126
+1       10006   10007   131
+```
+
+To run statistics on a D4 file on network, we required the D4 file contains the data index to avoid full file accessing.
+
+- (On the server side) Prepare the D4 file that need to be accessed on web
+
+```bash
+d4tools index build --sum hg002.d4
+```
+
+- (On the client side) Run mean depth statistics on this file
+
+```
+$ d4tools stat https://d4-format-testing.s3.us-west-1.amazonaws.com/hg002.d4
+1       0       249250621       23.848327146193952
+2       0       243199373       25.02162749408075
+3       0       198022430       23.086504175309837
+4       0       191154276       23.18471121200553
+5       0       180915260       23.2536419094774
+6       0       171115067       24.515156108374722
+7       0       159138663       24.398102314080646
+8       0       146364022       26.425789139628865
+9       0       141213431       19.780247114029827
+10      0       135534747       25.475887087464
+
+....
+```
+
+
 ## Build
 
 ### Prerequisites
