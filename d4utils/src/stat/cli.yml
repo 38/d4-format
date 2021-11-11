@@ -35,4 +35,3 @@ args:
         long: filter
         value_name: 'TRACK-PATTERN'
         help: "A regex that matches all the track labels to be printed"
-        

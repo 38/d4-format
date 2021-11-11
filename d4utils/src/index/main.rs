@@ -1,5 +1,5 @@
 use clap::{load_yaml, App, ArgMatches};
-use d4::index::D4IndexCollection;
+use d4::index::{D4IndexCollection, Sum};
 
 use d4tools::AppResult;
 
@@ -27,6 +27,10 @@ fn show_main(args: &ArgMatches) -> AppResult<()> {
         "sfi" => {
             let index = index_collection.load_seconary_frame_index()?;
             index.print_secondary_table_index(std::io::stdout())?;
+        }
+        "sum" => {
+            let index = index_collection.load_data_index::<Sum>()?;
+            index.print_index();
         }
         _ => {
             panic!("Unsupported index type")

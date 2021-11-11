@@ -4,13 +4,7 @@ mod data;
 use d4_framefile::{Blob, Directory};
 pub use data::{DataSummary, Sum};
 
-use std::{
-    collections::HashMap,
-    fs::File,
-    io::{Read, Result, Seek},
-    marker::PhantomData,
-    ops::{Deref, DerefMut},
-};
+use std::{collections::HashMap, fmt::Debug, fs::File, io::{Read, Result, Seek}, marker::PhantomData, ops::{Deref, DerefMut}};
 
 use crate::{ssio::D4TrackReader as StreamD4Reader, Chrom, D4TrackReader};
 
@@ -81,6 +75,25 @@ impl<'a, T: DataSummary> DataIndexQueryResult<'a, T> {
 }
 
 impl<T: DataSummary> DataIndexRef<T> {
+    pub fn print_index(&self) 
+    where 
+        T: Debug
+    {
+        let granularity = self.header.granularity;
+        let mut chroms:Vec<_> = self.offset_table.iter().collect();
+        chroms.sort_unstable_by_key(|(_, (start, _))| *start);
+        for (chr, (begin_idx, chrom_size)) in chroms {
+            let mut begin = 0;
+            for item in &self.pre_computed_data[*begin_idx..] {
+                let end = (begin +  granularity).min(*chrom_size as u32);
+                println!("{}\t{}\t{}\t{:.5?}", chr, begin, end, item);
+                begin += granularity;
+                if begin as usize > *chrom_size {
+                    break;
+                }
+            }
+        }
+    }
     pub fn query(
         &self,
         chr: &str,
