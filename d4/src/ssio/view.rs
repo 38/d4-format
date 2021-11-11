@@ -50,7 +50,7 @@ impl<R: Read + Seek> D4TrackView<R> {
             .map_or(true, |(start, buf)| {
                 let offset = self.cursor - start;
                 let byte_offset = (offset as usize * self.dictionary.bit_width()) / 8;
-                byte_offset >= buf.len()
+                byte_offset + 4 >= buf.len()
             })
         {
             let start_pos = self.cursor - self.cursor % 8;
