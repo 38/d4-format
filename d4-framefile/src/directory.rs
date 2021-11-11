@@ -53,6 +53,11 @@ pub enum OpenResult<T: Read + Seek> {
 }
 
 impl<T: Read + Write + Seek> DirectoryImpl<T> {
+    fn write_stream(&mut self, data: &[u8]) -> Result<usize> {
+        self.stream.write_with_alloc_callback(data, |s| {
+            s.double_frame_size(65536);
+        })
+    }
     fn append_directory(&mut self, new_entry: Entry) -> Result<()> {
         if self.entries.iter().any(|x| x.name == new_entry.name) {
             return Err(Error::new(
@@ -62,11 +67,11 @@ impl<T: Read + Write + Seek> DirectoryImpl<T> {
         }
         //self.stream.write(&[1, new_entry.kind as u8])?;
         self.stream.update_current_byte(1)?;
-        self.stream.write(&[new_entry.kind as u8])?;
+        self.write_stream(&[new_entry.kind as u8])?;
         self.stream
             .write(&(new_entry.primary_offset - self.offset).to_le_bytes())?;
-        self.stream.write(&new_entry.primary_size.to_le_bytes())?;
-        self.stream.write(
+        self.write_stream(&new_entry.primary_size.to_le_bytes())?;
+        self.write_stream(
             new_entry
                 .name
                 .bytes()
@@ -74,7 +79,7 @@ impl<T: Read + Write + Seek> DirectoryImpl<T> {
                 .collect::<Vec<_>>()
                 .as_ref(),
         )?;
-        self.stream.write(&[0])?;
+        self.write_stream(&[0])?;
         self.entries.push(new_entry);
         Ok(())
     }

@@ -226,6 +226,9 @@ pub struct Stream<T> {
     on_drop: Box<dyn FnOnce(&mut Self) + Send + Sync>,
 }
 impl<T> Stream<T> {
+    pub fn set_frame_size(&mut self, size: usize) {
+        self.frame_size = size;
+    }
     pub fn double_frame_size(&mut self, limit: usize) {
         if self.frame_size * 2 > limit {
             self.frame_size = limit;
