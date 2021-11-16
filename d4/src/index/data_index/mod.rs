@@ -99,7 +99,7 @@ impl<T: DataSummary> DataIndexRef<T> {
         chr: &str,
         mut begin: u32,
         mut end: u32,
-    ) -> Option<DataIndexQueryResult<T>> {
+    ) -> Option<DataIndexQueryResult<'_, T>> {
         let (base_offset, chrom_size) = *self.offset_table.get(chr)?;
         begin = begin.min(chrom_size as u32);
         end = end.min(chrom_size as u32);

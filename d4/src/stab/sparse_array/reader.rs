@@ -179,10 +179,10 @@ mod mapped_io {
             let actual_data = metadata.trim_end_matches(|c| c == '\0');
             serde_json::from_str(actual_data).ok()
         }
-        fn load_record_blocks(&mut self) -> HashMap<String, Vec<RecordBlock<R>>> {
+        fn load_record_blocks(&mut self) -> HashMap<String, Vec<RecordBlock<'_, R>>> {
             let metadata = self.load_metadata().unwrap();
 
-            let mut record_blocks: HashMap<String, Vec<RecordBlock<R>>> = HashMap::new();
+            let mut record_blocks: HashMap<String, Vec<RecordBlock<'_, R>>> = HashMap::new();
 
             for stream in metadata.streams() {
                 let chr = &stream.chr;
@@ -302,7 +302,7 @@ mod mapped_io {
 
     impl<R: Record> SecondaryTablePartReader for SparseArrayPartReader<R> {
         type IteratorState = (usize, usize);
-        fn iter(&self) -> RecordIterator<Self> {
+        fn iter(&self) -> RecordIterator<'_, Self> {
             RecordIterator(self, self.cursor)
         }
         fn next_record(&self, state: &mut Self::IteratorState) -> Option<(u32, u32, i32)> {
@@ -426,7 +426,7 @@ mod mapped_io {
                 .iter()
                 .map(|(c, l, r)| PartitionContext::new(c, *l, *r))
                 .collect();
-            partitions.sort_by_key(|item: &PartitionContext<R>| (item.chrom, item.left));
+            partitions.sort_by_key(|item: &PartitionContext<'_, R>| (item.chrom, item.left));
 
             let mut chroms: Vec<_> = record_blocks.keys().map(ToOwned::to_owned).collect();
             chroms.sort();

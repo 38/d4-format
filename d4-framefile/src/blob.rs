@@ -24,7 +24,7 @@ impl<'a, T: Read + Seek> Read for BlobReader<'a, T> {
 }
 
 impl<T: Read + Seek> Blob<T> {
-    pub fn get_reader(&mut self) -> BlobReader<T> {
+    pub fn get_reader(&mut self) -> BlobReader<'_, T> {
         BlobReader {
             cursor: 0,
             blob: self,

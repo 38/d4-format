@@ -62,7 +62,7 @@ impl<'a> Iterator for SequenceIter<'a> {
 }
 
 impl<'a> Alignment<'a> {
-    pub fn sequence(&self) -> Sequence {
+    pub fn sequence(&self) -> Sequence<'_> {
         Sequence { alignment: self }
     }
 }

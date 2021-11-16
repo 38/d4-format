@@ -54,7 +54,7 @@ fn parse_region_spec(
 }
 
 fn open_file_parse_region_and_then<T, F>(
-    matches: ArgMatches,
+    matches: ArgMatches<'_>,
     func: F,
 ) -> Result<T, Box<dyn std::error::Error>>
 where
@@ -113,7 +113,7 @@ pub struct OwnedOutput<T> {
 
 #[allow(clippy::type_complexity)]
 fn run_task<T: Task<Once<i32>> + SimpleTask + Clone>(
-    matches: ArgMatches,
+    matches: ArgMatches<'_>,
 ) -> Result<Vec<OwnedOutput<Vec<T::Output>>>, Box<dyn std::error::Error>>
 where
     T::Output: Clone,
@@ -139,7 +139,7 @@ where
     })
 }
 
-fn percentile_stat(matches: ArgMatches, percentile: f64) -> Result<(), Box<dyn std::error::Error>> {
+fn percentile_stat(matches: ArgMatches<'_>, percentile: f64) -> Result<(), Box<dyn std::error::Error>> {
     let histograms = run_task::<Histogram>(matches)?;
     for OwnedOutput {
         chrom: chr,
@@ -165,7 +165,7 @@ fn percentile_stat(matches: ArgMatches, percentile: f64) -> Result<(), Box<dyn s
     Ok(())
 }
 
-fn hist_stat(matches: ArgMatches) -> Result<(), Box<dyn std::error::Error>> {
+fn hist_stat(matches: ArgMatches<'_>) -> Result<(), Box<dyn std::error::Error>> {
     let max_bin = matches.value_of("max-bin").unwrap_or("1000").parse()?;
     let histograms = open_file_parse_region_and_then(matches, |mut input, regions| {
         let tasks: Vec<_> = regions

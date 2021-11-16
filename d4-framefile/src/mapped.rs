@@ -83,7 +83,7 @@ impl MappedDirectory {
     pub fn get_base_addr(&self) -> *const u8 {
         self.handle.as_ref().as_ptr()
     }
-    pub fn open_stream(&self, name: &str) -> Option<MappedStream> {
+    pub fn open_stream(&self, name: &str) -> Option<MappedStream<'_>> {
         if let Some((ptr, size)) = self.streams.get(name) {
             Some(unsafe { MappedStream::new(std::mem::transmute(*ptr), *size) })
         } else {

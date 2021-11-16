@@ -95,7 +95,7 @@ pub fn make_dictionary(
     d4::Dictionary::new_simple_range_dict(0, 64)
 }
 
-pub fn setup_thread_pool(matches: &ArgMatches) -> Result<(), ThreadPoolBuildError> {
+pub fn setup_thread_pool(matches: &ArgMatches<'_>) -> Result<(), ThreadPoolBuildError> {
     if let Some(threads) = matches.value_of("threads") {
         if let Ok(threads) = threads.parse() {
             rayon::ThreadPoolBuilder::new()

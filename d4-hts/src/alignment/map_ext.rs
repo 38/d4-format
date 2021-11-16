@@ -8,7 +8,7 @@ pub struct MapIter<'a> {
 }
 
 impl<'a> Alignment<'a> {
-    pub fn map_iter(&self) -> MapIter {
+    pub fn map_iter(&self) -> MapIter<'_> {
         let mut ret = MapIter {
             ref_pos: self.ref_begin(),
             seq_it: self.sequence().into_iter(),

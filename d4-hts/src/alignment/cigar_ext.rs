@@ -22,7 +22,7 @@ pub struct Cigar {
 }
 
 impl std::fmt::Display for Cigar {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
             "{}{}",
@@ -47,7 +47,7 @@ impl Cigar {
     fn new(ops: CigarOps, len: u32) -> Cigar {
         Cigar { op: ops, len }
     }
-    fn from_alignment(al: &Alignment, idx: usize) -> Option<Cigar> {
+    fn from_alignment(al: &Alignment<'_>, idx: usize) -> Option<Cigar> {
         if idx >= (al.hts_obj().core.n_cigar as usize) {
             return None;
         }
@@ -108,7 +108,7 @@ impl<'a> Iterator for CigarIter<'a> {
 }
 
 impl<'a> Alignment<'a> {
-    pub fn cigar(&self) -> CigarIter {
+    pub fn cigar(&self) -> CigarIter<'_> {
         CigarIter {
             alignment: self,
             offset: 0,

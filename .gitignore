@@ -40,3 +40,8 @@ sample_data/**
 perf.data*
 
 d4binding/example/bin/*
+
+pyd4/dist/**
+pyd4/*.egg-info/**
+pyd4/build/**
+pyd4/**/__pycache__/**

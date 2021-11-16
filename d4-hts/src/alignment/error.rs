@@ -8,7 +8,7 @@ pub enum AlignmentError {
 }
 
 impl Display for AlignmentError {
-    fn fmt(&self, formatter: &mut Formatter) -> Result {
+    fn fmt(&self, formatter: &mut Formatter<'_>) -> Result {
         match self {
             AlignmentError::HtsError(code) => write!(formatter, "HtsError({})", code),
             AlignmentError::BadPosition => write!(formatter, "BadPosition"),

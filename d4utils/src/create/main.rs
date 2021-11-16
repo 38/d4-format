@@ -9,7 +9,7 @@ use rayon::prelude::*;
 use regex::Regex;
 use std::path::Path;
 
-fn main_impl(matches: ArgMatches) -> Result<(), Box<dyn std::error::Error>> {
+fn main_impl(matches: ArgMatches<'_>) -> Result<(), Box<dyn std::error::Error>> {
     setup_thread_pool(&matches)?;
 
     let input_path: &Path = matches.value_of("input-file").unwrap().as_ref();

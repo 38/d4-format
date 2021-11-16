@@ -11,11 +11,11 @@ pub struct DepthIter<'a, R: AlignmentReader<'a>> {
     cur_pos: usize,
     heap: BinaryHeap<Reverse<usize>>,
     next_read: Option<(i32, usize, usize)>,
-    filter: Option<Box<dyn Fn(&Alignment) -> bool + 'a>>,
+    filter: Option<Box<dyn Fn(&Alignment<'_>) -> bool + 'a>>,
 }
 
 impl<'a, R: AlignmentReader<'a>> DepthIter<'a, R> {
-    pub fn with_filter<F: Fn(&Alignment) -> bool + 'a>(reader: R, filter: F) -> Self {
+    pub fn with_filter<F: Fn(&Alignment<'_>) -> bool + 'a>(reader: R, filter: F) -> Self {
         let (chrom, pos) = reader.start();
         let iter = reader.into_alignment_iter();
 

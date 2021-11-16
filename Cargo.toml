@@ -7,6 +7,7 @@ members = [
 	"d4utils",
 	"d4binding",
 	"d4-bigwig",
+	"pyd4"
 ]
 
 [profile.release]

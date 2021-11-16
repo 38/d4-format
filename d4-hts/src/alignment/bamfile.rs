@@ -150,7 +150,7 @@ impl BamFile {
         self.mp_free.replace(cur_list);
     }
 
-    pub fn range(&mut self, chrom: &str, from: usize, to: usize) -> Result<Ranged, AlignmentError> {
+    pub fn range(&mut self, chrom: &str, from: usize, to: usize) -> Result<Ranged<'_>, AlignmentError> {
         if self.idx.is_null() {
             self.idx = unsafe {
                 let path_buf = CString::new(self.path.as_path().as_os_str().as_bytes()).unwrap();

@@ -63,11 +63,11 @@ pub trait SecondaryTablePartReader: Sized {
     /// Read the next record
     fn next_record(&self, state: &mut Self::IteratorState) -> Option<(u32, u32, i32)>;
     /// Return a iter that iterate over  all the records
-    fn iter(&self) -> RecordIterator<Self>;
+    fn iter(&self) -> RecordIterator<'_, Self>;
     /// Build a iterator state starting from the given location
     fn seek_state(&self, pos: u32) -> Self::IteratorState;
     /// Return a iterator that seeks to the given location
-    fn seek_iter(&self, pos: u32) -> RecordIterator<Self> {
+    fn seek_iter(&self, pos: u32) -> RecordIterator<'_, Self> {
         RecordIterator(self, self.seek_state(pos))
     }
 }
