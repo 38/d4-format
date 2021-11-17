@@ -34,8 +34,10 @@ class D4File(D4FileImpl):
     def load_to_np(self, regions):
         ret = []
         chroms = dict(self.chroms())
+        single_value = False
         if type(regions) != list:
             regions = [str(regions)]
+            single_value = True
         for region in regions:
             if type(region) == tuple:
                 if len(region) == 2:
@@ -57,5 +59,5 @@ class D4File(D4FileImpl):
             buf_addr = ctypes.cast(buf_ptr, ctypes.c_void_p).value
             self.load_values_to_buffer(name, begin, end, buf_addr)
             ret.append(buf)
-        return ret
+        return ret if not single_value else ret[0]
 __all__ = [ 'D4File', 'D4Iter', 'D4Matrix' ]
