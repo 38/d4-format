@@ -1,4 +1,4 @@
-use d4::ptab::DecodeResult;
+use d4::ptab::{DecodeResult, Decoder};
 use d4::stab::SecondaryTablePartReader;
 use d4::task::{Histogram, Mean, Task, TaskContext};
 use d4::D4TrackReader;
@@ -6,6 +6,7 @@ use pyo3::class::iter::{IterNextOutput, PyIterProtocol};
 use pyo3::prelude::*;
 use pyo3::types::{PyInt, PyList, PyString, PyTuple};
 use std::io::Result;
+use rayon::prelude::*;
 
 /// Python object for reading a D4 file
 #[pyclass(subclass)]
@@ -150,6 +151,46 @@ impl D4File {
             buf.push(*item.output);
         }
         Ok(buf)
+    }
+
+    pub fn load_values_to_buffer(&self, chr: &str, left: u32, right: u32, buf: i64) -> PyResult<()> {
+        let mut inner = self.open()?;
+        let partition = inner.split(Some(100_0000))?;
+
+        let chr = chr.to_string();
+
+        partition
+            .into_par_iter()
+            .for_each(move |(mut ptab, mut stab)| {
+                let (part_chr, begin, end) = ptab.region();
+                let part_chr = part_chr.to_string();
+                let mut pd = ptab.to_codec();
+                let (from, to) = if part_chr != chr {
+                    return;
+                } else {
+                    (left.max(begin), right.min(end))
+                };
+                let target = unsafe {
+                    std::slice::from_raw_parts_mut(
+                        ((buf as u64) + std::mem::size_of::<i32>() as u64* (from as u64)) as *mut i32,
+                        (to - from) as usize
+                    )
+	            };
+                pd.decode_block(from as usize, (to - from) as usize, |pos, value| {
+                    let value = match value {
+                        DecodeResult::Definitely(value) => value,
+                        DecodeResult::Maybe(value) => {
+                            if let Some(st_value) = stab.decode(pos as u32) {
+                                st_value
+                            } else {
+                                value
+                            }
+                        }
+                    };
+                    target[pos - from as usize] = value;
+                });
+            });
+        Ok(())
     }
 
     /// Returns a value iterator that iterates over the given region

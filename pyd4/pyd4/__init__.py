@@ -5,6 +5,7 @@ The Python Binding for the D4 file format
 from .pyd4 import D4File as D4FileImpl, D4Iter
 
 import numpy
+import ctypes
 
 def enumerate_values(inf, chrom, begin, end):
     if inf.__class__ == list:
@@ -31,8 +32,30 @@ class D4File(D4FileImpl):
     def open_all_tracks(self):
         return D4Matrix([self.open_track(track_label) for track_label in self.list_tracks()])
     def load_to_np(self, regions):
-        ret = numpy.array([], dtype = "int16")
-        for (name, begin, end) in regions:
-            ret = numpy.append(ret, numpy.fromiter(self.value_iter(name, begin, end), dtype = "int16"))
+        ret = []
+        chroms = dict(self.chroms())
+        if type(regions) != list:
+            regions = [str(regions)]
+        for region in regions:
+            if type(region) == tuple:
+                if len(region) == 2:
+                    begin = 0
+                    end = region[1]
+                    name = region[0]
+                else:
+                    name = region[0]
+                    begin = region[1]
+                    end = region[2]
+            else:
+                name = str(region)
+                begin = 0
+                end = chroms[name]
+            begin = max(0, begin)
+            end = min(end, chroms[name])
+            buf = numpy.zeros(shape=(end - begin,), dtype = numpy.int32)
+            buf_ptr = buf.ctypes.data_as(ctypes.POINTER(ctypes.c_uint32))
+            buf_addr = ctypes.cast(buf_ptr, ctypes.c_void_p).value
+            self.load_values_to_buffer(name, begin, end, buf_addr)
+            ret.append(buf)
         return ret
 __all__ = [ 'D4File', 'D4Iter', 'D4Matrix' ]
