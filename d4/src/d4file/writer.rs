@@ -7,31 +7,38 @@ use std::path::{Path, PathBuf};
 use crate::chrom::Chrom;
 use crate::dict::Dictionary;
 use crate::header::Header;
-use crate::ptab::{BitArrayWriter, PTablePartitionWriter, PTableWriter};
+use crate::ptab::{BitArrayWriter, PTablePartitionWriter, PrimaryTableWriter};
 use crate::stab::{RangeRecord, SecondaryTableWriter, SparseArrayWriter};
 
 use super::FILE_MAGIC_NUM;
 
 /// Create a D4 file
-#[allow(dead_code)]
 pub struct D4FileWriter<
-    PT: PTableWriter = BitArrayWriter,
+    PT: PrimaryTableWriter = BitArrayWriter,
     ST: SecondaryTableWriter = SparseArrayWriter<RangeRecord>,
 > {
-    file_root: Directory<File>,
+    _file_root: Directory<File>,
     pub(crate) header: Header,
     pub(crate) p_table: PT,
     pub(crate) s_table: Option<ST>,
 }
 
-impl<PT: PTableWriter, ST: SecondaryTableWriter> D4FileWriter<PT, ST> {
+pub trait D4FileWriterExt {
+    type Partition;
+}
+
+impl<PT: PrimaryTableWriter, ST: SecondaryTableWriter> D4FileWriterExt for D4FileWriter<PT, ST> {
+    type Partition = (PT::Partition, ST::Partition);
+}
+
+impl<PT: PrimaryTableWriter, ST: SecondaryTableWriter> D4FileWriter<PT, ST> {
     /// Split the file writer into parts for parallel writing
     pub fn parallel_parts(
         &mut self,
         size_limit: Option<usize>,
     ) -> Result<
         Vec<(
-            <PT as PTableWriter>::Partition,
+            <PT as PrimaryTableWriter>::Partition,
             <ST as SecondaryTableWriter>::Partition,
         )>,
     > {
@@ -54,7 +61,7 @@ impl<PT: PTableWriter, ST: SecondaryTableWriter> D4FileWriter<PT, ST> {
     }
 }
 
-impl<PT: PTableWriter, ST: SecondaryTableWriter> Drop for D4FileWriter<PT, ST> {
+impl<PT: PrimaryTableWriter, ST: SecondaryTableWriter> Drop for D4FileWriter<PT, ST> {
     fn drop(&mut self) {
         drop(std::mem::replace(&mut self.s_table, None));
     }
@@ -133,7 +140,7 @@ impl D4FileBuilder {
     }
 
     /// Create the D4 file writer for this file
-    pub fn create<PT: PTableWriter, ST: SecondaryTableWriter>(
+    pub fn create<PT: PrimaryTableWriter, ST: SecondaryTableWriter>(
         &mut self,
     ) -> Result<D4FileWriter<PT, ST>> {
         let mut directory = Self::write_d4_header(self.path.as_path())?;
@@ -151,7 +158,7 @@ impl D4FileBuilder {
         let s_table = Some(ST::create(&mut directory, &header)?);
 
         Ok(D4FileWriter {
-            file_root: directory,
+            _file_root: directory,
             header,
             p_table,
             s_table,

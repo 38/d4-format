@@ -2,7 +2,7 @@
 The Python Binding for the D4 file format
 """
 
-from .pyd4 import D4File as D4FileImpl, D4Iter
+from .pyd4 import D4File as D4FileImpl, D4Iter, D4Builder as D4BuilderImpl, D4Writer as D4WriterImpl
 
 import numpy
 import ctypes
@@ -50,10 +50,57 @@ class D4Matrix:
         self.tracks = tracks
     def enumerate_values(self, chrom, begin, end):
         return enumerate_values(self.tracks, chrom, begin, end)
-
+class D4Writer:
+    def __init__(self, writer_obj):
+        self._inner = writer_obj
+    def __del__(self):
+        self._inner.close()
+    def write_np_array(self, chr, pos, data):
+        if len(data.shape) != 1:
+            raise RuntimeError("Invalid input shape")
+        if data.dtype != "int32":
+            data = data.astype("int32")
+        data_ptr = data.ctypes.data_as(ctypes.POINTER(ctypes.c_int32))
+        data_addr = ctypes.cast(data_ptr, ctypes.c_void_p).value
+        self._inner.write(chr, pos, data_addr, data.shape[0])
+class D4Builder(D4BuilderImpl):
+    def __init__(self, output_path):
+        self.output_path = output_path
+    """
+    Enable the secondary table compression for the d4 file to created
+    """
+    def enable_secondary_table_compression(self, level = 5):
+        self.set_compression(level)
+        return self
+    def add_sequence(self, chr, size):
+        self.add_seq(chr, size)
+        return self
+    """
+    Make the D4 file optimized for a boolean array
+    """
+    def for_bit_array(self):
+        self.set_compression(-1)
+        self.dict_range(0, 2)
+        return self
+    """
+    Make the D4 file optimized for sparse data
+    """
+    def for_sparse_data(self):
+        self.set_compression(5)
+        self.dict_range(0, 1)
+        return self
+    def get_writer(self):
+        return D4Writer(self.into_writer(self.output_path))
 class D4File(D4FileImpl):
-    def enumerate_values(self, chrom, begin, end):
-        enumerate_values(self, chrom, begin, end)
+    def create_on_same_genome(self, output, seqs = None):
+        ret = D4Builder(output)
+        if seqs != None:
+            this_seqs = dict(self.chroms())
+            for seq in seqs:
+                if seq in this_seqs:
+                    ret.add_seq(seq, this_seqs[seq])
+        ret.dup_dict(self)
+        return ret
     def open_all_tracks(self):
         return D4Matrix([self.open_track(track_label) for track_label in self.list_tracks()])
     def load_to_np(self, regions):

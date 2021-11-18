@@ -83,6 +83,9 @@ impl<R: Read + Seek> D4TrackView<R> {
                 self.rbp_state.parse_frame(frame_data, &mut blocks);
                 for block in blocks {
                     for &rec in block.as_ref() {
+                        if !rec.is_valid() {
+                            break;
+                        }
                         self.frame_decode_result.push_back(rec);
                     }
                 }
@@ -96,6 +99,7 @@ impl<R: Read + Seek> D4TrackView<R> {
             self.rbp_state = stream.get_frame_parsing_state();
             return self.load_next_secondary_record();
         }
+        self.current_record = None;
         Ok(None)
     }
     pub fn read_next_value(&mut self) -> Result<(u32, i32)> {
@@ -117,9 +121,6 @@ impl<R: Read + Seek> D4TrackView<R> {
                 self.load_next_secondary_record()?;
             }
             while let Some(record) = self.current_record.as_ref() {
-                if !record.is_valid() {
-                    continue;
-                }
                 let (begin, end) = record.effective_range();
                 if end > pos || begin >= pos {
                     break;

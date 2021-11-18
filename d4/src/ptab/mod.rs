@@ -20,7 +20,7 @@ pub enum DecodeResult {
 }
 
 /// The trait that is used to write a primary table
-pub trait PTableWriter: Sized {
+pub trait PrimaryTableWriter: Sized {
     /// The writer type for a parallel chunk
     type Partition: PTablePartitionWriter;
     /// Create the primary table in the file

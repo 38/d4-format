@@ -27,7 +27,7 @@ mod mapped {
         D4FilePartition, D4MatrixReader, DataScanner, MultiTrackPartitionReader, MultiTrackReader,
     };
 
-    pub use writer::{D4FileBuilder, D4FileWriter};
+    pub use writer::{D4FileBuilder, D4FileWriter, D4FileWriterExt};
 }
 #[cfg(all(feature = "mapped_io", not(target_arch = "wasm32")))]
 pub use mapped::*;

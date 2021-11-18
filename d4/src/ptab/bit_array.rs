@@ -365,7 +365,7 @@ impl PTablePartitionWriter for PartialPrimaryTable<Writer> {
         self.dictionary.bit_width()
     }
 }
-impl PTableWriter for PrimaryTable<Writer> {
+impl PrimaryTableWriter for PrimaryTable<Writer> {
     type Partition = PartialPrimaryTable<Writer>;
     fn create(directory: &mut Directory<File>, header: &Header) -> Result<Self> {
         PrimaryTable::<Writer>::create(directory, header)
