@@ -5,8 +5,8 @@ use d4::D4TrackReader;
 use pyo3::class::iter::{IterNextOutput, PyIterProtocol};
 use pyo3::prelude::*;
 use pyo3::types::{PyInt, PyList, PyString, PyTuple};
-use std::io::Result;
 use rayon::prelude::*;
+use std::io::Result;
 
 /// Python object for reading a D4 file
 #[pyclass(subclass)]
@@ -25,7 +25,10 @@ impl D4File {
         D4TrackReader::open(&self.path)
     }
 
-    fn parse_range_spec(input: &D4TrackReader, regions: &PyList) -> PyResult<Vec<(String, u32, u32)>> {
+    fn parse_range_spec(
+        input: &D4TrackReader,
+        regions: &PyList,
+    ) -> PyResult<Vec<(String, u32, u32)>> {
         let chroms = input.header().chrom_list();
         let mut spec = vec![];
         for item in regions.iter() {
@@ -95,12 +98,15 @@ impl D4File {
     pub fn list_tracks(&self) -> PyResult<Vec<String>> {
         let mut tracks = Vec::new();
         d4::find_tracks_in_file(&self.path, |_| true, &mut tracks)?;
-        Ok(tracks.into_iter().map(|x| x.to_string_lossy().to_string()).collect())
+        Ok(tracks
+            .into_iter()
+            .map(|x| x.to_string_lossy().to_string())
+            .collect())
     }
 
     pub fn open_track(&self, track: &str) -> PyResult<Self> {
         let path = format!("{}:{}", self.path, track);
-        let _inner : D4TrackReader = D4TrackReader::open(&path)?;
+        let _inner: D4TrackReader = D4TrackReader::open(&path)?;
         Ok(Self { path })
     }
 
@@ -114,7 +120,7 @@ impl D4File {
             .map(|x| (x.name.clone(), x.size))
             .collect())
     }
-    
+
     /// Returns the hisgoram of values in the given regions
     ///
     /// regions: The list of regions we are asking
@@ -130,12 +136,19 @@ impl D4File {
         max: i32,
     ) -> PyResult<Vec<(Vec<(i32, u32)>, u32, u32)>> {
         let mut input = self.open()?;
-        let spec = Self::parse_range_spec(&input, regions)?.into_iter().map(|(chr, beg, end)| Histogram::with_bin_range(&chr, beg, end, min..max)).collect();
+        let spec = Self::parse_range_spec(&input, regions)?
+            .into_iter()
+            .map(|(chr, beg, end)| Histogram::with_bin_range(&chr, beg, end, min..max))
+            .collect();
         let result = TaskContext::new(&mut input, spec)?.run();
         let mut buf = vec![];
         for item in &result {
             let (below, hist, above) = item.output;
-            let hist: Vec<_> = hist.iter().enumerate().map(|(a, &b)| (a as i32, b)).collect();
+            let hist: Vec<_> = hist
+                .iter()
+                .enumerate()
+                .map(|(a, &b)| (a as i32, b))
+                .collect();
             buf.push((hist, *below, *above));
         }
         Ok(buf)
@@ -153,7 +166,13 @@ impl D4File {
         Ok(buf)
     }
 
-    pub fn load_values_to_buffer(&self, chr: &str, left: u32, right: u32, buf: i64) -> PyResult<()> {
+    pub fn load_values_to_buffer(
+        &self,
+        chr: &str,
+        left: u32,
+        right: u32,
+        buf: i64,
+    ) -> PyResult<()> {
         let mut inner = self.open()?;
         let partition = inner.split(Some(100_0000))?;
 
@@ -172,10 +191,11 @@ impl D4File {
                 };
                 let target = unsafe {
                     std::slice::from_raw_parts_mut(
-                        ((buf as u64) + std::mem::size_of::<i32>() as u64* (from as u64)) as *mut i32,
-                        (to - from) as usize
+                        ((buf as u64) + std::mem::size_of::<i32>() as u64 * (from as u64))
+                            as *mut i32,
+                        (to - from) as usize,
                     )
-	            };
+                };
                 pd.decode_block(from as usize, (to - from) as usize, |pos, value| {
                     let value = match value {
                         DecodeResult::Definitely(value) => value,

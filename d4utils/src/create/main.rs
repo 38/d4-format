@@ -94,10 +94,12 @@ fn main_impl(matches: ArgMatches<'_>) -> Result<(), Box<dyn std::error::Error>> 
                         .range(&chr, al_from as usize, to as usize)
                         .unwrap();
                     let mut p_encoder = p_table.make_encoder();
+                    let mut last_pos = 0;
                     for (_, pos, depth) in DepthIter::with_filter(range_iter, |r| {
                         r.map_qual() >= min_mq
                             && (bam_flags.is_none() || bam_flags.unwrap() == r.flag())
                     }) {
+                        last_pos = pos;
                         if pos < from as usize {
                             continue;
                         }
@@ -106,6 +108,11 @@ fn main_impl(matches: ArgMatches<'_>) -> Result<(), Box<dyn std::error::Error>> 
                         }
                         if !p_encoder.encode(pos, depth as i32) {
                             s_table.encode(pos as u32, depth as i32).unwrap();
+                        }
+                    }
+                    for pos in last_pos..to as usize {
+                        if !p_encoder.encode(pos, 0) {
+                            s_table.encode(pos as u32, 0).unwrap();
                         }
                     }
                     s_table.flush().unwrap();
