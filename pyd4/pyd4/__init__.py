@@ -158,6 +158,23 @@ class D4File(D4FileImpl):
         Open all the tracks that are living in this file
         """
         return D4Matrix([self.open_track(track_label) for track_label in self.list_tracks()])
+    def __getitem__(self, key):
+        if type(key) == str:
+            splitted = key.split(":",1)
+            chr = splitted[0]
+            if len(splitted) == 1:
+                return self.load_to_np(chr)
+            begin, end = splitted[1].split("-")
+            if begin == "":
+                begin = "0"
+            if end == "":
+                return self.load_to_np((chr, int(begin)))
+            else:
+                return self.load_to_np((chr, int(begin), int(end)))
+        elif type(key) == tuple:
+            return self.load_to_np(key)
+        else:
+            raise ValueError("Unspported region specification")
     def load_to_np(self, regions):
         """
         Load regions as numpy array. 
@@ -172,7 +189,7 @@ class D4File(D4FileImpl):
         chroms = dict(self.chroms())
         single_value = False
         if type(regions) != list:
-            regions = [str(regions)]
+            regions = [regions]
             single_value = True
         for region in regions:
             if type(region) == tuple:

@@ -169,6 +169,9 @@ impl D4File {
                 } else {
                     (left.max(begin), right.min(end))
                 };
+                if from >= to {
+                    return;
+                }
                 let target = unsafe {
                     std::slice::from_raw_parts_mut(
                         ((buf as u64) + std::mem::size_of::<i32>() as u64 * (from as u64))
