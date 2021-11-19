@@ -77,26 +77,30 @@ impl Record for RangeRecord {
         )
     }
     #[inline(always)]
-    fn limit_left(&self, new_left: u32) -> Option<Self> {
-        if new_left >= self.effective_range().1 {
+    fn limit_left(&self, mut new_left: u32) -> Option<Self> {
+        let (left, right) = self.effective_range();
+        new_left = left.max(new_left);
+        if new_left >= right {
             None
         } else {
             Some(Self {
-                left: (new_left + 1).max(self.left).to_le(),
-                size_enc: ((self.effective_range().1 - new_left - 1) as u16).to_le(),
-                value: self.value.to_le(),
+                left: (new_left + 1),
+                size_enc: ((right - new_left - 1) as u16).to_le(),
+                value: self.value,
             })
         }
     }
     #[inline(always)]
-    fn limit_right(&self, new_right: u32) -> Option<Self> {
-        if new_right <= self.effective_range().0 {
+    fn limit_right(&self, mut new_right: u32) -> Option<Self> {
+        let (left, right) = self.effective_range();
+        new_right = new_right.min(right);
+        if new_right <= left {
             None
         } else {
             Some(Self {
-                left: self.left.to_le(),
-                size_enc: ((new_right - self.effective_range().0 - 1) as u16).to_le(),
-                value: self.value.to_le(),
+                left: self.left,
+                size_enc: ((new_right - left - 1) as u16).to_le(),
+                value: self.value,
             })
         }
     }
@@ -115,9 +119,9 @@ impl Record for RangeRecord {
             }
         }
         Some(Self {
-            left: pos + 1,
+            left: (pos + 1).to_le(),
             size_enc: 0,
-            value,
+            value: value.to_le(),
         })
     }
 

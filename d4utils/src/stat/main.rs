@@ -158,7 +158,7 @@ fn percentile_stat(matches: ArgMatches<'_>, percentile: f64) -> Result<(), Box<d
                 current += hist[idx];
                 idx += 1;
             }
-            println!("\t{}", idx);
+            print!("\t{}", idx);
         }
         println!();
     }

@@ -174,7 +174,7 @@ impl D4File {
                 }
                 let target = unsafe {
                     std::slice::from_raw_parts_mut(
-                        ((buf as u64) + std::mem::size_of::<i32>() as u64 * (from as u64))
+                        ((buf as u64) + std::mem::size_of::<i32>() as u64 * ((from - left) as u64))
                             as *mut i32,
                         (to - from) as usize,
                     )

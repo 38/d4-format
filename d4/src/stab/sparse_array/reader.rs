@@ -13,9 +13,10 @@ pub(crate) fn assemble_incomplete_records<'a, R: Record>(
     if !incomplete_data.is_empty() {
         let bytes_needed = R::SIZE - incomplete_data.len();
         incomplete_data.extend_from_slice(&extra[..bytes_needed]);
-        buffer.push(RecordBlock::Record(*unsafe {
+        let record = *unsafe {
             std::mem::transmute::<_, &R>(&incomplete_data[0])
-        }));
+        };
+        buffer.push(RecordBlock::Record(record));
         incomplete_data.clear();
         return &extra[bytes_needed..];
     }
@@ -466,8 +467,6 @@ mod mapped_io {
                         break;
                     }
 
-                    // FIXME: at this point, if there's an interval that is covers two partition, this will cause problems, since the
-                    // split point might be problematic
                     let mut left_idx = if block_min == left {
                         0
                     } else {
@@ -476,6 +475,9 @@ mod mapped_io {
                             Err(idx) => idx,
                         }
                     };
+                    if left_idx > 0 && left < block.get(left_idx - 1).effective_range().1 {
+                        left_idx -= 1;
+                    }
                     let right_idx = if block_max == right {
                         block.count()
                     } else {
