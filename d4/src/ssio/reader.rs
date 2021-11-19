@@ -26,7 +26,7 @@ impl<R: Read + Seek> D4TrackReader<R> {
     pub fn get_view(&mut self, chrom: &str, begin: u32, end: u32) -> Result<D4TrackView<R>> {
         let primary_offset = self.header.primary_table_offset_of_chrom(chrom);
         let primary_size = self.header.primary_table_size_of_chrom(chrom);
-        if primary_size == 0 {
+        if primary_size == 0 && self.header.dictionary().bit_width() != 0{
             return Err(Error::new(ErrorKind::Other, "chrom name not found"));
         }
 

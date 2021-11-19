@@ -44,6 +44,9 @@ impl<R: Read + Seek> D4TrackView<R> {
     }
 
     fn ensure_primary_table_buffer(&mut self) -> Result<()> {
+        if self.dictionary.bit_width() == 0 {
+            return Ok(());
+        }
         if self
             .primary_table_buffer
             .as_ref()
@@ -105,12 +108,15 @@ impl<R: Read + Seek> D4TrackView<R> {
     pub fn read_next_value(&mut self) -> Result<(u32, i32)> {
         let pos = self.cursor;
         self.ensure_primary_table_buffer()?;
-        let (start_pos, buf) = self.primary_table_buffer.as_ref().unwrap();
-        let bit_idx = (self.cursor - *start_pos) as usize * self.dictionary.bit_width();
-        let idx = bit_idx / 8;
-        let shift = bit_idx % 8;
-        let data: &u32 = unsafe { std::mem::transmute(&buf[idx]) };
-        let data = (*data >> shift) & ((1 << self.dictionary.bit_width()) - 1);
+        let data = if let Some((start_pos, buf)) = self.primary_table_buffer.as_ref() {
+            let bit_idx = (self.cursor - *start_pos) as usize * self.dictionary.bit_width();
+            let idx = bit_idx / 8;
+            let shift = bit_idx % 8;
+            let data: &u32 = unsafe { std::mem::transmute(&buf[idx]) };
+            (*data >> shift) & ((1 << self.dictionary.bit_width()) - 1)
+        } else {
+            0
+        };
         self.cursor += 1;
 
         if data != (1 << self.dictionary.bit_width()) - 1 {
