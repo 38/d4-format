@@ -15,8 +15,8 @@ pub(crate) use sparse_array::{
     CompressionMethod, Record, RecordBlockParsingState, SparseArraryMetadata,
 };
 
-pub const SECONDARY_TABLE_NAME: &'static str = ".stab";
-pub const SECONDARY_TABLE_METADATA_NAME: &'static str = ".metadata";
+pub const SECONDARY_TABLE_NAME: &str = ".stab";
+pub const SECONDARY_TABLE_METADATA_NAME: &str = ".metadata";
 
 /// Any type that is used to write a secondary table for D4 file
 pub trait SecondaryTableWriter: Sized {

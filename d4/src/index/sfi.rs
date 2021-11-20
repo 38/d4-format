@@ -210,7 +210,7 @@ impl SecondaryFrameIndex {
                             }
                         }
                     }
-                    if recs.len() > 0 {
+                    if !recs.is_empty() {
                         if id == 0 && block.is_single_record() {
                             if let Some(last_entry) = items.last_mut() {
                                 last_entry.end_pos = recs[0].effective_range().1;

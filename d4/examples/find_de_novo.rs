@@ -87,7 +87,7 @@ impl<'a, T: Iterator<Item = i32> + ExactSizeIterator> Task<T> for FindDeNovoTask
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let input_path = std::env::args().skip(1).next().unwrap();
+    let input_path = std::env::args().nth(1).unwrap();
     let mut tracks: Vec<D4TrackReader> = D4TrackReader::open_tracks(&input_path, |_| true)?;
 
     let mean_depth: Vec<_> = tracks

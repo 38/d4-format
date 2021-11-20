@@ -215,8 +215,8 @@ impl DecoderParameter {
         let pointers = decoders
             .iter()
             .map(|enc| {
-                let base_addr = &enc.memory[0] as *const u8;
-                base_addr
+                
+                &enc.memory[0] as *const u8
             })
             .collect::<SmallVec<_>>();
 

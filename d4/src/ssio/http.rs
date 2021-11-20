@@ -64,7 +64,7 @@ impl HttpReader {
             response.read_to_end(&mut head_buf)?;
             let range_response = response.headers()["content-range"].as_bytes();
             let range_response = String::from_utf8_lossy(range_response);
-            let size_text = range_response.split('/').skip(1).next().unwrap();
+            let size_text = range_response.split('/').nth(1).unwrap();
 
             map_result(size_text.parse())?
         };
@@ -134,12 +134,10 @@ impl Seek for HttpReader {
         if delta > 0 {
             self.cursor += delta as usize;
             self.cursor = self.cursor.min(self.size);
+        } else if self.cursor < (-delta) as usize {
+            self.cursor = 0;
         } else {
-            if self.cursor < (-delta) as usize {
-                self.cursor = 0;
-            } else {
-                self.cursor -= (-delta) as usize;
-            }
+            self.cursor -= (-delta) as usize;
         }
         Ok(self.cursor as u64)
     }

@@ -80,7 +80,7 @@ where
             adjust_down(&mut active_heap, 0, cmp);
         }
         if let Some(handle) = handle {
-            if active_heap.len() > 0 {
+            if !active_heap.is_empty() {
                 func(last_end, pos, &mut active_heap);
                 last_end = pos;
             }

@@ -120,7 +120,7 @@ impl<R: Read + Seek> D4TrackView<R> {
         self.cursor += 1;
 
         if data != (1 << self.dictionary.bit_width()) - 1 {
-            return Ok((pos, self.dictionary.decode_value(data).unwrap_or(0)));
+            Ok((pos, self.dictionary.decode_value(data).unwrap_or(0)))
         } else {
             let fallback_value = self.dictionary.decode_value(data).unwrap_or(0);
             if self.current_record.is_none() {

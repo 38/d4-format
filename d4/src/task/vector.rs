@@ -90,8 +90,8 @@ where
 
         let mut transposed: Vec<Vec<_>> = parts[0].iter().map(|x| vec![x.clone()]).collect();
 
-        for part in parts.into_iter().skip(1) {
-            for (idx, result) in part.into_iter().enumerate() {
+        for part in parts.iter().skip(1) {
+            for (idx, result) in part.iter().enumerate() {
                 transposed[idx].push(result.clone());
             }
         }

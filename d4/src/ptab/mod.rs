@@ -9,7 +9,7 @@ use std::io::Result;
 
 mod bit_array;
 
-pub const PRIMARY_TABLE_NAME: &'static str = ".ptab";
+pub const PRIMARY_TABLE_NAME: &str = ".ptab";
 
 /// The result of decoding a value from a primary table
 pub enum DecodeResult {

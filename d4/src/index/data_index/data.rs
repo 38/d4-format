@@ -29,7 +29,7 @@ pub trait DataSummary: Sized + Send + Sync + Clone {
     where
         Self: 'a,
     {
-        iter.fold(Self::identity(), |sum, value| sum.combine(&value))
+        iter.fold(Self::identity(), |sum, value| sum.combine(value))
     }
     fn run_summary_task(reader: &mut D4TrackReader, bin_size: u32) -> Result<TaskOutputVec<Self>> {
         let chrom_list = reader.header().chrom_list().to_owned();

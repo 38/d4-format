@@ -28,7 +28,7 @@ pub(crate) fn load_compressed_frame<'a, R: Record>(
     first: bool,
     buffer: &mut Vec<RecordBlock<'a, R>>,
 ) {
-    let frame = frame.as_ref();
+    let frame = frame;
     let (is_compressed, first_pos, last_pos, block_count, data) = if first {
         (
             frame[0] == 0,
@@ -66,7 +66,7 @@ pub(crate) fn load_frame<'a, R: Record>(
     mut excess: Vec<u8>,
     buffer: &mut Vec<RecordBlock<'a, R>>,
 ) -> Vec<u8> {
-    let frame = frame.as_ref();
+    let frame = frame;
     let data = assemble_incomplete_records(&mut excess, frame, buffer);
     let rem = data.len() % R::SIZE;
     if data.len() > R::SIZE {

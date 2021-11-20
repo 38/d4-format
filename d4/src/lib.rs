@@ -28,4 +28,4 @@ pub use dict::Dictionary;
 
 pub use header::Header;
 
-pub const VERSION: &'static str = env!("CARGO_PKG_VERSION");
+pub const VERSION: &str = env!("CARGO_PKG_VERSION");

@@ -43,7 +43,7 @@ impl<T: Iterator<Item = i32> + ExactSizeIterator> Task<T> for CountTask {
     }
 }
 fn main() {
-    let input_path = args().skip(1).next().unwrap();
+    let input_path = args().nth(1).unwrap();
     let tracks: Vec<D4TrackReader> = D4TrackReader::open_tracks(input_path, |_| true).unwrap();
     let mut matrix_reader = D4MatrixReader::new(tracks).unwrap();
     let tasks: Vec<_> = matrix_reader
