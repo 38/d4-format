@@ -205,20 +205,20 @@ fn show_impl<'a, R: Read + Seek, I: Iterator<Item = &'a str>>(
     for path in path_buf.iter() {
         let track_root = match file_root.open(path)? {
             OpenResult::SubDir(track_root) => track_root,
-            _ => Err(Error::new(
+            _ => return Err(Error::new(
                 ErrorKind::Other,
                 format!("Unable to open track {}", path.to_string_lossy()),
-            ))?,
+            ).into()),
         };
         let reader = D4TrackReader::from_track_root(track_root)?;
         readers.push(reader);
     }
 
     if !d4tools::check_reference_consistency(readers.iter().map(|r| r.chrom_list())) {
-        Err(Error::new(
+        return Err(Error::new(
             ErrorKind::Other,
-            format!("Inconsistent reference genome"),
-        ))?
+            "Inconsistent reference genome".to_string(),
+        ).into())
     }
 
     if show_genome {
