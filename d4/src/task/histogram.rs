@@ -18,7 +18,8 @@ impl SimpleTask for Histogram {
 
 pub struct Partition {
     base: i32,
-    histogram: Vec<u32>,
+    range: usize,
+    histogram: Option<Vec<u32>>,
     below: u32,
     above: u32,
 }
@@ -29,33 +30,40 @@ impl TaskPartition<Once<i32>> for Partition {
     fn new(_: u32, _: u32, parent: &Histogram) -> Self {
         let param = &parent.3;
         let base = param.start;
-        let size = (param.end - param.start).max(0) as usize;
+        let range = (param.end - param.start).max(0) as usize;
         Self {
             base,
-            histogram: vec![0; size],
+            histogram: None,
+            range,
             below: 0,
             above: 0,
         }
     }
 
     #[inline(always)]
+    fn init(&mut self) {
+        self.histogram = Some(vec![0;self.range]);
+    }
+
+    #[inline(always)]
     fn feed_range(&mut self, left: u32, right: u32, value: &mut Once<i32>) -> bool {
         let value = value.next().unwrap();
         let offset = value - self.base;
+        let histogram = self.histogram.as_mut().unwrap();
         if offset < 0 {
             self.below += 1;
             return true;
         }
-        if offset >= self.histogram.len() as i32 {
+        if offset >= histogram.len() as i32 {
             self.above += right - left;
             return true;
         }
-        self.histogram[offset as usize] += right - left;
+        histogram[offset as usize] += right - left;
         true
     }
 
     fn result(&mut self) -> Self::ResultType {
-        (self.below, std::mem::take(&mut self.histogram), self.above)
+        (self.below, self.histogram.take().unwrap(), self.above)
     }
 }
 

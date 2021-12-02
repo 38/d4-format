@@ -14,6 +14,9 @@ struct TaskScanner<P> {
 impl<P: TaskPartition<RT>, RT: Iterator<Item = i32> + ExactSizeIterator> DataScanner<RT>
     for TaskScanner<P>
 {
+    fn init(&mut self) {
+        self.partition.init();
+    }
     fn get_range(&self) -> (u32, u32) {
         self.range
     }

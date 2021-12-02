@@ -381,6 +381,8 @@ class D4File(D4FileImpl):
             idx += 1
         if method == "mean":
             values = self.mean(tasks)
+        elif method == "median":
+            values = self.median(tasks)
         else:
             raise TypeError("Unsupported resample method")
         ret = [numpy.zeros(shape = (size[i])) for i in range(0, idx)]

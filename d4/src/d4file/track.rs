@@ -80,6 +80,7 @@ where
             adjust_down(&mut active_heap, 0, cmp);
         }
         if let Some(handle) = handle {
+            handle.init();
             if !active_heap.is_empty() {
                 func(last_end, pos, &mut active_heap);
                 last_end = pos;
@@ -95,6 +96,8 @@ where
 
 /// Code that used to scan a multi-track D4 file
 pub trait DataScanner<RowType: Iterator<Item = i32> + ExactSizeIterator> {
+    #[inline(always)]
+    fn init(&mut self){}
     /// Get the range this data scanner want to scan. Please note all the data scanner doesn't across the chromosome boundary
     /// so we don't specify the chromosome, as it's implied by "current chromosome", which is defined by the MultiTrackPartitionReader
     fn get_range(&self) -> (u32, u32);

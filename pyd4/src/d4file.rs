@@ -199,6 +199,6 @@ impl D4File {
     /// Returns a value iterator that iterates over the given region
     pub fn value_iter(&self, chr: &str, left: u32, right: u32) -> PyResult<D4Iter> {
         let inner = self.open()?;
-	D4Iter::new(inner, chr, left, right)
+	    D4Iter::new(inner, chr, left, right)
     }
 }
