@@ -42,8 +42,8 @@ make libz.a
 cp libz.a ..
 cd ..
 
-curl https://pilotfiber.dl.sourceforge.net/project/bzip2/bzip2-1.0.6.tar.gz | tar xz
-cd bzip2-1.0.6
+curl https://sourceware.org/pub/bzip2/bzip2-1.0.8.tar.gz | tar xz
+cd bzip2-1.0.8
 is_musl && perl -i -pe 's/gcc/musl-gcc/g' Makefile
 is_musl || perl -i -pe 's/CFLAGS=/CFLAGS=-fPIC /g' Makefile
 make
