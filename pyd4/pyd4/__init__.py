@@ -1,5 +1,5 @@
 """
-The Python Binding for the D4 file format
+The Python Binding for the D4 file format.
 """
 
 from .pyd4 import D4File as D4FileImpl, D4Iter, D4Builder as D4BuilderImpl, D4Writer as D4WriterImpl
@@ -299,6 +299,9 @@ class D4File(D4FileImpl):
         """
         return list(map(lambda x: x[0], self.chroms()))
     def histogram(self, regions, min=0, max=1024):
+        """
+        Returns the value histogram for given regions
+        """
         is_list = type(regions) == list
         regions = self._for_each_region(regions, lambda name, begin, end: (name, begin, end), False)
         ret = super().histogram(regions, min, max)
@@ -306,6 +309,9 @@ class D4File(D4FileImpl):
             return Histogram(ret[0])
         return list(map(Histogram, ret))
     def median(self, regions):
+        """
+        return the median value for the given regions
+        """
         return self.percentile(regions, nth = 50)
     def mean(self, regions):
         """
@@ -363,6 +369,9 @@ class D4File(D4FileImpl):
             return ret if not single_value else ret[0]
         return ret
     def resample(self, regions, method = "mean", bin_size = 1000):
+        """
+        Re-sample the given region and return the value as an numpy array
+        """
         unpack = not type(regions) == list
         def split_region(chr, begin, end):
             ret = []
@@ -397,13 +406,7 @@ class D4File(D4FileImpl):
         return ret[0] if unpack and len(ret) == 1 else ret
     def load_to_np(self, regions):
         """
-        Load regions as numpy array. 
-
-        If the region is a list, the function will return a list of np array.
-
-        If the region is a string, the function will load the entire chromosome
-
-        If the region is a tuple of (chr, begin, end), The function will load data in range chr:begin-end
+        Load regions as numpy array. It's similar to the __getitem__ operator.
         """
         def load_to_np_impl(name, begin, end):
             buf = numpy.zeros(shape=(end - begin,), dtype = numpy.int32)

@@ -2,13 +2,7 @@ use std::io::{Error, ErrorKind, Read, Result, Seek};
 
 use d4_framefile::{Blob, Directory, OpenResult};
 
-use crate::{
-    d4file::validate_header,
-    index::{D4IndexCollection, SecondaryFrameIndex},
-    ptab::PRIMARY_TABLE_NAME,
-    stab::{CompressionMethod, RecordBlockParsingState, SECONDARY_TABLE_NAME},
-    Chrom, Header,
-};
+use crate::{Chrom, Header, d4file::validate_header, index::{D4IndexCollection, DataIndexRef, DataSummary, SecondaryFrameIndex}, ptab::PRIMARY_TABLE_NAME, stab::{CompressionMethod, RecordBlockParsingState, SECONDARY_TABLE_NAME}};
 
 use super::{table::SecondaryTableRef, view::D4TrackView};
 
@@ -17,6 +11,7 @@ pub struct D4TrackReader<R: Read + Seek> {
     primary_table: Blob<R>,
     secondary_table: Vec<SecondaryTableRef<R>>,
     sfi: Option<SecondaryFrameIndex>,
+    track_root: Directory<R>,
 }
 
 impl<R: Read + Seek> D4TrackReader<R> {
@@ -96,7 +91,13 @@ impl<R: Read + Seek> D4TrackReader<R> {
             primary_table,
             secondary_table,
             sfi,
+            track_root,
         })
+    }
+
+    pub fn load_data_index<S: DataSummary>(&self) -> Result<DataIndexRef<S>> {
+        let ic = D4IndexCollection::from_root_container(&self.track_root)?;
+        ic.load_data_index::<S>()
     }
 
     pub fn from_reader(mut reader: R, track_name: Option<&str>) -> Result<Self> {

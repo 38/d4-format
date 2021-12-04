@@ -122,12 +122,12 @@ impl D4Builder {
         Ok(())
     }
     fn dup_dict(&mut self, that: &super::D4File) -> PyResult<()> {
-        let reader = that.open()?;
+        let reader = that.open()?.into_local_reader()?;
         self.dictionary = reader.header().dictionary().clone();
         Ok(())
     }
     fn dup_seqs(&mut self, that: &super::D4File) -> PyResult<()> {
-        let reader = that.open()?;
+        let reader = that.open()?.into_local_reader()?;
         self.genome_size = reader.header()
             .chrom_list()
             .iter()

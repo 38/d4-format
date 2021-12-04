@@ -10,4 +10,3 @@ writer = input \
 for seq in ["1", "2"]:
     chr_data = input.load_to_np(seq);
     writer.write_np_array(seq, 0, chr_data)
-

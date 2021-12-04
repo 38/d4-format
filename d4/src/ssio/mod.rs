@@ -14,17 +14,3 @@ mod table;
 mod view;
 
 pub use reader::D4TrackReader;
-
-#[test]
-fn test_open_hg002() {
-    //use std::fs::File;
-    env_logger::init();
-    let hg002_file =
-        http::HttpReader::new("https://home.chpc.utah.edu/~u0875014/hg002.d4").unwrap();
-    let mut reader = D4TrackReader::from_reader(hg002_file, None).unwrap();
-    let view = reader.get_view("1", 19250459, 19450000).unwrap();
-    for read_result in view {
-        let (pos, value) = read_result.unwrap();
-        println!("{} {}", pos, value);
-    }
-}
