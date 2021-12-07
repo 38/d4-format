@@ -28,7 +28,7 @@ git tag -a "v${NEW_VERSION}" -m "D4 ${NEW_VERSION} release"
 
 git checkout -b "release-v${NEW_VERSION}"
 
-sed -i 's/\(d4.* \)= { path.*$/\1= "'${NEW_VERSION}'"/g' */Cargo.toml
+sed -i 's/path[ ]*=[ ]*"..\/d4.*"/version = "'${NEW_VERSION}'"/g' */Cargo.toml
 git commit -am 'Update the dependency'
 
 function publish-crate() {
@@ -45,7 +45,7 @@ publish-crate d4-hts
 publish-crate d4-bigwig
 publish-crate d4-framefile
 publish-crate d4
-publish-crate d4utils
+publish-crate d4tools
 
 git checkout master
 git push origin
