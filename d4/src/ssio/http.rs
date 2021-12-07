@@ -88,6 +88,7 @@ impl Read for HttpReader {
             sz = head_to - self.cursor;
             buf[..sz].copy_from_slice(&self.head_buf[self.cursor..head_to]);
             self.cursor = head_to;
+            buf = &mut buf[sz..];
         }
         if self.cursor > to {
             return Ok(sz);
