@@ -4,7 +4,7 @@ members = [
 	"d4-framefile",
 	"d4-hts",
 	"d4",
-	"d4utils",
+	"d4tools",
 	"d4binding",
 	"d4-bigwig",
 	"pyd4"
