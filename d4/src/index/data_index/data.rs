@@ -149,13 +149,3 @@ impl<'a, T: DataSummary> Task<Once<i32>> for DataSummaryTask<'a, T> {
         T::combine_iter(parts.iter())
     }
 }
-
-#[test]
-fn test_summarize_hg002() {
-    let mut reader: D4TrackReader =
-        D4TrackReader::open("/home/haohou/base2/data/hg002.d4").unwrap();
-    let summaries = Sum::run_summary_task(&mut reader, 65536).unwrap();
-    for it in summaries.into_iter() {
-        println!("{} {} {} {}", it.chrom, it.begin, it.end, it.output.0);
-    }
-}

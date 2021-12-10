@@ -368,11 +368,16 @@ class D4File(D4FileImpl):
         if unpack_single_value:
             return ret if not single_value else ret[0]
         return ret
-    def resample(self, regions, method = "mean", bin_size = 1000):
+    def resample(self, regions, method = "mean", bin_size = 1000, allow_bin_size_adjustment = True):
         """
         Re-sample the given region and return the value as an numpy array
         """
         unpack = not type(regions) == list
+        if self.is_remote_file() and allow_bin_size_adjustment:
+            if bin_size < 65536:
+                bin_size = 65536
+            else:
+                bin_size -= bin_size % 65536
         def split_region(chr, begin, end):
             ret = []
             while begin < end:
@@ -403,7 +408,7 @@ class D4File(D4FileImpl):
                 idx += 1
             ret[idx][ofs] = val
             ofs += 1
-        return ret[0] if unpack and len(ret) == 1 else ret
+        return (ret[0] if unpack and len(ret) == 1 else ret, bin_size)
     def load_to_np(self, regions):
         """
         Load regions as numpy array. It's similar to the __getitem__ operator.

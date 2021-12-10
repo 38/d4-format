@@ -8,6 +8,7 @@ edition = "2021"
 d4 = { path = "../d4" }
 pyo3 = "0.15.0"
 rayon = "1.4.0"
+env_logger = "0.9.0"
 
 [lib]
 crate-type = ["cdylib"]

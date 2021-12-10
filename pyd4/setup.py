@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import os
 import sys
+import pathlib
 
 from setuptools import setup
 from setuptools.command.test import test as TestCommand
@@ -22,6 +23,8 @@ except ImportError:
 class CargoModifiedSdist(SdistCommand):
     def make_release_tree(self, base_dir, files):
         """Stages the files to be included in archives"""
+        files.append("Cargo.toml")
+        files += [str(f) for f in pathlib.Path("src").glob("**/*.rs") if f.is_file()]
         super().make_release_tree(base_dir, files)
 
 
@@ -30,7 +33,7 @@ install_requires = ["numpy"]
 
 setup(
     name="pyd4",
-    version="0.1.16",
+    version="0.3.0",
     classifiers=[
         "License :: OSI Approved :: MIT License",
         "Development Status :: 3 - Alpha",
@@ -41,7 +44,7 @@ setup(
         "Operating System :: MacOS :: MacOS X",
     ],
     packages=["pyd4"],
-    rust_extensions=[RustExtension("pyd4.pyd4", "Cargo.toml", debug=False)],
+    rust_extensions=[RustExtension("pyd4.pyd4", "Cargo.toml", debug="DEBUG" in os.environ)],
     install_requires=install_requires,
     setup_requires=setup_requires,
     include_package_data=True,

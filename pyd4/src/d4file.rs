@@ -94,6 +94,10 @@ impl D4File {
             .collect())
     }
 
+    pub fn is_remote_file(&self) -> PyResult<bool> {
+        Ok(self.path.starts_with("http://") || self.path.starts_with("https://"))
+    }
+
     pub fn open_track(&self, track: &str) -> PyResult<Self> {
         let path = if self.path.starts_with("http://") || self.path.starts_with("https://") {
             format!("{}#{}", self.path, track)

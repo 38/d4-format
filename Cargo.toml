@@ -1,5 +1,5 @@
 [workspace]
-default-members=["d4utils"]
+default-members=["d4tools"]
 members = [
 	"d4-framefile",
 	"d4-hts",

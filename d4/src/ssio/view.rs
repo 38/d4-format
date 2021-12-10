@@ -67,8 +67,22 @@ impl<R: Read + Seek> D4TrackView<R> {
             let end_byte = (end_pos * self.dictionary.bit_width() + 7) / 8;
             let size = end_byte - start_byte;
             let mut buf = vec![0; size + 4];
+            let mut buf_cursor = 0;
+            if let Some((prev_start, prev_buf)) = self.primary_table_buffer.as_ref() {
+                let prev_start = (prev_start - prev_start % 8) as usize 
+                    * self.dictionary.bit_width() / 8;
+                let prev_end = prev_start + prev_buf.len() - 4;
+                let overlap_start = prev_start.max(start_byte);
+                let overlap_end = prev_end.min(end_byte);
+                if overlap_start == start_byte && overlap_start < overlap_end {
+                    buf[..overlap_end - overlap_start].copy_from_slice(
+                        &prev_buf[overlap_start - prev_start..overlap_end - prev_start]
+                    );
+                    buf_cursor = overlap_end - overlap_start;
+                }
+            }
             self.primary_table
-                .read_block(start_byte as u64, &mut buf[..size])?;
+                .read_block((start_byte + buf_cursor) as u64, &mut buf[buf_cursor..size])?;
             self.primary_table_buffer = Some((start_pos, buf));
         }
         Ok(())

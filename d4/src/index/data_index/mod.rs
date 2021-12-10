@@ -1,5 +1,4 @@
 mod data;
-//mod in_memory;
 
 use d4_framefile::{Blob, Directory};
 pub use data::{DataSummary, Sum};

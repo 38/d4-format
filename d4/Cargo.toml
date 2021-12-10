@@ -25,10 +25,10 @@ optional = true
 features = ["native-tls", "blocking"]
 
 [dependencies.d4-framefile]
-version = "0.3.0"
+path = "../d4-framefile"
 
 [dependencies.d4-hts]
-version = "0.3.0"
+path = "../d4-hts"
 optional = true
 
 [dependencies.wasm-bindgen]
