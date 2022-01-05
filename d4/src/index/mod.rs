@@ -6,7 +6,7 @@ use std::{
 
 use d4_framefile::Directory;
 
-use crate::{d4file::{validate_header, DataScanner}, Header};
+use crate::{d4file::validate_header, Header};
 
 pub const INDEX_ROOT_NAME: &str = ".index";
 pub const SECONDARY_FRAME_INDEX_NAME: &str = "s_frame_index";

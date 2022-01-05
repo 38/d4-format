@@ -176,7 +176,11 @@ mod mapped_io {
             let metadata = self
                 .s_table_root
                 .open_stream(SECONDARY_TABLE_METADATA_NAME)?;
-            let metadata = String::from_utf8_lossy(metadata.copy_content().as_ref()).to_string();
+            let metadata = String::from_utf8_lossy({
+                let mut buf = Vec::new();
+                metadata.copy_content(&mut buf);
+                buf
+            }.as_ref()).to_string();
             let actual_data = metadata.trim_end_matches(|c| c == '\0');
             serde_json::from_str(actual_data).ok()
         }

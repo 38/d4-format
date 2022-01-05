@@ -1,10 +1,11 @@
-use std::io::{Error, ErrorKind, Read, Result, Seek};
+use std::{io::{Error, ErrorKind, Read, Result, Seek}, path::{PathBuf, Path}};
 
 use d4_framefile::{Blob, Directory, OpenResult};
+use reqwest::IntoUrl;
 
 use crate::{Chrom, Header, d4file::validate_header, index::{D4IndexCollection, DataIndexRef, DataSummary, SecondaryFrameIndex}, ptab::PRIMARY_TABLE_NAME, stab::{CompressionMethod, RecordBlockParsingState, SECONDARY_TABLE_NAME}};
 
-use super::{table::SecondaryTableRef, view::D4TrackView};
+use super::{table::SecondaryTableRef, view::D4TrackView, http::HttpReader};
 
 pub struct D4TrackReader<R: Read + Seek> {
     header: Header,
@@ -12,6 +13,60 @@ pub struct D4TrackReader<R: Read + Seek> {
     secondary_table: Vec<SecondaryTableRef<R>>,
     sfi: Option<SecondaryFrameIndex>,
     track_root: Directory<R>,
+}
+
+pub struct D4MatrixReader<R: Read + Seek> {
+    tracks: Vec<D4TrackReader<R>>,
+}
+
+impl D4MatrixReader<HttpReader> {
+    pub fn open_tracks<U: IntoUrl + Clone, Pat: FnMut(Option<&Path>) -> bool>(url: U, pat: Pat) -> Result<D4MatrixReader<HttpReader>> {
+        let mut track_to_open = vec![];
+        let reader = HttpReader::new(url.clone())?;
+        crate::d4file::find_tracks(reader, pat, &mut track_to_open)?;
+        Ok(Self {
+            tracks: track_to_open.into_iter().map(|path| {
+                D4TrackReader::from_url_and_track_name(url.clone(), path.to_str()).unwrap()
+            }).collect()
+        })
+    }
+}
+impl <R: Read + Seek> D4MatrixReader<R> {
+    pub fn get_view(&mut self, chrom: &str, begin: u32, end: u32, buf: &mut Vec<D4TrackView<R>>) -> Result<()> {
+        for view in self.tracks.iter_mut().map(|x| {
+            x.get_view(chrom, begin, end)
+        }) {
+            let view = view?;
+            buf.push(view);
+        }
+        Ok(())
+    }
+}
+
+#[cfg(feature = "http_reader")]
+impl D4TrackReader<HttpReader> {
+    pub fn from_url_and_track_name<U: IntoUrl>(url: U, track_name: Option<&str>) -> Result<Self> {
+        let reader = HttpReader::new(url)?;
+        Self::from_reader(reader, track_name)
+    }
+    pub fn from_url<U: IntoUrl>(url: U) -> Result<Self> {
+        let url_str = url.as_str();
+        let track_buf;
+        let track_name = if let Some(pos) = url_str.rfind('#') {
+            track_buf = url_str[pos..].to_string();
+            Some(track_buf.as_str())
+        } else {
+            None
+        };
+        let reader = HttpReader::new(url)?;
+        Self::from_reader(reader, track_name)
+    }
+    pub fn list_tracks<U: IntoUrl>(url: U) -> Result<Vec<PathBuf>> {
+        let reader = HttpReader::new(url)?;
+        let mut ret = vec![];
+        crate::d4file::find_tracks(reader, |_| true, &mut ret)?;
+        Ok(ret)
+    }
 }
 
 impl<R: Read + Seek> D4TrackReader<R> {

@@ -38,14 +38,14 @@ impl<'a> MappedStream<'a> {
         unsafe { std::mem::transmute((self.0, self.1 - std::mem::size_of::<FrameHeader>())) }
     }
 
-    pub fn copy_content(&self) -> Vec<u8> {
-        let mut ret = Vec::<u8>::new();
+    /// Copy the full content of the stream
+    pub fn copy_content(&self, buf: &mut Vec<u8>) {
+        //let mut ret = Vec::<u8>::new();
         let mut current = Some(self.get_primary_frame());
         while let Some(frame) = current {
-            ret.extend_from_slice(&frame.data);
+            buf.extend_from_slice(&frame.data);
             current = frame.next_frame();
         }
-        ret
     }
 }
 
@@ -97,7 +97,8 @@ impl MappedDirectory {
             &data[0],
             crate::directory::Directory::<File>::INIT_BLOCK_SIZE,
         );
-        let content = root_stream.copy_content();
+        let mut content = Vec::new();
+        root_stream.copy_content(&mut content);
 
         let mut dir_table = HashMap::new();
         let mut cursor = &content[..];

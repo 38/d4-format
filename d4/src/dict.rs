@@ -12,7 +12,7 @@ use rand::Rng;
 #[cfg(feature = "depth_profiler")]
 use rayon::prelude::*;
 
-/// The dictionary (a.k.a encoding table)
+/// The primary table encoding dictionary.
 #[derive(Clone, Serialize, Deserialize)]
 pub enum Dictionary {
     /// The dictionary for a consecutive range

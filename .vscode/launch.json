@@ -11,12 +11,12 @@
 			"cargo": {
 				"args": [
 					"build",
-					"--package=d4utils"
+					"--package=d4tools"
 				]
 			},
 			"program": "target/debug/d4tools",
 			"env": {"RUST_LOG": "info"},
-			"args": ["show", "http://localhost:8000/hg002.d4", "1"]
+			"args": ["create", "/tmp/19302X6.1.consensus.bam"]
 		},
 		{
 			"type": "lldb",

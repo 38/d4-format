@@ -1,6 +1,6 @@
-/*!
-  The primary table implementation
-*/
+//! The primary table implementaion
+//! The default primary table implementation is bit array, which uses K-bits integer represents an entity in the
+//! primary table.
 
 use crate::header::Header;
 use d4_framefile::Directory;
@@ -9,6 +9,7 @@ use std::io::Result;
 
 mod bit_array;
 
+/// The name of the primary table blob under the root container
 pub const PRIMARY_TABLE_NAME: &str = ".ptab";
 
 /// The result of decoding a value from a primary table
@@ -80,12 +81,13 @@ pub trait PrimaryTablePartReader: Send {
 /// We need to find a place to put inline directive, and this
 /// is the reason why we have this function here.
 pub trait DecodeBlockHandle {
-    fn handle(&mut self, size: usize, result: DecodeResult);
+    /// Handles a decoded value. `pos` is the locus of the value and `result` carries the data
+    fn handle(&mut self, pos: usize, result: DecodeResult);
 }
 
 impl<F: FnMut(usize, DecodeResult)> DecodeBlockHandle for F {
-    fn handle(&mut self, size: usize, result: DecodeResult) {
-        self(size, result)
+    fn handle(&mut self, pos: usize, result: DecodeResult) {
+        self(pos, result)
     }
 }
 

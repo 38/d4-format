@@ -541,7 +541,6 @@ pub fn d4_file_run_task(handle: *mut d4_file_t, task: *const d4_task_desc_t) -> 
             if let Some(finalize) = task.part_finalize_cb {
                 let data = &mut task_results[0] as *mut _;
                 let size = task_results.len();
-                use std::convert::TryInto;
                 return unsafe { finalize(data, size.try_into().unwrap(), task.extra_data) };
             } else {
                 return 0;

@@ -1,6 +1,6 @@
 use serde_derive::{Deserialize, Serialize};
 
-/// The chromosome information type
+/// The information of a chromosome
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct Chrom {
     /// The human-readable name for this chromosome

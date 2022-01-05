@@ -72,11 +72,19 @@ pub struct D4Writer {
 
 #[pymethods]
 impl D4Writer {
+    /// close()
+    /// --
+    /// 
+    /// Finalize the writer. 
+    /// Note: This method will be implictly called when the writer object is deleted. 
+    /// The output may be incompleted until this method gets called. 
+    /// If you want to make sure the output is completed, you can explicitly call this function.
     fn close(&mut self) {
         let parts = std::mem::replace(&mut self.parts, Vec::new());
         parts.into_par_iter().for_each(|mut part| part.flush().unwrap());
         self.writer_obj.take();
     }
+    
     fn write(&mut self, chr: &str, start_pos: u32, data_addr: i64, count: usize) -> PyResult<()> {
         let active_parts: Vec<_> = self.parts
             .iter_mut()
@@ -101,6 +109,10 @@ impl D4Writer {
 
 #[pymethods]
 impl D4Builder {
+    /// new()
+    /// --
+    /// 
+    /// Create a builder to construct a D4 file.
     #[new]
     fn new() -> PyResult<Self> {
         let dictionary = Dictionary::new_simple_range_dict(0, 64)?;
@@ -110,10 +122,19 @@ impl D4Builder {
             compression: None,
         })
     }
+    /// dict_range(low, high)
+    /// --
+    /// 
+    /// Set the primary table dictionary that encodes a range of value. 
+    /// Note: the size of the range should be a power of 2.
     fn dict_range(&mut self, low: i32, high: i32) -> PyResult<()> {
         self.dictionary = Dictionary::new_simple_range_dict(low, high)?;
         Ok(())
     }
+    /// add_seq(name, size)
+    /// --
+    /// 
+    /// Add a new chromosome in the newly created file. 
     fn add_seq(&mut self, name: &str, size: usize) -> PyResult<()> {
         if self.genome_size.iter().any(|(x, _)| name == x) {
             return Err(PyKeyError::new_err("Sequence is already defined"));
@@ -121,11 +142,19 @@ impl D4Builder {
         self.genome_size.push((name.to_string(), size));
         Ok(())
     }
+    /// dup_dict(d4_file)
+    /// --
+    /// 
+    /// Copy the exact same dictionary definition from existing D4 file
     fn dup_dict(&mut self, that: &super::D4File) -> PyResult<()> {
         let reader = that.open()?.into_local_reader()?;
         self.dictionary = reader.header().dictionary().clone();
         Ok(())
     }
+    /// dup_seqs(d4_file)
+    /// --
+    /// 
+    /// Copy the exact same chromosome definition from existing D4 file
     fn dup_seqs(&mut self, that: &super::D4File) -> PyResult<()> {
         let reader = that.open()?.into_local_reader()?;
         self.genome_size = reader.header()
@@ -135,6 +164,10 @@ impl D4Builder {
             .collect();
         Ok(())
     }
+    /// set_compression(level)
+    /// --
+    /// 
+    /// Set the compression level of the secondary table
     fn set_compression(&mut self, level: i32) -> PyResult<()> {
         if level < 0 {
             self.compression = None;
@@ -143,6 +176,10 @@ impl D4Builder {
         }
         Ok(())
     }
+    /// into_writer(path)
+    /// --
+    /// 
+    /// Build the D4 file from the writer class.
     fn into_writer(&mut self, path: &str) -> PyResult<D4Writer> {
         let mut writer : D4FileWriter = D4FileBuilder::new(path)
             .set_dictionary(self.dictionary.clone())

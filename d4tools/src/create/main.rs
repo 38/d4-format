@@ -110,7 +110,7 @@ fn main_impl(matches: ArgMatches<'_>) -> Result<(), Box<dyn std::error::Error>> 
                             s_table.encode(pos as u32, depth as i32).unwrap();
                         }
                     }
-                    for pos in last_pos..to as usize {
+                    for pos in last_pos.max(from as usize)..to as usize {
                         if !p_encoder.encode(pos, 0) {
                             s_table.encode(pos as u32, 0).unwrap();
                         }

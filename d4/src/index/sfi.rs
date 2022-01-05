@@ -157,7 +157,8 @@ impl SecondaryFrameIndex {
             let stream = stab_root
                 .open_stream(SECONDARY_TABLE_METADATA_NAME)
                 .unwrap();
-            let stream_content = stream.copy_content();
+            let mut stream_content = Vec::new();
+            stream.copy_content(&mut stream_content);
             let raw_metadata = String::from_utf8_lossy(&stream_content);
             serde_json::from_str::<SparseArraryMetadata>(raw_metadata.trim_end_matches('\0'))
                 .map_err(|e| Error::new(ErrorKind::Other, e.to_string()))?

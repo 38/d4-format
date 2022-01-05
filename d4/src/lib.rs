@@ -1,6 +1,3 @@
-/**
- * This is the Rust implementation of the D4 file format.
- **/
 mod chrom;
 mod d4file;
 mod dict;

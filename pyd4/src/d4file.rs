@@ -1,7 +1,7 @@
 use d4::ptab::{DecodeResult, Decoder};
 use d4::stab::SecondaryTablePartReader;
 use d4::task::{Histogram, Mean, Task, TaskContext};
-use d4::{Chrom, D4TrackReader};
+use d4::Chrom;
 use pyo3::prelude::*;
 use pyo3::types::{PyInt, PyList, PyString, PyTuple};
 use rayon::prelude::*;
@@ -64,6 +64,9 @@ impl D4File {
 
 #[pymethods]
 impl D4File {
+    /// new(path)
+    /// --
+    /// 
     /// Open a new D4 file for read
     ///
     /// Path: path to the D4 file
@@ -76,7 +79,12 @@ impl D4File {
         Ok(ret)
     }
 
-    pub fn list_tracks(&self) -> PyResult<Vec<String>> {        let mut tracks = Vec::new();
+    /// list_tracks()
+    /// --
+    /// 
+    /// List all the tracks living in this file.
+    pub fn list_tracks(&self) -> PyResult<Vec<String>> {        
+        let mut tracks = Vec::new();
         if self.path.starts_with("http://") || self.path.starts_with("https://") {
             let path = if let Some(sep) = self.path.rfind('#') {
                 &self.path[..sep]
@@ -94,10 +102,18 @@ impl D4File {
             .collect())
     }
 
+    /// is_remote_file()
+    /// --
+    /// 
+    /// Check if the file is on remote server or local disk
     pub fn is_remote_file(&self) -> PyResult<bool> {
         Ok(self.path.starts_with("http://") || self.path.starts_with("https://"))
     }
 
+    /// open_track(name)
+    /// --
+    /// 
+    /// Open a track with the specified name.
     pub fn open_track(&self, track: &str) -> PyResult<Self> {
         let path = if self.path.starts_with("http://") || self.path.starts_with("https://") {
             format!("{}#{}", self.path, track)
@@ -109,6 +125,9 @@ impl D4File {
         Ok(ret)
     }
 
+    /// chroms()
+    /// --
+    /// 
     /// Returns a list of chromosomes defined in the D4 file
     pub fn chroms(&self) -> PyResult<Vec<(String, usize)>> {
         Ok(self
@@ -119,6 +138,9 @@ impl D4File {
             .collect())
     }
 
+    /// histogram(regions, min, max)
+    /// --
+    /// 
     /// Returns the hisgoram of values in the given regions
     ///
     /// regions: The list of regions we are asking
@@ -152,6 +174,9 @@ impl D4File {
         Ok(buf)
     }
 
+    /// mean(regions)
+    /// --
+    /// 
     /// Compute the mean dpeth for the given region
     pub fn mean(&self, regions: &pyo3::types::PyList) -> PyResult<Vec<f64>> {
         let mut input = self.open()?;
@@ -242,6 +267,9 @@ impl D4File {
         Ok(())
     }
 
+    /// value_iter()
+    /// --
+    /// 
     /// Returns a value iterator that iterates over the given region
     pub fn value_iter(&self, chr: &str, left: u32, right: u32) -> PyResult<D4Iter> {
         let inner = self.open()?.into_local_reader()?;

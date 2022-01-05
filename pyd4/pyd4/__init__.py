@@ -82,11 +82,25 @@ class D4Writer:
         self._inner = writer_obj
     def __del__(self):
         self._inner.close()
+    def close(self):
+        """
+        Manually close the D4 writer. Unless the D4 writer is closed, the output file
+        may be incompleted and unable to read correctly. 
+
+        This will be automatically called when the writer gets deleted. 
+        You can also call this function explicitly so that the file will be complete right
+        after this invocation.
+        """
+        if self._inner == None:
+            self._inner.close()
+        self._inner = None
     def write_np_array(self, chr, pos, data):
         """
             Write a numpy array to a D4 file
             The data will be stored from the locus chr:pos specified
         """
+        if self._inner == None:
+            raise RuntimeError("Unable to write a closed D4 file")
         if len(data.shape) != 1:
             raise RuntimeError("Invalid input shape")
         if data.dtype != "int32":
@@ -180,6 +194,9 @@ class Histogram:
         idx = int(value - self.first_value + 1)
         return self.prefix_sum[idx] / self.total_count()
     def mean(self):
+        """
+        Get the mean depth from this histogram
+        """
         current_value = self.first_value
         current_sum = self.prefix_sum[0]
         total = 0
@@ -190,6 +207,9 @@ class Histogram:
             current_sum = value
         return total / self.total_count()
     def percentile(self, nth):
+        """
+        Get the n-th percentile value from the histogram
+        """
         total_count = self.total_count()
         value = self.first_value
         for count in self.prefix_sum[1:]: 
@@ -199,8 +219,14 @@ class Histogram:
             value += 1
         return 0
     def median(self):
+        """
+        Compute the median value of the histogram
+        """
         return self.percentile(50)
     def std(self):
+        """
+        Compute the standard deviation of this histogram
+        """
         current_value = self.first_value
         current_sum = self.prefix_sum[0]
         sum = 0

@@ -13,4 +13,4 @@ mod reader;
 mod table;
 mod view;
 
-pub use reader::D4TrackReader;
+pub use reader::{D4TrackReader, D4MatrixReader};
