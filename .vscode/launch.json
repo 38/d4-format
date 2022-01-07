@@ -16,7 +16,7 @@
 			},
 			"program": "target/debug/d4tools",
 			"env": {"RUST_LOG": "info"},
-			"args": ["create", "/tmp/19302X6.1.consensus.bam"]
+			"args": ["view", "http://localhost:8000/multi-track-sample.d4", "1:10000-20000"]
 		},
 		{
 			"type": "lldb",

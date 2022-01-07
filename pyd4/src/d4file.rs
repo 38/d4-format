@@ -272,7 +272,12 @@ impl D4File {
     /// 
     /// Returns a value iterator that iterates over the given region
     pub fn value_iter(&self, chr: &str, left: u32, right: u32) -> PyResult<D4Iter> {
-        let inner = self.open()?.into_local_reader()?;
-	    D4Iter::new(inner, chr, left, right)
+        if self.is_remote_file()? {
+            let inner = self.open()?.into_remote_reader()?;
+            D4Iter::from_remote_reader(inner, chr, left, right)
+        } else {
+            let inner = self.open()?.into_local_reader()?;
+            D4Iter::from_local_reader(inner, chr, left, right)
+        }
     }
 }

@@ -1,6 +1,7 @@
 use d4::ptab::DecodeResult;
 use d4::stab::SecondaryTablePartReader;
 use d4::D4TrackReader;
+use d4::ssio::{D4TrackReader as RemoteReader, http::HttpReader};
 use pyo3::iter::IterNextOutput;
 use pyo3::{PyIterProtocol, prelude::*};
 use std::io::Result;
@@ -8,12 +9,24 @@ use std::io::Result;
 /// Value iterator for D4 file
 #[pyclass]
 pub struct D4Iter {
-    _inner: D4TrackReader,
+    _inner: Option<D4TrackReader>,
     iter: Box<dyn Iterator<Item = i32> + Send + 'static>,
 }
 
 impl D4Iter {
-	pub(crate) fn new(mut inner: D4TrackReader, chr: &str, left: u32, right: u32) -> PyResult<Self> {
+    pub(crate) fn from_remote_reader(mut inner: RemoteReader<HttpReader>, chr: &str, left: u32, right: u32) -> PyResult<Self> {
+        Ok(Self{
+            _inner: None,
+            iter: Box::new(inner.get_view(chr, left, right)?.map(|res|{
+                if let Ok((_, value)) = res {
+                    value
+                } else {
+                    0
+                }
+            }))
+        })
+    }
+	pub(crate) fn from_local_reader(mut inner: D4TrackReader, chr: &str, left: u32, right: u32) -> PyResult<Self> {
         let partition = inner.split(None)?;
 
         let chr = chr.to_string();
@@ -42,7 +55,7 @@ impl D4Iter {
             })
             .flatten();
         Ok(D4Iter {
-            _inner: inner,
+            _inner: Some(inner),
             iter: Box::new(iter),
         })
     }

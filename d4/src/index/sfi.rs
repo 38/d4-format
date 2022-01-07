@@ -102,9 +102,12 @@ impl SecondaryFrameIndex {
                     (item.chrom_id, item.start_pos)
                 }) {
                 Ok(idx) => RecordFrameAddress::from_frame_index_entry(&self.items[idx]),
-                Err(idx) => {
+                Err(idx) if !self.items.is_empty() => {
                     let prev_idx = if idx > 0 { idx - 1 } else { 0 };
                     RecordFrameAddress::from_frame_index_entry(&self.items[prev_idx])
+                }
+                _ => {
+                    return Ok(None);
                 }
             };
             Ok(Some(ret))
