@@ -110,16 +110,20 @@ impl D4File {
         Ok(self.path.starts_with("http://") || self.path.starts_with("https://"))
     }
 
+    pub fn get_track_specifier(&self, track: &str) -> PyResult<String> {
+        Ok(if self.path.starts_with("http://") || self.path.starts_with("https://") {
+            format!("{}#{}", self.path, track)
+        } else {
+            format!("{}:{}", self.path, track)
+        })
+    }
+
     /// open_track(name)
     /// --
     /// 
     /// Open a track with the specified name.
     pub fn open_track(&self, track: &str) -> PyResult<Self> {
-        let path = if self.path.starts_with("http://") || self.path.starts_with("https://") {
-            format!("{}#{}", self.path, track)
-        } else {
-            format!("{}:{}", self.path, track)
-        };
+        let path = self.get_track_specifier(track)?;
         let ret = Self{ path };
         ret.open()?;
         Ok(ret)

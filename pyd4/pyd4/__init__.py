@@ -70,13 +70,24 @@ class D4Matrix:
     """
     Higher level abstraction for a multitrack D4 file
     """
-    def __init__(self, tracks):
+    def __init__(self, tracks, track_names = None):
         self.tracks = tracks
+        self.track_names = track_names
     def enumerate_values(self, chrom, begin, end):
         """
         Enumerate values in the given range
         """
         return enumerate_values(self.tracks, chrom, begin, end)
+    def __getitem__(self, key):
+        data = [track[key] for track in self.tracks]
+        return numpy.stack(data)
+    def resample(self, regions, method = "mean", bin_size = 1000, allow_bin_size_adjustment = True):
+        data = [track.resample(regions, method, bin_size, allow_bin_size_adjustment) for track in self.tracks]
+        ret = []
+        for idx in range(len(data[0])):
+            region_data = [track_data[idx] for track_data in data]
+            ret.append(numpy.stack(region_data))
+        return ret
 class D4Writer:
     def __init__(self, writer_obj):
         self._inner = writer_obj
@@ -318,7 +329,11 @@ class D4File(D4FileImpl):
         """
         Open all the tracks that are living in this file
         """
-        return D4Matrix([self.open_track(track_label) for track_label in self.list_tracks()])
+        tracks = self.list_tracks()
+        return D4Matrix(
+            [D4File(self.get_track_specifier(track_label)) for track_label in tracks],
+            track_names = tracks
+        )
     def chrom_names(self):
         """
         Return a list of chromosome names
