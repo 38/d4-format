@@ -1,4 +1,4 @@
-use d4::{Chrom, D4FileBuilder, D4FileWriter, D4FileWriterExt, Dictionary, ptab::PTablePartitionWriter, stab::SecondaryTablePartWriter};
+use d4::{Chrom, D4FileBuilder, D4FileWriter, D4FileWriterExt, Dictionary, ptab::PTablePartitionWriter, stab::SecondaryTablePartWriter, index::D4IndexCollection, D4FileMerger};
 use pyo3::{exceptions::PyKeyError, prelude::*};
 use rayon::prelude::*;
 
@@ -63,11 +63,53 @@ impl WriterPartHandle {
         ))
     }
 }
+enum IndexFlavor {
+    Sum(String),
+    NoIndex,
+}
+
+#[pyclass(subclass)]
+pub struct D4Merger {
+    inner: Option<D4FileMerger>,
+}
+
+#[pymethods]
+impl D4Merger {
+    /// __init__(output)
+    /// --
+    /// 
+    /// Create a new D4Merger class
+    #[new]
+    fn new(out: &str) -> PyResult<Self> {
+        Ok(Self {
+            inner: Some(D4FileMerger::new(out)),
+        })
+    }
+    /// add_track(tag, path)
+    /// -- 
+    /// 
+    /// Add tagged data tracks to the output file
+    fn add_tagged_track(&mut self, tag: &str, path: &str) {
+        self.inner = Some(self.inner.take().unwrap().add_input_with_tag(path, tag))
+    }
+
+    /// merge()
+    /// --
+    /// 
+    /// Do actual file merging
+    fn merge(&mut self) -> PyResult<()>{
+        if let Some(inner) = self.inner.take() {
+            inner.merge()?;
+        }
+        Ok(())
+    }
+}
 
 #[pyclass(subclass)]
 pub struct D4Writer {
     writer_obj: Option<D4FileWriter>,
     parts: Vec<WriterPartHandle>,
+    index_option: IndexFlavor,
 }
 
 #[pymethods]
@@ -79,10 +121,19 @@ impl D4Writer {
     /// Note: This method will be implictly called when the writer object is deleted. 
     /// The output may be incompleted until this method gets called. 
     /// If you want to make sure the output is completed, you can explicitly call this function.
-    fn close(&mut self) {
+    fn close(&mut self) -> PyResult<()> {
         let parts = std::mem::replace(&mut self.parts, Vec::new());
         parts.into_par_iter().for_each(|mut part| part.flush().unwrap());
         self.writer_obj.take();
+        match &self.index_option {
+            IndexFlavor::Sum(path) => {
+               let mut ic = D4IndexCollection::open_for_write(path)?;
+               ic.create_secondary_frame_index()?;
+               ic.create_sum_index()?;
+            },
+            IndexFlavor::NoIndex => (),
+        }
+        Ok(())
     }
     
     fn write(&mut self, chr: &str, start_pos: u32, data_addr: i64, count: usize) -> PyResult<()> {
@@ -180,7 +231,7 @@ impl D4Builder {
     /// --
     /// 
     /// Build the D4 file from the writer class.
-    fn into_writer(&mut self, path: &str) -> PyResult<D4Writer> {
+    fn into_writer(&mut self, path: &str, flavor: &str) -> PyResult<D4Writer> {
         let mut writer : D4FileWriter = D4FileBuilder::new(path)
             .set_dictionary(self.dictionary.clone())
             .append_chrom(self.genome_size.iter().map(|(name, size)| {
@@ -207,6 +258,11 @@ impl D4Builder {
         Ok(D4Writer{
             writer_obj: Some(writer),
             parts,
+            index_option: if flavor == "sum" {
+                IndexFlavor::Sum(path.to_string())
+            } else {
+                IndexFlavor::NoIndex
+            },
         })
     }
 }

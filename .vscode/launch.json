@@ -25,7 +25,7 @@
 			"cwd": "${workspaceFolder}/pyd4/build/lib",
 			"program": "python3",
 			"env": {"RUST_LOG": "info"},
-			"args": ["test.py"]
+			"args": ["test2.py"]
 		},
 	]
 }

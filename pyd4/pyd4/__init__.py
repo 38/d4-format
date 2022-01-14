@@ -2,7 +2,7 @@
 The Python Binding for the D4 file format.
 """
 
-from .pyd4 import D4File as D4FileImpl, D4Iter, D4Builder as D4BuilderImpl, D4Writer as D4WriterImpl
+from .pyd4 import D4File as D4FileImpl, D4Iter, D4Builder as D4BuilderImpl, D4Writer as D4WriterImpl, D4Merger as D4MergerImpl
 
 import numpy
 import ctypes
@@ -11,6 +11,8 @@ import tempfile
 import atexit
 import os
 import math
+from pathlib import Path
+
 def bam_to_d4(bam_file, output = None, compression = False, encode_dict = "auto", read_flags = 0xffff, reference_genome = None):
     """
     Create a coverage profile from a given BAM/CRAM file and return the opened D4 file.
@@ -66,6 +68,21 @@ def open_all_tracks(fp):
     f = D4File(fp)
     return [f.open_track(track_label) for track_label in f.list_tracks()]
 
+class D4Merger(D4MergerImpl):
+    """
+    The helper class to make multi-track D4 files.
+    This class enables merge multiple single track D4 file into one multi-track file
+    """
+    def __del__(self):
+        self.merge()
+    def add_track(self, path):
+        tag = str(Path(path).stem)
+        self.add_tagged_track(tag, path)
+        return self
+    def add_tagged_track(self, tag, path):
+        super().add_tagged_track(tag, path)
+        return self
+
 class D4Matrix:
     """
     Higher level abstraction for a multitrack D4 file
@@ -92,7 +109,8 @@ class D4Writer:
     def __init__(self, writer_obj):
         self._inner = writer_obj
     def __del__(self):
-        self._inner.close()
+        if self._inner:
+            self._inner.close()
     def close(self):
         """
         Manually close the D4 writer. Unless the D4 writer is closed, the output file
@@ -102,7 +120,7 @@ class D4Writer:
         You can also call this function explicitly so that the file will be complete right
         after this invocation.
         """
-        if self._inner == None:
+        if self._inner != None:
             self._inner.close()
         self._inner = None
     def write_np_array(self, chr, pos, data):
@@ -125,44 +143,71 @@ class D4Builder(D4BuilderImpl):
     """
     def __init__(self, output_path):
         self.output_path = output_path
+        self.index = ""
     def enable_secondary_table_compression(self, level = 5):
         """
-            Enable the secondary table compression for the d4 file to created
+        Enable the secondary table compression for the d4 file to created
         """
         self.set_compression(level)
         return self
     def set_dict_bits(self, n):
+        """
+        Set how many bits we want to use for the primary table.
+        This function will encode the value range starting from 0.
+        """
         self.dict_range(0, 1<<n)
         return self
     def add_sequence(self, chr, size):
         """
-            Add a new sequence to the given file
+        Add a new sequence/chromosome to the given file
         """
         self.add_seq(chr, size)
         return self
+    def add_chrom(self, chr, size):
+        """
+        Add a new sequence/chromosomes to given file
+        """
+        self.add_sequence(chr, size)
+        return self
+    def add_chroms(self, chroms):
+        """
+            Add a list of chromosomes
+        """
+        for (chr, size) in chroms:
+            self.add_chrom(chr, size)
+        return self
     def for_bit_array(self):
         """
-            Make the D4 file optimized for a boolean array
+        Make the D4 file optimized for a boolean array
         """
         self.set_compression(-1)
         self.dict_range(0, 2)
         return self
     def for_sparse_data(self):
         """
-            Make the D4 file optimized for sparse data
+        Make the D4 file optimized for sparse data
         """
         self.set_compression(5)
         self.dict_range(0, 1)
         return self
+    def dup_seqs(self, input):
+        super().dup_seqs(input)
+        return self
     def get_writer(self):
         """
-            Get the writer object
+        Get the writer object
         """
-        return D4Writer(self.into_writer(self.output_path))
+        return D4Writer(self.into_writer(self.output_path, self.index))
+    def generate_index(self, flavor = "sum"):
+        """
+        Make the output file indexed
+        """
+        self.index = flavor
+        return self
 
 class Histogram:
     """
-    Represents a hisgoram
+    Represents a hisgoram. 
     """
     def __init__(self, raw):
         values, below, above = raw
