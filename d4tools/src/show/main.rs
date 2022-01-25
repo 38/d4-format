@@ -167,6 +167,7 @@ fn show_impl<'a, R: Read + Seek, I: Iterator<Item = &'a str>>(
     first: bool,
     print_all_zero: bool,
     show_genome: bool,
+    print_header: bool,
 ) -> AppResult<()> {
     let mut path_buf = vec![];
     let mut first_found = false;
@@ -202,6 +203,10 @@ fn show_impl<'a, R: Read + Seek, I: Iterator<Item = &'a str>>(
 
     let mut readers = vec![];
 
+    if print_header {
+        print!("#Chr\tStart\tEnd");
+    }
+
     for path in path_buf.iter() {
         let track_root = match file_root.open(path)? {
             OpenResult::SubDir(track_root) => track_root,
@@ -210,8 +215,22 @@ fn show_impl<'a, R: Read + Seek, I: Iterator<Item = &'a str>>(
                 format!("Unable to open track {}", path.to_string_lossy()),
             ).into()),
         };
+
+        if print_header {
+            print!("\t{}", 
+                path
+                    .file_name()
+                    .map(|x| x.to_string_lossy().to_string())
+                    .unwrap_or_else(|| "<null>".to_string())
+            );
+        }
+
         let reader = D4TrackReader::from_track_root(track_root)?;
         readers.push(reader);
+    }
+
+    if print_header {
+        println!("");
     }
 
     if !d4tools::check_reference_consistency(readers.iter().map(|r| r.chrom_list())) {
@@ -258,6 +277,7 @@ pub fn entry_point(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> 
 
     let should_print_zero = !matches.is_present("no-missing-data");
     let show_genome = matches.is_present("show-genome");
+    let print_header = matches.is_present("header");
 
     if input_filename.starts_with("http://") || input_filename.starts_with("https://") {
         let reader = HttpReader::new(input_filename)?; //.buffered()?;
@@ -269,6 +289,7 @@ pub fn entry_point(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> 
             matches.is_present("first"),
             should_print_zero,
             show_genome,
+            print_header,
         )?;
     } else {
         let reader = File::open(input_filename)?;
@@ -280,6 +301,7 @@ pub fn entry_point(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> 
             matches.is_present("first"),
             should_print_zero,
             show_genome,
+            print_header,
         )?;
     }
 
