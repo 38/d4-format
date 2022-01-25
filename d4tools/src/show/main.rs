@@ -11,7 +11,7 @@ use std::{
     borrow::{Borrow, Cow},
     collections::HashMap,
     fs::File,
-    io::{Error, ErrorKind, Read, Result as IOResult, Seek, Write},
+    io::{Error, ErrorKind, Read, Result as IOResult, Seek, Write, BufReader, BufRead},
     path::Path,
 };
 fn write_bed_record_fast<W: Write>(
@@ -34,7 +34,7 @@ fn write_bed_record_fast<W: Write>(
     Ok(())
 }
 
-fn parse_region_spec<'a, T: Iterator<Item = &'a str>>(
+fn parse_region_spec<T: Iterator<Item = String>>(
     regions: Option<T>,
     chrom_list: &[Chrom],
 ) -> std::io::Result<Vec<(usize, u32, u32)>> {
@@ -49,7 +49,7 @@ fn parse_region_spec<'a, T: Iterator<Item = &'a str>>(
 
     if let Some(regions) = regions {
         for region_spec in regions {
-            if let Some(captures) = region_pattern.captures(region_spec) {
+            if let Some(captures) = region_pattern.captures(&region_spec) {
                 let chr = captures.name("CHR").unwrap().as_str();
                 let start: u32 = captures
                     .name("FROM")
@@ -159,7 +159,7 @@ fn show_region<R: Read + Seek>(
     Ok(())
 }
 
-fn show_impl<'a, R: Read + Seek, I: Iterator<Item = &'a str>>(
+fn show_impl<R: Read + Seek, I: Iterator<Item = String>>(
     mut reader: R,
     pattern: Regex,
     track: Option<&str>,
@@ -279,13 +279,39 @@ pub fn entry_point(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> 
     let show_genome = matches.is_present("show-genome");
     let print_header = matches.is_present("header");
 
+    let regions = if let Some(region_file) = matches.value_of("region-file") {
+        let mut file = BufReader::new(File::open(region_file)?);
+        let mut buf = String::new();
+        let mut region_list = Vec::new();
+        while file.read_line(&mut buf)? > 0 {
+            if &buf[..1] == "#" {
+                continue;
+            }
+            let mut splitted = buf.trim().split('\t');
+            let (raw_chr, raw_beg, raw_end) = (splitted.next(),splitted.next(), splitted.next());
+            if raw_chr.is_some() && raw_beg.is_some() && raw_end.is_some() {
+                if let Ok(begin) = raw_beg.unwrap().parse::<u32>() {
+                    if let Ok(end) = raw_end.unwrap().parse::<u32>() {
+                        region_list.push(format!("{}:{}-{}", raw_chr.unwrap(), begin, end));
+                    }
+                }
+                buf.clear();
+                continue;
+            }
+            panic!("Invalid bed file");
+        }
+        Some(region_list.into_iter())
+    } else {
+        matches.values_of("regions").map(|x| x.map(|y| y.to_owned()).collect::<Vec<_>>().into_iter())
+    };
+
     if input_filename.starts_with("http://") || input_filename.starts_with("https://") {
         let reader = HttpReader::new(input_filename)?; //.buffered()?;
         show_impl(
             reader,
             track_pattern,
             track_path,
-            matches.values_of("regions"),
+            regions,
             matches.is_present("first"),
             should_print_zero,
             show_genome,
@@ -297,7 +323,7 @@ pub fn entry_point(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> 
             reader,
             track_pattern,
             track_path,
-            matches.values_of("regions"),
+            regions,
             matches.is_present("first"),
             should_print_zero,
             show_genome,

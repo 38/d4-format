@@ -27,6 +27,12 @@ args:
         short: H
         long: header
         help: "Print the column header"
+    - region-file:
+        required: false
+        help: A bed file that defines the region to be viewd
+        value_name: BED_FILE
+        short: R
+        long: region-file
     - regions:
         required: false
         help: Regions to be viewed
