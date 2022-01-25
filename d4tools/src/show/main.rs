@@ -11,7 +11,7 @@ use std::{
     borrow::{Borrow, Cow},
     collections::HashMap,
     fs::File,
-    io::{Error, ErrorKind, Read, Result as IOResult, Seek, Write, BufReader, BufRead},
+    io::{BufRead, BufReader, Error, ErrorKind, Read, Result as IOResult, Seek, Write},
     path::Path,
 };
 fn write_bed_record_fast<W: Write>(
@@ -210,16 +210,19 @@ fn show_impl<R: Read + Seek, I: Iterator<Item = String>>(
     for path in path_buf.iter() {
         let track_root = match file_root.open(path)? {
             OpenResult::SubDir(track_root) => track_root,
-            _ => return Err(Error::new(
-                ErrorKind::Other,
-                format!("Unable to open track {}", path.to_string_lossy()),
-            ).into()),
+            _ => {
+                return Err(Error::new(
+                    ErrorKind::Other,
+                    format!("Unable to open track {}", path.to_string_lossy()),
+                )
+                .into())
+            }
         };
 
         if print_header {
-            print!("\t{}", 
-                path
-                    .file_name()
+            print!(
+                "\t{}",
+                path.file_name()
                     .map(|x| x.to_string_lossy().to_string())
                     .unwrap_or_else(|| "<null>".to_string())
             );
@@ -237,7 +240,8 @@ fn show_impl<R: Read + Seek, I: Iterator<Item = String>>(
         return Err(Error::new(
             ErrorKind::Other,
             "Inconsistent reference genome".to_string(),
-        ).into())
+        )
+        .into());
     }
 
     if show_genome {
@@ -288,7 +292,7 @@ pub fn entry_point(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> 
                 continue;
             }
             let mut splitted = buf.trim().split('\t');
-            let (raw_chr, raw_beg, raw_end) = (splitted.next(),splitted.next(), splitted.next());
+            let (raw_chr, raw_beg, raw_end) = (splitted.next(), splitted.next(), splitted.next());
             if raw_chr.is_some() && raw_beg.is_some() && raw_end.is_some() {
                 if let Ok(begin) = raw_beg.unwrap().parse::<u32>() {
                     if let Ok(end) = raw_end.unwrap().parse::<u32>() {
@@ -302,7 +306,9 @@ pub fn entry_point(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> 
         }
         Some(region_list.into_iter())
     } else {
-        matches.values_of("regions").map(|x| x.map(|y| y.to_owned()).collect::<Vec<_>>().into_iter())
+        matches
+            .values_of("regions")
+            .map(|x| x.map(|y| y.to_owned()).collect::<Vec<_>>().into_iter())
     };
 
     if input_filename.starts_with("http://") || input_filename.starts_with("https://") {

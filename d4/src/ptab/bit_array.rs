@@ -214,10 +214,7 @@ impl DecoderParameter {
     fn new(decoders: &[PrimaryTableCodec<Reader>]) -> Self {
         let pointers = decoders
             .iter()
-            .map(|enc| {
-                
-                &enc.memory[0] as *const u8
-            })
+            .map(|enc| &enc.memory[0] as *const u8)
             .collect::<SmallVec<_>>();
 
         let mut shift = smallvec![];

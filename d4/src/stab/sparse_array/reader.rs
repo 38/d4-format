@@ -13,9 +13,7 @@ pub(crate) fn assemble_incomplete_records<'a, R: Record>(
     if !incomplete_data.is_empty() {
         let bytes_needed = R::SIZE - incomplete_data.len();
         incomplete_data.extend_from_slice(&extra[..bytes_needed]);
-        let record = *unsafe {
-            std::mem::transmute::<_, &R>(&incomplete_data[0])
-        };
+        let record = *unsafe { std::mem::transmute::<_, &R>(&incomplete_data[0]) };
         buffer.push(RecordBlock::Record(record));
         incomplete_data.clear();
         return &extra[bytes_needed..];
@@ -176,11 +174,15 @@ mod mapped_io {
             let metadata = self
                 .s_table_root
                 .open_stream(SECONDARY_TABLE_METADATA_NAME)?;
-            let metadata = String::from_utf8_lossy({
-                let mut buf = Vec::new();
-                metadata.copy_content(&mut buf);
-                buf
-            }.as_ref()).to_string();
+            let metadata = String::from_utf8_lossy(
+                {
+                    let mut buf = Vec::new();
+                    metadata.copy_content(&mut buf);
+                    buf
+                }
+                .as_ref(),
+            )
+            .to_string();
             let actual_data = metadata.trim_end_matches(|c| c == '\0');
             serde_json::from_str(actual_data).ok()
         }

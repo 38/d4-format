@@ -46,8 +46,8 @@ fn main_impl(matches: ArgMatches<'_>) -> Result<(), Box<dyn std::error::Error>> 
 
     let mut enable_compression = false;
 
-    if (!matches.is_present("dict_range") && !matches.is_present("dict-file")) 
-        || matches.is_present("dict-auto") 
+    if (!matches.is_present("dict_range") && !matches.is_present("dict-file"))
+        || matches.is_present("dict-auto")
     {
         match input_type {
             InputType::Alignment => {
@@ -57,12 +57,12 @@ fn main_impl(matches: ArgMatches<'_>) -> Result<(), Box<dyn std::error::Error>> 
                     matches.value_of("ref"),
                     min_mq,
                 )?);
-            },
+            }
             InputType::BiwWig => {
                 let fp = std::fs::metadata(input_path)?;
                 let bw_file = d4_bigwig::BigWigFile::open(input_path)?;
 
-                let genome_size : u64 = bw_file.chroms().into_iter().map(|(_, sz)| sz as u64).sum();
+                let genome_size: u64 = bw_file.chroms().into_iter().map(|(_, sz)| sz as u64).sum();
 
                 let file_size = fp.len();
 
@@ -70,14 +70,14 @@ fn main_impl(matches: ArgMatches<'_>) -> Result<(), Box<dyn std::error::Error>> 
                     d4_builder.set_dictionary(Dictionary::new_simple_range_dict(0, 1)?);
                     enable_compression = true;
                 }
-            },
+            }
             InputType::BedGraph => {
                 let genomes = parse_genome_file(
                     matches
                         .value_of("genome")
                         .expect("Genome file is required for text file format"),
                 )?;
-                let genome_size : u64 = genomes.into_iter().map(|chr| chr.size as u64).sum();
+                let genome_size: u64 = genomes.into_iter().map(|chr| chr.size as u64).sum();
 
                 let fp = std::fs::metadata(input_path)?;
                 let file_size = fp.len();
@@ -86,7 +86,7 @@ fn main_impl(matches: ArgMatches<'_>) -> Result<(), Box<dyn std::error::Error>> 
                     d4_builder.set_dictionary(Dictionary::new_simple_range_dict(0, 1)?);
                     enable_compression = true;
                 }
-            },
+            }
             _ => {
                 panic!("Unsupported input type")
             }

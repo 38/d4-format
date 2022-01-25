@@ -42,7 +42,7 @@ impl TaskPartition<Once<i32>> for Partition {
 
     #[inline(always)]
     fn init(&mut self) {
-        self.histogram = Some(vec![0;self.range]);
+        self.histogram = Some(vec![0; self.range]);
     }
 
     #[inline(always)]

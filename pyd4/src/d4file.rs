@@ -1,3 +1,4 @@
+use crate::ReaderWrapper;
 use d4::ptab::{DecodeResult, Decoder};
 use d4::stab::SecondaryTablePartReader;
 use d4::task::{Histogram, Mean, Task, TaskContext};
@@ -5,7 +6,6 @@ use d4::Chrom;
 use pyo3::prelude::*;
 use pyo3::types::{PyInt, PyList, PyString, PyTuple};
 use rayon::prelude::*;
-use crate::ReaderWrapper;
 
 use super::D4Iter;
 
@@ -20,10 +20,7 @@ impl D4File {
         ReaderWrapper::open(self.path.as_str())
     }
 
-    fn parse_range_spec(
-        chroms: &[Chrom],
-        regions: &PyList,
-    ) -> PyResult<Vec<(String, u32, u32)>> {
+    fn parse_range_spec(chroms: &[Chrom], regions: &PyList) -> PyResult<Vec<(String, u32, u32)>> {
         let mut spec = vec![];
         for item in regions.iter() {
             let (chr, begin, end) = if let Ok(chr) = item.downcast::<PyString>() {
@@ -66,7 +63,7 @@ impl D4File {
 impl D4File {
     /// new(path)
     /// --
-    /// 
+    ///
     /// Open a new D4 file for read
     ///
     /// Path: path to the D4 file
@@ -81,9 +78,9 @@ impl D4File {
 
     /// list_tracks()
     /// --
-    /// 
+    ///
     /// List all the tracks living in this file.
-    pub fn list_tracks(&self) -> PyResult<Vec<String>> {        
+    pub fn list_tracks(&self) -> PyResult<Vec<String>> {
         let mut tracks = Vec::new();
         if self.path.starts_with("http://") || self.path.starts_with("https://") {
             let path = if let Some(sep) = self.path.rfind('#') {
@@ -104,34 +101,36 @@ impl D4File {
 
     /// is_remote_file()
     /// --
-    /// 
+    ///
     /// Check if the file is on remote server or local disk
     pub fn is_remote_file(&self) -> PyResult<bool> {
         Ok(self.path.starts_with("http://") || self.path.starts_with("https://"))
     }
 
     pub fn get_track_specifier(&self, track: &str) -> PyResult<String> {
-        Ok(if self.path.starts_with("http://") || self.path.starts_with("https://") {
-            format!("{}#{}", self.path, track)
-        } else {
-            format!("{}:{}", self.path, track)
-        })
+        Ok(
+            if self.path.starts_with("http://") || self.path.starts_with("https://") {
+                format!("{}#{}", self.path, track)
+            } else {
+                format!("{}:{}", self.path, track)
+            },
+        )
     }
 
     /// open_track(name)
     /// --
-    /// 
+    ///
     /// Open a track with the specified name.
     pub fn open_track(&self, track: &str) -> PyResult<Self> {
         let path = self.get_track_specifier(track)?;
-        let ret = Self{ path };
+        let ret = Self { path };
         ret.open()?;
         Ok(ret)
     }
 
     /// chroms()
     /// --
-    /// 
+    ///
     /// Returns a list of chromosomes defined in the D4 file
     pub fn chroms(&self) -> PyResult<Vec<(String, usize)>> {
         Ok(self
@@ -144,7 +143,7 @@ impl D4File {
 
     /// histogram(regions, min, max)
     /// --
-    /// 
+    ///
     /// Returns the hisgoram of values in the given regions
     ///
     /// regions: The list of regions we are asking
@@ -180,7 +179,7 @@ impl D4File {
 
     /// mean(regions)
     /// --
-    /// 
+    ///
     /// Compute the mean dpeth for the given region
     pub fn mean(&self, regions: &pyo3::types::PyList) -> PyResult<Vec<f64>> {
         let mut input = self.open()?;
@@ -235,7 +234,8 @@ impl D4File {
                     }
                     let target = unsafe {
                         std::slice::from_raw_parts_mut(
-                            ((buf as u64) + std::mem::size_of::<i32>() as u64 * ((from - left) as u64))
+                            ((buf as u64)
+                                + std::mem::size_of::<i32>() as u64 * ((from - left) as u64))
                                 as *mut i32,
                             (to - from) as usize,
                         )
@@ -258,10 +258,7 @@ impl D4File {
             let mut remote = reader.into_remote_reader()?;
             let view = remote.get_view(chr, left, right)?;
             let target = unsafe {
-                std::slice::from_raw_parts_mut(
-                    buf as u64 as *mut i32,
-                    (right - left) as usize,
-                )
+                std::slice::from_raw_parts_mut(buf as u64 as *mut i32, (right - left) as usize)
             };
             for value in view {
                 let (pos, idx) = value?;
@@ -273,7 +270,7 @@ impl D4File {
 
     /// value_iter()
     /// --
-    /// 
+    ///
     /// Returns a value iterator that iterates over the given region
     pub fn value_iter(&self, chr: &str, left: u32, right: u32) -> PyResult<D4Iter> {
         if self.is_remote_file()? {

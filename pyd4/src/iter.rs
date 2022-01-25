@@ -1,9 +1,9 @@
 use d4::ptab::DecodeResult;
+use d4::ssio::{http::HttpReader, D4TrackReader as RemoteReader};
 use d4::stab::SecondaryTablePartReader;
 use d4::D4TrackReader;
-use d4::ssio::{D4TrackReader as RemoteReader, http::HttpReader};
 use pyo3::iter::IterNextOutput;
-use pyo3::{PyIterProtocol, prelude::*};
+use pyo3::{prelude::*, PyIterProtocol};
 use std::io::Result;
 
 /// Value iterator for D4 file
@@ -14,19 +14,29 @@ pub struct D4Iter {
 }
 
 impl D4Iter {
-    pub(crate) fn from_remote_reader(mut inner: RemoteReader<HttpReader>, chr: &str, left: u32, right: u32) -> PyResult<Self> {
-        Ok(Self{
+    pub(crate) fn from_remote_reader(
+        mut inner: RemoteReader<HttpReader>,
+        chr: &str,
+        left: u32,
+        right: u32,
+    ) -> PyResult<Self> {
+        Ok(Self {
             _inner: None,
-            iter: Box::new(inner.get_view(chr, left, right)?.map(|res|{
+            iter: Box::new(inner.get_view(chr, left, right)?.map(|res| {
                 if let Ok((_, value)) = res {
                     value
                 } else {
                     0
                 }
-            }))
+            })),
         })
     }
-	pub(crate) fn from_local_reader(mut inner: D4TrackReader, chr: &str, left: u32, right: u32) -> PyResult<Self> {
+    pub(crate) fn from_local_reader(
+        mut inner: D4TrackReader,
+        chr: &str,
+        left: u32,
+        right: u32,
+    ) -> PyResult<Self> {
         let partition = inner.split(None)?;
 
         let chr = chr.to_string();

@@ -1,11 +1,20 @@
-use std::{io::{Error, ErrorKind, Read, Result, Seek}, path::{PathBuf, Path}};
+use std::{
+    io::{Error, ErrorKind, Read, Result, Seek},
+    path::{Path, PathBuf},
+};
 
 use d4_framefile::{Blob, Directory, OpenResult};
 use reqwest::IntoUrl;
 
-use crate::{Chrom, Header, d4file::validate_header, index::{D4IndexCollection, DataIndexRef, DataSummary, SecondaryFrameIndex}, ptab::PRIMARY_TABLE_NAME, stab::{CompressionMethod, RecordBlockParsingState, SECONDARY_TABLE_NAME}};
+use crate::{
+    d4file::validate_header,
+    index::{D4IndexCollection, DataIndexRef, DataSummary, SecondaryFrameIndex},
+    ptab::PRIMARY_TABLE_NAME,
+    stab::{CompressionMethod, RecordBlockParsingState, SECONDARY_TABLE_NAME},
+    Chrom, Header,
+};
 
-use super::{table::SecondaryTableRef, view::D4TrackView, http::HttpReader};
+use super::{http::HttpReader, table::SecondaryTableRef, view::D4TrackView};
 
 pub struct D4TrackReader<R: Read + Seek> {
     header: Header,
@@ -20,22 +29,36 @@ pub struct D4MatrixReader<R: Read + Seek> {
 }
 
 impl D4MatrixReader<HttpReader> {
-    pub fn open_tracks<U: IntoUrl + Clone, Pat: FnMut(Option<&Path>) -> bool>(url: U, pat: Pat) -> Result<D4MatrixReader<HttpReader>> {
+    pub fn open_tracks<U: IntoUrl + Clone, Pat: FnMut(Option<&Path>) -> bool>(
+        url: U,
+        pat: Pat,
+    ) -> Result<D4MatrixReader<HttpReader>> {
         let mut track_to_open = vec![];
         let reader = HttpReader::new(url.clone())?;
         crate::d4file::find_tracks(reader, pat, &mut track_to_open)?;
         Ok(Self {
-            tracks: track_to_open.into_iter().map(|path| {
-                D4TrackReader::from_url_and_track_name(url.clone(), path.to_str()).unwrap()
-            }).collect()
+            tracks: track_to_open
+                .into_iter()
+                .map(|path| {
+                    D4TrackReader::from_url_and_track_name(url.clone(), path.to_str()).unwrap()
+                })
+                .collect(),
         })
     }
 }
-impl <R: Read + Seek> D4MatrixReader<R> {
-    pub fn get_view(&mut self, chrom: &str, begin: u32, end: u32, buf: &mut Vec<D4TrackView<R>>) -> Result<()> {
-        for view in self.tracks.iter_mut().map(|x| {
-            x.get_view(chrom, begin, end)
-        }) {
+impl<R: Read + Seek> D4MatrixReader<R> {
+    pub fn get_view(
+        &mut self,
+        chrom: &str,
+        begin: u32,
+        end: u32,
+        buf: &mut Vec<D4TrackView<R>>,
+    ) -> Result<()> {
+        for view in self
+            .tracks
+            .iter_mut()
+            .map(|x| x.get_view(chrom, begin, end))
+        {
             let view = view?;
             buf.push(view);
         }
@@ -76,7 +99,7 @@ impl<R: Read + Seek> D4TrackReader<R> {
     pub fn get_view(&mut self, chrom: &str, begin: u32, end: u32) -> Result<D4TrackView<R>> {
         let primary_offset = self.header.primary_table_offset_of_chrom(chrom);
         let primary_size = self.header.primary_table_size_of_chrom(chrom);
-        if primary_size == 0 && self.header.dictionary().bit_width() != 0{
+        if primary_size == 0 && self.header.dictionary().bit_width() != 0 {
             return Err(Error::new(ErrorKind::Other, "chrom name not found"));
         }
 

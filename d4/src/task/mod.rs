@@ -142,7 +142,7 @@ pub trait TaskPartition<RowType: Iterator<Item = i32> + ExactSizeIterator>: Send
     type ResultType: Send + Clone;
     /// The type for a single row
     fn new(left: u32, right: u32, parent: &Self::ParentType) -> Self;
-    /// Initlize the task 
+    /// Initlize the task
     #[inline(always)]
     fn init(&mut self) {}
     /// Feed one value to the task

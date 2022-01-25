@@ -139,7 +139,10 @@ where
     })
 }
 
-fn percentile_stat(matches: ArgMatches<'_>, percentile: f64) -> Result<(), Box<dyn std::error::Error>> {
+fn percentile_stat(
+    matches: ArgMatches<'_>,
+    percentile: f64,
+) -> Result<(), Box<dyn std::error::Error>> {
     let histograms = run_task::<Histogram>(matches)?;
     for OwnedOutput {
         chrom: chr,

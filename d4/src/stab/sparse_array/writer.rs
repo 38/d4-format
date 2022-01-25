@@ -52,7 +52,7 @@ impl<R: Record> SecondaryTableWriter for SparseArrayWriter<R> {
         let mut metadata_stream = self.0.create_stream(SECONDARY_TABLE_METADATA_NAME, 512)?;
         metadata_stream.write_with_alloc_callback(
             serde_json::to_string(&metadata).unwrap().as_bytes(),
-            |s| s.set_frame_size(65536)
+            |s| s.set_frame_size(65536),
         )?;
         let compression = self.1;
         Ok(partitions
