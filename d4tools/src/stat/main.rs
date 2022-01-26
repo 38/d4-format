@@ -55,6 +55,7 @@ fn parse_region_spec(
 
 fn open_file_parse_region_and_then<T, F>(
     matches: ArgMatches<'_>,
+    tags: &mut Vec<String>,
     func: F,
 ) -> Result<T, Box<dyn std::error::Error>>
 where
@@ -101,6 +102,8 @@ where
     let region_spec =
         parse_region_spec(matches.value_of("region"), d4files[0].header().chrom_list())?;
 
+    *tags = data_path;
+
     func(d4files, region_spec)
 }
 
@@ -114,11 +117,12 @@ pub struct OwnedOutput<T> {
 #[allow(clippy::type_complexity)]
 fn run_task<T: Task<Once<i32>> + SimpleTask + Clone>(
     matches: ArgMatches<'_>,
+    file_tags: &mut Vec<String>,
 ) -> Result<Vec<OwnedOutput<Vec<T::Output>>>, Box<dyn std::error::Error>>
 where
     T::Output: Clone,
 {
-    open_file_parse_region_and_then(matches, |inputs, region_spec| {
+    open_file_parse_region_and_then(matches, file_tags, |inputs, region_spec| {
         let mut ret = vec![];
         for mut input in inputs {
             let result = T::create_task(&mut input, &region_spec)?.run();
@@ -142,8 +146,13 @@ where
 fn percentile_stat(
     matches: ArgMatches<'_>,
     percentile: f64,
+    mut print_header: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let histograms = run_task::<Histogram>(matches)?;
+    let mut tags = Vec::new();
+    if print_header {
+        print!("#Chr\tBegin\tEnd");
+    }
+    let histograms = run_task::<Histogram>(matches, &mut tags)?;
     for OwnedOutput {
         chrom: chr,
         begin,
@@ -151,6 +160,13 @@ fn percentile_stat(
         output: results,
     } in histograms
     {
+        if print_header {
+            for tag in tags.iter() {
+                print!("\t{}", tag);
+            }
+            println!("");
+            print_header = false;
+        }
         print!("{}\t{}\t{}", chr, begin, end);
         for (below, hist, above) in results {
             let count: u32 = below + hist.iter().sum::<u32>() + above;
@@ -170,7 +186,8 @@ fn percentile_stat(
 
 fn hist_stat(matches: ArgMatches<'_>) -> Result<(), Box<dyn std::error::Error>> {
     let max_bin = matches.value_of("max-bin").unwrap_or("1000").parse()?;
-    let histograms = open_file_parse_region_and_then(matches, |mut input, regions| {
+    let mut unused = Vec::new();
+    let histograms = open_file_parse_region_and_then(matches, &mut unused, |mut input, regions| {
         let tasks: Vec<_> = regions
             .into_iter()
             .map(|(chr, begin, end)| Histogram::with_bin_range(&chr, begin, end, 0..max_bin))
@@ -202,41 +219,69 @@ fn hist_stat(matches: ArgMatches<'_>) -> Result<(), Box<dyn std::error::Error>> 
 
 fn mean_stat_index<'a, R: Read + Seek>(
     mut reader: R,
+    track: Option<&str>,
+    print_header: bool,
     region_file: Option<&str>,
 ) -> Result<bool, Box<dyn std::error::Error>> {
-    let mut tracks = Vec::with_capacity(1);
-    let mut found = false;
-    find_tracks(
-        &mut reader,
-        |_| {
-            let ret = !found;
-            found = true;
-            ret
-        },
-        &mut tracks,
-    )?;
-    if tracks.len() != 1 {
+    let mut tracks = Vec::new();
+
+    if let Some(name) = track {
+        tracks.push(name.into());
+    } else {
+        find_tracks(
+            &mut reader,
+            |_| true,
+            &mut tracks,
+        )?;
+    }
+
+    if tracks.len() == 0 {
         panic!("At least one track should be present in the file");
     }
     let file_root = d4_framefile::Directory::open_root(reader, 8)?;
-    let root_dir = match file_root.open(&tracks[0])? {
-        d4_framefile::OpenResult::SubDir(dir) => dir,
-        _ => panic!("Invalid track root"),
-    };
-    if let Ok(index_root) = D4IndexCollection::from_root_container(&root_dir) {
-        if let Ok(sum_index) = index_root.load_data_index::<Sum>() {
-            let mut ssio_reader = d4::ssio::D4TrackReader::from_track_root(root_dir)?;
-            let regions = parse_region_spec(region_file, ssio_reader.chrom_list())?;
-            for (chr, begin, end) in regions {
-                let index_res = sum_index.query(chr.as_str(), begin, end).unwrap();
-                let sum_res = index_res.get_result(&mut ssio_reader)?;
-                let mean = sum_res.mean(index_res.query_size());
-                println!("{}\t{}\t{}\t{}", chr, begin, end, mean);
-            }
-            return Ok(true);
+
+    let root_dir:Vec<_> = tracks.iter().map(|name| {
+        match file_root.open(&name).unwrap() {
+            d4_framefile::OpenResult::SubDir(dir) => dir,
+            _ => panic!("Invalid track root"),
         }
+    }).collect();
+
+    let index: Vec<_> = root_dir.iter().map(|root| {
+        let index = D4IndexCollection::from_root_container(root).unwrap();
+        index.load_data_index::<Sum>().unwrap()
+    }).collect();
+
+    let mut ssio_reader: Vec<_> = root_dir.iter().map(|root|{
+            d4::ssio::D4TrackReader::from_track_root(root.clone()).unwrap()
+    }).collect();
+
+    let regions = parse_region_spec(region_file, ssio_reader[0].chrom_list())?;
+
+    if print_header {
+        print!("#Chr\tBegin\tEnd");
+        for track in tracks {
+            if let Some(stem) = track.file_stem() {
+                print!("\t{}", stem.to_string_lossy());
+            } else {
+                print!("\t<default>");
+            }
+        }
+        println!("");
     }
-    Ok(false)
+
+    for (chr, begin, end) in regions {
+        print!("{}\t{}\t{}", chr, begin, end);
+        for (sum_index, ssio_reader) in index.iter().zip(ssio_reader.iter_mut()) {
+            let index_res = sum_index.query(chr.as_str(), begin, end).unwrap();
+            let sum_res = index_res.get_result(ssio_reader)?;
+            let mean = sum_res.mean(index_res.query_size());
+            print!("\t{}", mean);
+        }
+        println!("");
+    }
+
+    Ok(true)
 }
 
 pub fn entry_point(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
@@ -260,13 +305,23 @@ pub fn entry_point(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> 
         let path = matches.value_of("input").unwrap();
         let region_file = matches.value_of("region");
         if path.starts_with("http://") || path.starts_with("https://") {
-            let reader = HttpReader::new(path)?;
-            if mean_stat_index(reader, region_file)? {
+            let (url, track) = if let Some(pos) = path.rfind('#') {
+                (&path[..pos], Some(&path[pos + 1..]))
+            } else {
+                (path, None)
+            };
+            let reader = HttpReader::new(url)?;
+            if mean_stat_index(reader, track, matches.is_present("header"), region_file)? {
                 return Ok(());
             }
         } else {
+            let (path, track) = if let Some(pos) = path.rfind(':') {
+                (&path[..pos], Some(&path[pos + 1..]))
+            } else {
+                (path, None)
+            };
             let reader = File::open(path)?;
-            if mean_stat_index(reader, region_file)? {
+            if mean_stat_index(reader, track, matches.is_present("header"), region_file)? {
                 return Ok(());
             }
         }
@@ -281,10 +336,23 @@ pub fn entry_point(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> 
             "For HTTP/HTTPS stat, we currently only support single track and only for mean dpeth"
         );
     }
+    let mut header_printed = !matches.is_present("header");
 
     match matches.value_of("stat") {
         None | Some("mean") | Some("avg") => {
-            for result in run_task::<Mean>(matches)? {
+            println!("{}", header_printed);
+            if !header_printed {
+                print!("#Chr\tBegin\tEnd");
+            }
+            let mut tags = Vec::new();
+            for result in run_task::<Mean>(matches, &mut tags)? {
+                if !header_printed {
+                    for tag in tags.iter() {
+                        print!("\t{}", tag);
+                    }
+                    println!("");
+                    header_printed = true;
+                }
                 print!("{}\t{}\t{}", result.chrom, result.begin, result.end);
                 for value in result.output {
                     print!("\t{}", value)
@@ -293,7 +361,7 @@ pub fn entry_point(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> 
             }
         }
         Some("median") => {
-            percentile_stat(matches, 0.5)?;
+            percentile_stat(matches, 0.5, !header_printed)?;
         }
         Some("hist") => {
             hist_stat(matches)?;
@@ -301,7 +369,7 @@ pub fn entry_point(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> 
         Some(whatever) if whatever.starts_with("percentile=") => {
             let prefix_len = "percentile=".len();
             let percentile: f64 = whatever[prefix_len..].parse()?;
-            percentile_stat(matches, percentile / 100.0)?;
+            percentile_stat(matches, percentile / 100.0, !header_printed)?;
         }
         _ => panic!("Unsupported stat type"),
     }
