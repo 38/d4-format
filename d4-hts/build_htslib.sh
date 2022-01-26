@@ -50,7 +50,7 @@ make
 cp libbz2.a ..
 cd ..
 
-perl -i -pe 's/CPPFLAGS =/CPPFLAGS = -Izlib-1.2.11 -Ibzip2-1.0.6/g' Makefile
+perl -i -pe 's/CPPFLAGS =/CPPFLAGS = -Izlib-1.2.11 -Ibzip2-1.0.8/g' Makefile
 
 is_musl || perl -i -pe 's/CFLAGS *=/CFLAGS = -fPIC/g' Makefile
 
