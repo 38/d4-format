@@ -276,7 +276,7 @@ cargo build --release
 ```
 
 And it will produce the `d4tools` binary which you can find at either
-`target/debug/d4tools` or `target/release/d4tools` depends on which build mode
+`target/debug/d4tools` or `target/release/d4tools` depending on which build mode
 you choose.
 
 #### Troubleshooting
