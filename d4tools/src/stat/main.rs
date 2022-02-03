@@ -187,13 +187,14 @@ fn percentile_stat(
 fn hist_stat(matches: ArgMatches<'_>) -> Result<(), Box<dyn std::error::Error>> {
     let max_bin = matches.value_of("max-bin").unwrap_or("1000").parse()?;
     let mut unused = Vec::new();
-    let histograms = open_file_parse_region_and_then(matches, &mut unused, |mut input, regions| {
-        let tasks: Vec<_> = regions
-            .into_iter()
-            .map(|(chr, begin, end)| Histogram::with_bin_range(&chr, begin, end, 0..max_bin))
-            .collect();
-        Ok(Histogram::create_task(&mut input[0], tasks)?.run())
-    })?;
+    let histograms =
+        open_file_parse_region_and_then(matches, &mut unused, |mut input, regions| {
+            let tasks: Vec<_> = regions
+                .into_iter()
+                .map(|(chr, begin, end)| Histogram::with_bin_range(&chr, begin, end, 0..max_bin))
+                .collect();
+            Ok(Histogram::create_task(&mut input[0], tasks)?.run())
+        })?;
     let mut hist_result = vec![0; max_bin as usize + 1];
     let (mut below, mut above) = (0, 0);
     for TaskOutput {
@@ -228,11 +229,7 @@ fn mean_stat_index<'a, R: Read + Seek>(
     if let Some(name) = track {
         tracks.push(name.into());
     } else {
-        find_tracks(
-            &mut reader,
-            |_| true,
-            &mut tracks,
-        )?;
+        find_tracks(&mut reader, |_| true, &mut tracks)?;
     }
 
     if tracks.len() == 0 {
@@ -240,21 +237,26 @@ fn mean_stat_index<'a, R: Read + Seek>(
     }
     let file_root = d4_framefile::Directory::open_root(reader, 8)?;
 
-    let root_dir:Vec<_> = tracks.iter().map(|name| {
-        match file_root.open(&name).unwrap() {
+    let root_dir: Vec<_> = tracks
+        .iter()
+        .map(|name| match file_root.open(&name).unwrap() {
             d4_framefile::OpenResult::SubDir(dir) => dir,
             _ => panic!("Invalid track root"),
-        }
-    }).collect();
+        })
+        .collect();
 
-    let index: Vec<_> = root_dir.iter().map(|root| {
-        let index = D4IndexCollection::from_root_container(root).unwrap();
-        index.load_data_index::<Sum>().unwrap()
-    }).collect();
+    let index: Vec<_> = root_dir
+        .iter()
+        .map(|root| {
+            let index = D4IndexCollection::from_root_container(root).unwrap();
+            index.load_data_index::<Sum>().unwrap()
+        })
+        .collect();
 
-    let mut ssio_reader: Vec<_> = root_dir.iter().map(|root|{
-            d4::ssio::D4TrackReader::from_track_root(root.clone()).unwrap()
-    }).collect();
+    let mut ssio_reader: Vec<_> = root_dir
+        .iter()
+        .map(|root| d4::ssio::D4TrackReader::from_track_root(root.clone()).unwrap())
+        .collect();
 
     let regions = parse_region_spec(region_file, ssio_reader[0].chrom_list())?;
 

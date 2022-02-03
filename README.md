@@ -279,6 +279,21 @@ And it will produce the `d4tools` binary which you can find at either
 `target/debug/d4tools` or `target/release/d4tools` depends on which build mode
 you choose.
 
+#### Troubleshooting
+
+- Compiling error: asking for -fPIC or -fPIE option
+
+For some environment, the Rust toolchain will ask compile the `-fPIC` or `-fPIE` to build the `d4tools` binary. 
+In this case, you should be able to use the following workaround: 
+
+```bash
+# To build a debug build :
+cd d4tools && cargo rustc --bin d4tools -- -C relocation-model=static
+
+# To build a release build :
+cd d4tools && cargo rustc --bin d4tools --release -- -C relocation-model=static
+```
+
 ### Installation (< 2 minutes)
 
 You can choose to install the d4tools binary by running

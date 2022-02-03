@@ -37,6 +37,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         lib_root.to_str().unwrap()
     );
     println!("cargo:rustc-link-lib=static=BigWig");
+    println!("cargo:rustc-link-lib=static=z");
     println!("cargo:rerun-if-changed=build-lib.sh");
 
     Ok(())

@@ -45,7 +45,7 @@ fn build_own_htslib() -> (Vec<PathBuf>, String, bool) {
 
     println!("cargo:rustc-link-search={}", hts_root.to_str().unwrap());
     println!("cargo:rustc-link-lib=static=hts");
-    println!("cargo:rustc-link-search=/usr/lib/x86_64-linux-gnu/");
+    //println!("cargo:rustc-link-search=/usr/lib/x86_64-linux-gnu/");
     println!("cargo:rustc-link-lib=static=z");
     println!("cargo:rustc-link-lib=static=bz2");
 
