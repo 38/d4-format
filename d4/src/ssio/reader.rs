@@ -93,6 +93,13 @@ impl D4TrackReader<HttpReader> {
 }
 
 impl<R: Read + Seek> D4TrackReader<R> {
+    pub fn get_denominator(&self) -> Option<f64> {
+        if self.header.is_integral() {
+            None
+        } else {
+            Some(self.header.get_denominator())
+        }
+    }
     pub fn chrom_list(&self) -> &[Chrom] {
         self.header.chrom_list()
     }

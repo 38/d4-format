@@ -51,7 +51,7 @@ pub fn parse_genome_file<P: AsRef<Path>>(file: P) -> std::io::Result<Vec<Chrom>>
 }
 pub fn parse_bed_file<P: AsRef<Path>>(
     file: P,
-) -> std::io::Result<impl Iterator<Item = (String, u32, u32, i32)>> {
+) -> std::io::Result<impl Iterator<Item = (String, u32, u32, f32)>> {
     let file = BufReader::new(File::open(file)?);
     Ok(file.lines().filter_map(|line| {
         if let Ok(line) = line {
@@ -95,7 +95,7 @@ pub fn make_dictionary(
     d4::Dictionary::new_simple_range_dict(0, 64)
 }
 
-pub fn setup_thread_pool(matches: &ArgMatches<'_>) -> Result<(), ThreadPoolBuildError> {
+pub fn setup_thread_pool(matches: &ArgMatches) -> Result<(), ThreadPoolBuildError> {
     if let Some(threads) = matches.value_of("threads") {
         if let Ok(threads) = threads.parse() {
             rayon::ThreadPoolBuilder::new()

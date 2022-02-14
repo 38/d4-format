@@ -504,6 +504,10 @@ class D4File(D4FileImpl):
             buf_ptr = buf.ctypes.data_as(ctypes.POINTER(ctypes.c_uint32))
             buf_addr = ctypes.cast(buf_ptr, ctypes.c_void_p).value
             self.load_values_to_buffer(name, begin, end, buf_addr)
-            return buf
+            denom = self.get_denominator()
+            if denom == 1.0:
+                return buf
+            else:
+                return buf / denom
         return self._for_each_region(regions, load_to_np_impl)
 __all__ = [ 'D4File', 'D4Iter', 'D4Matrix', 'D4Builder']

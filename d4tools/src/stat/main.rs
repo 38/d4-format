@@ -54,7 +54,7 @@ fn parse_region_spec(
 }
 
 fn open_file_parse_region_and_then<T, F>(
-    matches: ArgMatches<'_>,
+    matches: ArgMatches,
     tags: &mut Vec<String>,
     func: F,
 ) -> Result<T, Box<dyn std::error::Error>>
@@ -116,8 +116,9 @@ pub struct OwnedOutput<T> {
 
 #[allow(clippy::type_complexity)]
 fn run_task<T: Task<Once<i32>> + SimpleTask + Clone>(
-    matches: ArgMatches<'_>,
+    matches: ArgMatches,
     file_tags: &mut Vec<String>,
+    denominators: &mut Vec<Option<f64>>,
 ) -> Result<Vec<OwnedOutput<Vec<T::Output>>>, Box<dyn std::error::Error>>
 where
     T::Output: Clone,
@@ -125,6 +126,11 @@ where
     open_file_parse_region_and_then(matches, file_tags, |inputs, region_spec| {
         let mut ret = vec![];
         for mut input in inputs {
+            if input.header().is_integral() {
+                denominators.push(None);
+            } else {
+                denominators.push(Some(input.header().get_denominator()));
+            }
             let result = T::create_task(&mut input, &region_spec)?.run();
             for (idx, result) in result.into_iter().enumerate() {
                 if ret.len() <= idx {
@@ -144,7 +150,7 @@ where
 }
 
 fn percentile_stat(
-    matches: ArgMatches<'_>,
+    matches: ArgMatches,
     percentile: f64,
     mut print_header: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
@@ -152,7 +158,8 @@ fn percentile_stat(
     if print_header {
         print!("#Chr\tBegin\tEnd");
     }
-    let histograms = run_task::<Histogram>(matches, &mut tags)?;
+    let mut denominators = Vec::new();
+    let histograms = run_task::<Histogram>(matches, &mut tags, &mut denominators)?;
     for OwnedOutput {
         chrom: chr,
         begin,
@@ -168,7 +175,7 @@ fn percentile_stat(
             print_header = false;
         }
         print!("{}\t{}\t{}", chr, begin, end);
-        for (below, hist, above) in results {
+        for ((below, hist, above), &denominator) in results.into_iter().zip(denominators.iter()) {
             let count: u32 = below + hist.iter().sum::<u32>() + above;
             let below_count = (count as f64 * percentile.min(1.0).max(0.0)).round() as u32;
             let mut current = below;
@@ -177,23 +184,24 @@ fn percentile_stat(
                 current += hist[idx];
                 idx += 1;
             }
-            print!("\t{}", idx);
+            print!("\t{}", idx as f64 / denominator.unwrap_or(1.0));
         }
         println!();
     }
     Ok(())
 }
 
-fn hist_stat(matches: ArgMatches<'_>) -> Result<(), Box<dyn std::error::Error>> {
+fn hist_stat(matches: ArgMatches) -> Result<(), Box<dyn std::error::Error>> {
     let max_bin = matches.value_of("max-bin").unwrap_or("1000").parse()?;
     let mut unused = Vec::new();
-    let histograms =
+    let (histograms, denominators) =
         open_file_parse_region_and_then(matches, &mut unused, |mut input, regions| {
             let tasks: Vec<_> = regions
                 .into_iter()
                 .map(|(chr, begin, end)| Histogram::with_bin_range(&chr, begin, end, 0..max_bin))
                 .collect();
-            Ok(Histogram::create_task(&mut input[0], tasks)?.run())
+            let denominator:Vec<_> = input.iter().map(|x| x.header().get_denominator()).collect();
+            Ok((Histogram::create_task(&mut input[0], tasks)?.run(), denominator))
         })?;
     let mut hist_result = vec![0; max_bin as usize + 1];
     let (mut below, mut above) = (0, 0);
@@ -211,7 +219,7 @@ fn hist_stat(matches: ArgMatches<'_>) -> Result<(), Box<dyn std::error::Error>> 
 
     println!("<0\t{}", below);
     for (val, cnt) in hist_result[1..].iter().enumerate() {
-        println!("{}\t{}", val, cnt);
+        println!("{}\t{}", val as f64 / denominators[0], cnt);
     }
     println!(">{}\t{}", max_bin, above);
 
@@ -245,13 +253,18 @@ fn mean_stat_index<'a, R: Read + Seek>(
         })
         .collect();
 
-    let index: Vec<_> = root_dir
+    let mut index: Vec<_> = Vec::new();
+    for idx_obj in root_dir
         .iter()
         .map(|root| {
-            let index = D4IndexCollection::from_root_container(root).unwrap();
-            index.load_data_index::<Sum>().unwrap()
-        })
-        .collect();
+            let index = D4IndexCollection::from_root_container(root)?;
+            index.load_data_index::<Sum>()
+        }) {
+        if idx_obj.is_err() {
+            return Ok(false);
+        }
+        index.push(idx_obj.unwrap());
+    }
 
     let mut ssio_reader: Vec<_> = root_dir
         .iter()
@@ -278,7 +291,7 @@ fn mean_stat_index<'a, R: Read + Seek>(
             let index_res = sum_index.query(chr.as_str(), begin, end).unwrap();
             let sum_res = index_res.get_result(ssio_reader)?;
             let mean = sum_res.mean(index_res.query_size());
-            print!("\t{}", mean);
+            print!("\t{}", mean / ssio_reader.get_denominator().unwrap_or(1.0));
         }
         println!("");
     }
@@ -342,12 +355,12 @@ pub fn entry_point(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> 
 
     match matches.value_of("stat") {
         None | Some("mean") | Some("avg") => {
-            println!("{}", header_printed);
             if !header_printed {
                 print!("#Chr\tBegin\tEnd");
             }
             let mut tags = Vec::new();
-            for result in run_task::<Mean>(matches, &mut tags)? {
+            let mut denoms = Vec::new();
+            for result in run_task::<Mean>(matches, &mut tags, &mut denoms)? {
                 if !header_printed {
                     for tag in tags.iter() {
                         print!("\t{}", tag);
@@ -356,8 +369,8 @@ pub fn entry_point(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> 
                     header_printed = true;
                 }
                 print!("{}\t{}\t{}", result.chrom, result.begin, result.end);
-                for value in result.output {
-                    print!("\t{}", value)
+                for (value, denom) in result.output.into_iter().zip(denoms.iter()) {
+                    print!("\t{}", value / denom.unwrap_or(1.0))
                 }
                 println!();
             }

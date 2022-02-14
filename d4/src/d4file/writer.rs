@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 
 use crate::chrom::Chrom;
 use crate::dict::Dictionary;
-use crate::header::Header;
+use crate::header::{Header, Denominator};
 use crate::ptab::{BitArrayWriter, PTablePartitionWriter, PrimaryTableWriter};
 use crate::stab::{RangeRecord, SecondaryTableWriter, SparseArrayWriter};
 
@@ -73,6 +73,7 @@ pub struct D4FileBuilder {
     chrom_info: Vec<Chrom>,
     dict: Dictionary,
     chrom_filter: Box<dyn Fn(&str, usize) -> bool>,
+    denominator: Denominator,
 }
 
 impl D4FileBuilder {
@@ -83,7 +84,13 @@ impl D4FileBuilder {
             chrom_info: vec![],
             dict: Dictionary::SimpleRange { low: 0, high: 64 },
             chrom_filter: Box::new(|_, _| true),
+            denominator: Default::default(),
         }
+    }
+
+    pub fn set_denominator(&mut self, value: f64) -> &mut Self {
+        self.denominator = Denominator::Value(value);
+        self
     }
 
     /// Set a chromosome filter lambda, this will be used to determine if the chromosome should be
@@ -148,6 +155,7 @@ impl D4FileBuilder {
         let header = Header {
             chrom_list: std::mem::take(&mut self.chrom_info),
             dictionary: self.dict.clone(),
+            denominator: self.denominator,
         };
 
         metadata_stream.write(serde_json::to_string(&header).unwrap().as_bytes())?;

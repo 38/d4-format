@@ -76,6 +76,16 @@ impl D4File {
         Ok(ret)
     }
 
+    pub fn get_denominator(&self) -> PyResult<f64> {
+        if self.is_remote_file()? {
+            let reader = self.open()?.into_remote_reader()?;
+            Ok(reader.get_denominator().unwrap_or(1.0))
+        } else {
+            let reader = self.open()?.into_local_reader()?;
+            Ok(reader.header().get_denominator())
+        }
+    }
+
     /// list_tracks()
     /// --
     ///

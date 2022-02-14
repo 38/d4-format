@@ -20,15 +20,20 @@ fn write_bed_record_fast<W: Write>(
     left: u32,
     right: u32,
     values: &[i32],
+    denominators: &[Option<f64>],
 ) -> IOResult<()> {
     writer.write_all(chr.as_bytes())?;
     writer.write_all(b"\t")?;
     writer.write_all(left.to_string().as_bytes())?;
     writer.write_all(b"\t")?;
     writer.write_all(right.to_string().as_bytes())?;
-    for value in values {
+    for (value, denominator) in values.iter().zip(denominators.iter()) {
         writer.write_all(b"\t")?;
-        writer.write_all(value.to_string().as_bytes())?;
+        if let Some(denominator) = denominator {
+            writer.write_all((*value as f64 / denominator).to_string().as_bytes())?;
+        } else {
+            writer.write_all(value.to_string().as_bytes())?;
+        }
     }
     writer.write_all(b"\n")?;
     Ok(())
@@ -82,10 +87,11 @@ fn flush_value<W: Write>(
     left: u32,
     right: u32,
     values: &[i32],
+    denominators: &[Option<f64>],
     print_zeros: bool,
 ) -> IOResult<()> {
     if (print_zeros || values.iter().any(|&x| x != 0)) && left < right {
-        write_bed_record_fast(target, chr, left, right, values)?;
+        write_bed_record_fast(target, chr, left, right, values, denominators)?;
     }
     Ok(())
 }
@@ -100,6 +106,7 @@ fn show_region<R: Read + Seek>(
     }
 
     let mut stdout = std::io::stdout();
+    let denominators:Vec<_> = inputs.iter().map(|x| x.get_denominator()).collect();
 
     for &(cid, begin, end) in regions {
         let chrom_list = inputs[0].chrom_list();
@@ -135,6 +142,7 @@ fn show_region<R: Read + Seek>(
                     last_pos,
                     pos,
                     prev_values.as_slice(),
+                    &denominators.as_slice(),
                     print_all_zero,
                 )?;
                 last_pos = pos;
@@ -149,6 +157,7 @@ fn show_region<R: Read + Seek>(
                 last_pos,
                 end,
                 values.as_slice(),
+                &denominators.as_slice(),
                 print_all_zero,
             )?;
         }

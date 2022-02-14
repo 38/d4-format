@@ -4,11 +4,25 @@ pub use crate::chrom::Chrom;
 use crate::dict::Dictionary;
 use serde_derive::{Deserialize, Serialize};
 
+#[derive(Serialize, Deserialize, Clone, Copy)]
+pub enum Denominator {
+    One,
+    Value(f64),
+}
+
+impl Default for Denominator {
+    fn default() -> Self {
+        Self::One
+    }
+}
+
 /// The D4 file header struct, this is store in the ".metadata" stream in a D4 file in JSON format
 #[derive(Serialize, Deserialize)]
 pub struct Header {
     pub(crate) chrom_list: Vec<Chrom>,
     pub(crate) dictionary: Dictionary,
+    #[serde(default)]
+    pub(crate) denominator: Denominator, 
 }
 
 impl Default for Header {
@@ -24,6 +38,7 @@ impl Header {
         Header {
             chrom_list: vec![],
             dictionary: Dictionary::SimpleRange { low: 0, high: 64 },
+            denominator: Denominator::One,
         }
     }
 
@@ -61,6 +76,21 @@ impl Header {
     /// Set new chromosome list
     pub fn set_chrom_list(&mut self, new_value: Vec<Chrom>) {
         self.chrom_list = new_value
+    }
+
+    pub fn set_denominator(&mut self, value: f64) {
+        self.denominator = Denominator::Value(value);
+    }
+
+    pub fn is_integral(&self) -> bool {
+        matches!(self.denominator, Denominator::One)
+    }
+
+    pub fn get_denominator(&self) -> f64 {
+        match self.denominator {
+            Denominator::One => 1.0,
+            Denominator::Value(v) => v
+        }
     }
 
     pub(crate) fn primary_table_offset_of_chrom(&self, chrom: &str) -> usize {

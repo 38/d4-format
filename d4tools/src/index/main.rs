@@ -3,7 +3,7 @@ use d4::index::{D4IndexCollection, Sum};
 
 use d4tools::AppResult;
 
-fn build_main(args: &ArgMatches<'_>) -> AppResult<()> {
+fn build_main(args: &ArgMatches) -> AppResult<()> {
     let input_path = args.value_of("FILE").unwrap();
     let mut index_collection = D4IndexCollection::open_for_write(input_path)?;
     if args.is_present("secondary-frame") {
@@ -20,7 +20,7 @@ fn build_main(args: &ArgMatches<'_>) -> AppResult<()> {
     Ok(())
 }
 
-fn show_main(args: &ArgMatches<'_>) -> AppResult<()> {
+fn show_main(args: &ArgMatches) -> AppResult<()> {
     let input_path = args.value_of("FILE").unwrap();
     let index_collection = D4IndexCollection::from_reader(std::fs::File::open(input_path)?)?;
     match args.value_of("INDEX_TYPE").unwrap().to_lowercase().as_str() {
@@ -39,7 +39,7 @@ fn show_main(args: &ArgMatches<'_>) -> AppResult<()> {
     Ok(())
 }
 
-fn main_impl(args: ArgMatches<'_>) -> AppResult<bool> {
+fn main_impl(args: ArgMatches) -> AppResult<bool> {
     if let Some(matches) = args.subcommand_matches("build") {
         build_main(matches)?;
         return Ok(true);

@@ -8,8 +8,9 @@ use log::info;
 use rayon::prelude::*;
 use regex::Regex;
 use std::path::Path;
+use ieee754::Ieee754;
 
-fn main_impl(matches: ArgMatches<'_>) -> Result<(), Box<dyn std::error::Error>> {
+fn main_impl(matches: ArgMatches) -> Result<(), Box<dyn std::error::Error>> {
     setup_thread_pool(&matches)?;
 
     let input_path: &Path = matches.value_of("input-file").unwrap().as_ref();
@@ -46,9 +47,10 @@ fn main_impl(matches: ArgMatches<'_>) -> Result<(), Box<dyn std::error::Error>> 
 
     let mut enable_compression = false;
 
-    if (!matches.is_present("dict_range") && !matches.is_present("dict-file"))
-        || matches.is_present("dict-auto")
-    {
+    let auto_dict_detection = (!matches.is_present("dict_range") && !matches.is_present("dict-file"))
+        || matches.is_present("dict-auto");
+
+    if auto_dict_detection {
         match input_type {
             InputType::Alignment => {
                 d4_builder.set_dictionary(Dictionary::from_sample_bam(
@@ -90,6 +92,43 @@ fn main_impl(matches: ArgMatches<'_>) -> Result<(), Box<dyn std::error::Error>> 
             _ => {
                 panic!("Unsupported input type")
             }
+        }
+    }
+
+    let denominator : Option<f64> = matches.value_of("denominator").map(|what| what.parse().unwrap());
+
+    if let Some(denominator) = denominator {
+        d4_builder.set_denominator(denominator);
+    } else {
+        match input_type {
+            InputType::BiwWig => {
+                let bw_file = d4_bigwig::BigWigFile::open(input_path)?;
+                let mut denominator = 1.0f64;
+                let mut num_of_intervals = 0;
+                let mut genome_size = 0;
+                for (chr_name, chr_size) in bw_file.chroms() {
+                    genome_size += chr_size;
+                    if let Some(result) = bw_file.query_range(&chr_name, 0, chr_size as u32) {
+                        for bw_interval in result {
+                            let value = bw_interval.value;
+                            if value.abs() < 1e-10 { 
+                                continue;
+                            }
+                            num_of_intervals += 1;
+                            let (_, exp, _) = value.decompose();
+                            denominator = denominator.max((-exp as f64).exp2());
+                        }
+                    }
+                }
+                if auto_dict_detection && num_of_intervals * 10 < genome_size * 6 {
+                    d4_builder.set_dictionary(Dictionary::new_simple_range_dict(0, 1)?);
+                    enable_compression = true;
+                }
+                if denominator != 1.0 {
+                    d4_builder.set_denominator(denominator);
+                }
+            },
+            _ => {}
         }
     }
 
@@ -139,6 +178,13 @@ fn main_impl(matches: ArgMatches<'_>) -> Result<(), Box<dyn std::error::Error>> 
                         r.map_qual() >= min_mq
                             && (bam_flags.is_none() || bam_flags.unwrap() == r.flag())
                     }) {
+
+                        let depth = if let Some(denominator) = denominator {
+                            (depth as f64 * denominator).round() as u32
+                        } else {
+                            depth
+                        };
+
                         last_pos = pos;
                         if pos < from as usize {
                             continue;
@@ -199,6 +245,12 @@ fn main_impl(matches: ArgMatches<'_>) -> Result<(), Box<dyn std::error::Error>> 
                         value,
                     } in iter
                     {
+                        let value = if let Some(denominator) = denominator {
+                            ((value as f64) * denominator).round() as f32
+                        } else {
+                            value
+                        };
+
                         for pos in last..left {
                             write_value(pos, 0);
                         }
@@ -230,6 +282,11 @@ fn main_impl(matches: ArgMatches<'_>) -> Result<(), Box<dyn std::error::Error>> 
             let input = parse_bed_file(input_path)?;
             let mut current = 0;
             for (chr, from, to, depth) in input {
+                let depth = if let Some(denominator) = denominator {
+                    ((depth as f64) * denominator).round() as i32
+                } else {
+                    depth as i32
+                };
                 for pos in from..to {
                     let region = partition[current].0.region();
                     if region.0 != chr || region.1 < pos || region.2 >= pos {

@@ -60,6 +60,10 @@ args:
         short: F
         value_name: BAM-FLAG
         help: Count the reads with flag (Only valid with BAM/CRAM inputs)
+    - denominator:
+        long: denominator
+        value_name: VALUE
+        help: Turn on the fix-point mode, this will allow encoding real-number in D4 file
     - with-index:
         required: false
         long: with-index
