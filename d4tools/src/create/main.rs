@@ -95,15 +95,15 @@ fn main_impl(matches: ArgMatches) -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    let denominator : Option<f64> = matches.value_of("denominator").map(|what| what.parse().unwrap());
+    let mut denominator : Option<f64> = matches.value_of("denominator").map(|what| what.parse().unwrap());
 
-    if let Some(denominator) = denominator {
-        d4_builder.set_denominator(denominator);
+    if let Some(denominator_setting) = denominator {
+        d4_builder.set_denominator(denominator_setting);
     } else {
         match input_type {
             InputType::BiwWig => {
                 let bw_file = d4_bigwig::BigWigFile::open(input_path)?;
-                let mut denominator = 1.0f64;
+                let mut purposed_denominator = 1.0f64;
                 let mut num_of_intervals = 0;
                 let mut genome_size = 0;
                 for (chr_name, chr_size) in bw_file.chroms() {
@@ -116,7 +116,7 @@ fn main_impl(matches: ArgMatches) -> Result<(), Box<dyn std::error::Error>> {
                             }
                             num_of_intervals += 1;
                             let (_, exp, _) = value.decompose();
-                            denominator = denominator.max((-exp as f64).exp2());
+                            purposed_denominator = purposed_denominator.max((-exp as f64).exp2());
                         }
                     }
                 }
@@ -124,8 +124,9 @@ fn main_impl(matches: ArgMatches) -> Result<(), Box<dyn std::error::Error>> {
                     d4_builder.set_dictionary(Dictionary::new_simple_range_dict(0, 1)?);
                     enable_compression = true;
                 }
-                if denominator != 1.0 {
-                    d4_builder.set_denominator(denominator);
+                if purposed_denominator != 1.0 {
+                    d4_builder.set_denominator(purposed_denominator);
+                    denominator = Some(purposed_denominator);
                 }
             },
             _ => {}
