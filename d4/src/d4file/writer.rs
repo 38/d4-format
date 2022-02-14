@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 
 use crate::chrom::Chrom;
 use crate::dict::Dictionary;
-use crate::header::{Header, Denominator};
+use crate::header::{Denominator, Header};
 use crate::ptab::{BitArrayWriter, PTablePartitionWriter, PrimaryTableWriter};
 use crate::stab::{RangeRecord, SecondaryTableWriter, SparseArrayWriter};
 

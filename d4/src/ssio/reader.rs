@@ -93,6 +93,9 @@ impl D4TrackReader<HttpReader> {
 }
 
 impl<R: Read + Seek> D4TrackReader<R> {
+    pub fn get_header(&self) -> &Header {
+        &self.header
+    }
     pub fn get_denominator(&self) -> Option<f64> {
         if self.header.is_integral() {
             None

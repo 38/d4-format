@@ -22,7 +22,7 @@ pub struct Header {
     pub(crate) chrom_list: Vec<Chrom>,
     pub(crate) dictionary: Dictionary,
     #[serde(default)]
-    pub(crate) denominator: Denominator, 
+    pub(crate) denominator: Denominator,
 }
 
 impl Default for Header {
@@ -89,7 +89,7 @@ impl Header {
     pub fn get_denominator(&self) -> f64 {
         match self.denominator {
             Denominator::One => 1.0,
-            Denominator::Value(v) => v
+            Denominator::Value(v) => v,
         }
     }
 

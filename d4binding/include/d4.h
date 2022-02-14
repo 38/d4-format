@@ -42,6 +42,8 @@ typedef struct {
     uint32_t* chrom_size;
 	/*!< Dictionary type */
     d4_dict_type_t dict_type;
+	/*!< Denominator, set to 1.0 unless the file represents a real-number D4 */
+	double denominator;
 	/*!< Dictionary data */
     union {
         d4_simple_range_dict_t simple_range;

@@ -4,7 +4,8 @@ args:
     - input-files:
         required: true
         multiple: true
-        help: Path to the input files
+        help: Path to the input files. By default the file name (without extension) will be used as the label of the track. To override the the the track use path:label
+        value_name: "path[:label]"
         index: 1
     - output-file:
         required: true

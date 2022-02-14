@@ -198,6 +198,9 @@ pub extern "C" fn d4_file_update_metadata(
                         size: size as usize,
                     }),
             );
+            if (metadata.denominator - 1.0).abs() >= 1e-10 {
+                b.set_denominator(metadata.denominator);
+            }
             return 0;
         }
         _ => {
@@ -258,6 +261,13 @@ pub extern "C" fn d4_file_load_metadata(
                         *(*buf).dict_data.value_map.values.offset(idx as isize) = *val;
                     }
                 }
+            }
+
+            if let Some(denominator) = handle
+                .as_reader()
+                .map(|reader| reader.header().get_denominator())
+            {
+                (*buf).denominator = denominator;
             }
         }
     }

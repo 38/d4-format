@@ -5,11 +5,17 @@ use std::path::Path;
 use d4::Header;
 use d4::{D4FileBuilder, D4FileWriter, D4TrackReader};
 
+/*
+    use d4::ssio::http::HttpReader;
+    use d4::ssio::{D4TrackReader as SsioReader};
+*/
+
 use crate::c_api::d4_file_t;
 use crate::stream::{StreamReader, StreamWriter};
 
 type ReaderType = D4TrackReader;
 type WriterType = D4FileWriter;
+//type NetworkReader = SsioReader<HttpReader>;
 
 pub enum D4FileHandle {
     Empty,
@@ -18,6 +24,7 @@ pub enum D4FileHandle {
     Reader(Box<ReaderType>),
     StreamReader(Box<StreamReader>),
     StreamWriter(Box<StreamWriter>),
+    //RemoteReader(Box<NetworkReader>),
 }
 
 impl D4FileHandle {
@@ -42,12 +49,25 @@ impl D4FileHandle {
             .map(|reader| Box::new(D4FileHandle::Reader(Box::new(reader))))
     }
 
+    /*pub fn new_remote_reader(url: &str) -> Result<Box<D4FileHandle>> {
+        let (url, tag) = if let Some(pos) = url.rfind('#') {
+            (&url[..pos], Some(&url[pos+1..]))
+        } else {
+            (url, None)
+        };
+        let http_reader = HttpReader::new(url)?;
+        let reader = NetworkReader::from_reader(http_reader, tag)?;
+        Ok(Box::new(Self::RemoteReader(Box::new(reader))))
+    }*/
+
     pub fn get_header(&self) -> Option<&Header> {
         match self {
             D4FileHandle::Reader(r) => Some(r.header()),
+            //D4FileHandle::RemoteReader(r) => Some(r.get_header()),
             _ => None,
         }
     }
+
     pub fn as_stream_reader(&self) -> Option<&StreamReader> {
         match self {
             D4FileHandle::StreamReader(sr) => Some(sr),

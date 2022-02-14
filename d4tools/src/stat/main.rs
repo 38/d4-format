@@ -200,8 +200,11 @@ fn hist_stat(matches: ArgMatches) -> Result<(), Box<dyn std::error::Error>> {
                 .into_iter()
                 .map(|(chr, begin, end)| Histogram::with_bin_range(&chr, begin, end, 0..max_bin))
                 .collect();
-            let denominator:Vec<_> = input.iter().map(|x| x.header().get_denominator()).collect();
-            Ok((Histogram::create_task(&mut input[0], tasks)?.run(), denominator))
+            let denominator: Vec<_> = input.iter().map(|x| x.header().get_denominator()).collect();
+            Ok((
+                Histogram::create_task(&mut input[0], tasks)?.run(),
+                denominator,
+            ))
         })?;
     let mut hist_result = vec![0; max_bin as usize + 1];
     let (mut below, mut above) = (0, 0);
@@ -254,12 +257,10 @@ fn mean_stat_index<'a, R: Read + Seek>(
         .collect();
 
     let mut index: Vec<_> = Vec::new();
-    for idx_obj in root_dir
-        .iter()
-        .map(|root| {
-            let index = D4IndexCollection::from_root_container(root)?;
-            index.load_data_index::<Sum>()
-        }) {
+    for idx_obj in root_dir.iter().map(|root| {
+        let index = D4IndexCollection::from_root_container(root)?;
+        index.load_data_index::<Sum>()
+    }) {
         if idx_obj.is_err() {
             return Ok(false);
         }

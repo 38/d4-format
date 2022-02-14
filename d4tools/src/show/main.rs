@@ -106,7 +106,7 @@ fn show_region<R: Read + Seek>(
     }
 
     let mut stdout = std::io::stdout();
-    let denominators:Vec<_> = inputs.iter().map(|x| x.get_denominator()).collect();
+    let denominators: Vec<_> = inputs.iter().map(|x| x.get_denominator()).collect();
 
     for &(cid, begin, end) in regions {
         let chrom_list = inputs[0].chrom_list();

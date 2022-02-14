@@ -4,11 +4,11 @@ use d4::stab::SecondaryTablePartWriter;
 use d4::{Chrom, D4FileWriter, Dictionary};
 use d4_hts::{BamFile, DepthIter};
 use d4tools::{make_dictionary, parse_bed_file, parse_genome_file, setup_thread_pool, InputType};
+use ieee754::Ieee754;
 use log::info;
 use rayon::prelude::*;
 use regex::Regex;
 use std::path::Path;
-use ieee754::Ieee754;
 
 fn main_impl(matches: ArgMatches) -> Result<(), Box<dyn std::error::Error>> {
     setup_thread_pool(&matches)?;
@@ -47,7 +47,8 @@ fn main_impl(matches: ArgMatches) -> Result<(), Box<dyn std::error::Error>> {
 
     let mut enable_compression = false;
 
-    let auto_dict_detection = (!matches.is_present("dict_range") && !matches.is_present("dict-file"))
+    let auto_dict_detection = (!matches.is_present("dict_range")
+        && !matches.is_present("dict-file"))
         || matches.is_present("dict-auto");
 
     if auto_dict_detection {
@@ -95,7 +96,9 @@ fn main_impl(matches: ArgMatches) -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    let mut denominator : Option<f64> = matches.value_of("denominator").map(|what| what.parse().unwrap());
+    let mut denominator: Option<f64> = matches
+        .value_of("denominator")
+        .map(|what| what.parse().unwrap());
 
     if let Some(denominator_setting) = denominator {
         d4_builder.set_denominator(denominator_setting);
@@ -111,7 +114,7 @@ fn main_impl(matches: ArgMatches) -> Result<(), Box<dyn std::error::Error>> {
                     if let Some(result) = bw_file.query_range(&chr_name, 0, chr_size as u32) {
                         for bw_interval in result {
                             let value = bw_interval.value;
-                            if value.abs() < 1e-10 { 
+                            if value.abs() < 1e-10 {
                                 continue;
                             }
                             num_of_intervals += 1;
@@ -128,7 +131,7 @@ fn main_impl(matches: ArgMatches) -> Result<(), Box<dyn std::error::Error>> {
                     d4_builder.set_denominator(purposed_denominator);
                     denominator = Some(purposed_denominator);
                 }
-            },
+            }
             _ => {}
         }
     }
@@ -179,7 +182,6 @@ fn main_impl(matches: ArgMatches) -> Result<(), Box<dyn std::error::Error>> {
                         r.map_qual() >= min_mq
                             && (bam_flags.is_none() || bam_flags.unwrap() == r.flag())
                     }) {
-
                         let depth = if let Some(denominator) = denominator {
                             (depth as f64 * denominator).round() as u32
                         } else {
