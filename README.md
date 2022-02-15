@@ -1,6 +1,7 @@
 # `d4` - Dense Depth Data Dump
 
 ## Synopsis
+
 The Dense Depth Data Dump (D4) format and tool suite provide an alternative to BigWig for fast analysis and compact storage of quantitative genomics datasets (e.g., RNA-seq, ChIP-seq, WGS depths, etc.). It supports random access, multiple tracks (e.g., RNA-seq, ChiP-seq, etc. from the same sample), HTTP range requests, and statistics on arbitrary genome intervals. The D4tools software is built on a [Rust crate](https://docs.rs/d4/0.2.18/d4/). We provide both a [C-API](https://github.com/38/d4-format/tree/master/d4binding/include) and a [Python API](https://github.com/38/d4-format/tree/master/pyd4/) that allows users to read and query D4 files.
 
 Usage examples are provided below. Also, check out the [slide deck](https://docs.google.com/presentation/d/1vqs6mnfiVryfMAxqDyJrZsX6HI39NbwWqvB7DUCLTgw) that describes the motivation, performance and toolkits for D4
@@ -10,12 +11,13 @@ Usage examples are provided below. Also, check out the [slide deck](https://docs
 Modern DNA sequencing is used as a readout for diverse assays, with the count of aligned sequences, or "read depth", serving as the quantitative signal for many underlying cellular phenomena. Despite wide use and thousands of datasets, existing formats used for the storage and analysis of read depths are limited with respect to both size and speed. For example, it is faster to recalculate sequencing depth from an alignment file than it is to analyze the text output from that calculation. We sought to improve on existing formats such as BigWig and compressed BED files by creating the Dense Depth Data Dump (D4) format and tool suite. The D4 format is adaptive in that it profiles a random sample of aligned sequence depth from the input BAM or CRAM file to determine an optimal encoding that  minimizes file size, while also enabling fast data access. We show that D4 uses less disk space for both RNA-Seq and whole-genome sequencing and offers 3 to 440 fold speed improvements over existing formats for random access, aggregation and summarization for scalable downstream analyses that would be otherwise intractable.
 
 ## Manuscript
-To learn more, please read the publication: [https://www.nature.com/articles/s43588-021-00085-0](https://www.nature.com/articles/s43588-021-00085-0). Note We ran the experiments described in the manuscript on a server with following hardward and software  
- - Processor: Intel(R) Xeon(R) Gold 6230 CPU @ 2.10GHz
- - RAM: 376GB
- - OS: CentOS 7.6.180 w/ Linux Kernel 3.0.10
- - Rust Version: 1.47.0-nightly
 
+To learn more, please read the publication: [https://www.nature.com/articles/s43588-021-00085-0](https://www.nature.com/articles/s43588-021-00085-0). Note We ran the experiments described in the manuscript on a server with following hardward and software  
+
+- Processor: Intel(R) Xeon(R) Gold 6230 CPU @ 2.10GHz
+- RAM: 376GB
+- OS: CentOS 7.6.180 w/ Linux Kernel 3.0.10
+- Rust Version: 1.47.0-nightly
 
 ## Basic Usage by Examples (each should take seconds)
 
@@ -161,7 +163,6 @@ ARGS:
     <input_d4_file>
 ```
 
-
 - Mean cov for each Chrom
 
 ```text
@@ -248,13 +249,12 @@ $ d4tools stat https://d4-format-testing.s3.us-west-1.amazonaws.com/hg002.d4
 ....
 ```
 
-
 ## Build
 
 ### Prerequisites
 
-To build `d4`, Rust toolchain is required. To install Rust toolchain, 
-please run the following command and follow the prompt to complete the 
+To build `d4`, Rust toolchain is required. To install Rust toolchain,
+please run the following command and follow the prompt to complete the
 Rust installation.
 
 ```bash
@@ -283,8 +283,8 @@ you choose.
 
 - Compiling error: asking for -fPIC or -fPIE option
 
-For some environment, the Rust toolchain will ask compile the `-fPIC` or `-fPIE` to build the `d4tools` binary. 
-In this case, you should be able to use the following workaround: 
+For some environment, the Rust toolchain will ask compile the `-fPIC` or `-fPIE` to build the `d4tools` binary.
+In this case, you should be able to use the following workaround:
 
 ```bash
 # To build a debug build :
@@ -308,8 +308,53 @@ Or you can choose install from crates.io:
 cargo install d4tools
 ```
 
+### Using D4 in C/C++
+
+D4 provides a C binding that allows the D4 library used in C and C++.
+Here's the steps to build D4 binding.
+
+1. Build the binding library
+
+```bash
+# Build the D4 binding library, for debug build, remove "--release" argument
+cargo build --package=d4binding --release
+```
+
+After running this command, you should be able to find the library "target/release/libd4binding.so".
+
+2. Use D4 in C
+
+Here's a small example that prints all chromosome name and size defined in a D4 file.
+
+```c
+#include <stdio.h>
+#include <d4.h>
+
+int main(int argc, char** argv) 
+{
+    d4_file_t* fp = d4_open("input.d4", "r");
+
+    d4_file_metadata_t mt = {};
+    d4_file_load_metadata(fp, &mt);
+
+    int i;
+    for(i = 0; i < mt.chrom_count; i ++)
+        printf("# %s %d\n", mt.chrom_name[i], mt.chrom_size[i]);
+    
+    d4_close(fp);
+    return 0;
+}
+```
+
+3. Compile C++ code against D4 binding library
+
+```
+gcc print-chrom-info.c -o print-chrom-info -I d4binding/include -L target/release -ld4binding  
+```
+
+For more examples, see `d4binding/examples/`
+
 ### Sample Data
 
 - WGS  [https://home.chpc.utah.edu/~u0875014/hg002.cram](https://home.chpc.utah.edu/~u0875014/hg002.cram)
 - RNASeq [https://www.encodeproject.org/files/ENCFF164HRL/](https://www.encodeproject.org/files/ENCFF164HRL/)
-

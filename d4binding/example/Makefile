@@ -12,7 +12,7 @@ print_config:
 
 $(BIND_BIN_DIR)/libd4binding.so: 
 	@echo "[CARGO] build"
-	@if [ "$(CONFIG)" = "debug" ]; then cargo build; else cargo build --release; fi
+	@if [ "$(CONFIG)" = "debug" ]; then cargo build --package=d4binding; else cargo build --package=d4binding --release; fi
 
 bin/%: %.c $(BIND_BIN_DIR)/libd4binding.so
 	@echo "[CC]\t$<"
