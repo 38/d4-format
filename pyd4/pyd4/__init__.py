@@ -56,8 +56,9 @@ def enumerate_values(inf, chrom, begin, end):
     if inf.__class__ == list:
         def gen():
             iters = [x.value_iter(chrom, begin, end) for x in inf]
+            denom = [x.get_denominator() for x in inf]
             for pos in range(begin, end):
-                yield (chrom, pos, [f.__next__() for f in iters])
+                yield (chrom, pos, [f.__next__() / d for f, d in zip(iters, denom)])
         return gen()
     return map(lambda p: (chrom, p[0], p[1]), zip(range(begin, end), inf.value_iter(chrom, begin, end)))
 
@@ -369,7 +370,7 @@ class D4File(D4FileImpl):
         """
         Enuemrate all the values in given range
         """
-        return enumerate_values(self.tracks, chrom, begin, end)
+        return enumerate_values([self], chrom, begin, end)
     def open_all_tracks(self):
         """
         Open all the tracks that are living in this file
