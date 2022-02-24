@@ -78,6 +78,8 @@ pub extern "C" fn d4_open(path: *const c_char, mode: *const c_char) -> *mut d4_f
             OsStr::from_bytes(path.to_bytes()).as_ref()
         };
 
+        let url = path.to_string_lossy();
+
         #[cfg(windows)]
         let str = std::str::from_utf8(path.to_bytes()).expect("keep your surrogates paired");
         #[cfg(windows)]
@@ -93,13 +95,23 @@ pub extern "C" fn d4_open(path: *const c_char, mode: *const c_char) -> *mut d4_f
                     D4FileHandle::into_ffi_object,
                 );
             } else if mode_str == "r" {
-                return D4FileHandle::new_for_read(path).map_or_else(
-                    |e| {
-                        set_last_error(e);
-                        null_mut()
-                    },
-                    D4FileHandle::into_ffi_object,
-                );
+                if url.starts_with("http://") || url.starts_with("https://") {
+                    return D4FileHandle::new_remote_reader(&url).map_or_else(
+                        |e| {
+                            set_last_error(e);
+                            null_mut()
+                        },
+                        D4FileHandle::into_ffi_object
+                    );
+                } else {
+                    return D4FileHandle::new_for_read(path).map_or_else(
+                        |e| {
+                            set_last_error(e);
+                            null_mut()
+                        },
+                        D4FileHandle::into_ffi_object,
+                    );
+                }
             }
         }
     }

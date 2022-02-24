@@ -1,5 +1,5 @@
 #!/bin/sh
-cargo build --release
+cargo build --release --package=d4binding
 
 if [ -z "${PREFIX}" ]
 then

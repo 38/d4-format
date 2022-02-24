@@ -5,26 +5,19 @@ use std::path::Path;
 use d4::Header;
 use d4::{D4FileBuilder, D4FileWriter, D4TrackReader};
 
-/*
-    use d4::ssio::http::HttpReader;
-    use d4::ssio::{D4TrackReader as SsioReader};
-*/
-
 use crate::c_api::d4_file_t;
-use crate::stream::{StreamReader, StreamWriter};
+use crate::stream::{StreamReader, LocalStreamReader, StreamWriter, RemoteStreamReader};
 
 type ReaderType = D4TrackReader;
 type WriterType = D4FileWriter;
-//type NetworkReader = SsioReader<HttpReader>;
 
 pub enum D4FileHandle {
     Empty,
     Builder(Box<D4FileBuilder>),
     Writer(Box<WriterType>),
     Reader(Box<ReaderType>),
-    StreamReader(Box<StreamReader>),
+    StreamReader(Box<dyn StreamReader>),
     StreamWriter(Box<StreamWriter>),
-    //RemoteReader(Box<NetworkReader>),
 }
 
 impl D4FileHandle {
@@ -49,37 +42,30 @@ impl D4FileHandle {
             .map(|reader| Box::new(D4FileHandle::Reader(Box::new(reader))))
     }
 
-    /*pub fn new_remote_reader(url: &str) -> Result<Box<D4FileHandle>> {
-        let (url, tag) = if let Some(pos) = url.rfind('#') {
-            (&url[..pos], Some(&url[pos+1..]))
-        } else {
-            (url, None)
-        };
-        let http_reader = HttpReader::new(url)?;
-        let reader = NetworkReader::from_reader(http_reader, tag)?;
-        Ok(Box::new(Self::RemoteReader(Box::new(reader))))
-    }*/
+    pub fn new_remote_reader(url: &str) -> Result<Box<D4FileHandle>> {
+        let reader = RemoteStreamReader::new(url)?;
+        Ok(Box::new(Self::StreamReader(Box::new(reader))))
+    }
 
     pub fn get_header(&self) -> Option<&Header> {
         match self {
             D4FileHandle::Reader(r) => Some(r.header()),
-            //D4FileHandle::RemoteReader(r) => Some(r.get_header()),
             _ => None,
         }
     }
 
-    pub fn as_stream_reader(&self) -> Option<&StreamReader> {
+    pub fn as_stream_reader(&self) -> Option<&dyn StreamReader> {
         match self {
-            D4FileHandle::StreamReader(sr) => Some(sr),
+            D4FileHandle::StreamReader(sr) => Some(sr.as_ref()),
             _ => None,
         }
     }
-    pub fn as_stream_reader_mut(&mut self) -> Option<&mut StreamReader> {
+    pub fn as_stream_reader_mut(&mut self) -> Option<&mut dyn StreamReader> {
         if matches!(self, D4FileHandle::Reader(_)) {
             let actual = std::mem::replace(self, Self::Empty);
             match actual {
                 D4FileHandle::Reader(r) => {
-                    let sr = Box::new(StreamReader::new(*r).ok()?);
+                    let sr = Box::new(LocalStreamReader::new(*r).ok()?);
                     *self = D4FileHandle::StreamReader(sr);
                     return self.as_stream_reader_mut();
                 }

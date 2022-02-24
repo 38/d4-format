@@ -3,11 +3,16 @@ use d4::ptab::PrimaryTablePartReader;
 use d4::ptab::{
     BitArrayDecoder, BitArrayEncoder, BitArrayPartReader, BitArrayPartWriter, PTablePartitionWriter,
 };
+
+use d4::ssio::http::HttpReader;
 use d4::stab::{
     RangeRecord, RecordIterator, SecondaryTablePartReader, SecondaryTablePartWriter,
     SparseArrayPartReader, SparseArrayPartWriter,
 };
 use d4::{D4FileWriter, D4TrackReader};
+
+type RemoteD4Reader = d4::ssio::D4TrackReader<HttpReader>;
+type RemoteD4ReaderView = d4::ssio::D4TrackView<HttpReader>;
 
 use std::io::Result;
 use std::ops::Range;
@@ -18,7 +23,108 @@ type D4ReaderParts = (BitArrayPartReader, SparseArrayPartReader<RangeRecord>);
 
 type D4WriterParts = (BitArrayPartWriter, SparseArrayPartWriter<RangeRecord>);
 
-pub struct StreamReader {
+pub trait StreamReader {
+    fn tell(&self) -> Option<(&str, u32)>;
+    fn seek(&mut self, name: &str, pos: u32) -> bool;
+    fn next_interval(&mut self, same_chrom: bool) -> Option<(Range<u32>, i32)>;
+    fn next(&mut self, this_chrom: bool) -> Option<i32>;
+}
+
+pub struct RemoteStreamReader {
+    reader: RemoteD4Reader,
+    current_view: Option<RemoteD4ReaderView>,
+}
+
+impl RemoteStreamReader {
+    pub fn new(url: &str) -> Result<Self> {
+        let reader = RemoteD4Reader::from_url(url)?;
+        Ok(Self {
+            reader,
+            current_view: None
+        })
+    }
+
+    fn find_next_read_pos(&self) -> Option<(usize, u32)> {
+        let chr_list = self.reader.chrom_list();
+        let begin_idx = if let Some(view) = self.current_view.as_ref() {
+            let cur_name = view.chrom_name();
+            let mut cur_idx = chr_list.iter().enumerate().find(|(_, x)| x.name == cur_name).map(|(idx, _)| idx).unwrap_or(chr_list.len());
+
+            if chr_list.get(cur_idx).map_or(false, |c| view.tell().unwrap_or(c.size as u32) < c.size as u32) {
+                cur_idx += 1;
+            } else {
+                return Some((cur_idx, view.tell().unwrap()));
+            }
+
+            cur_idx
+        } else {
+            0
+        };
+        chr_list[begin_idx..].iter().enumerate().find(|(_,x)| x.size > 0).map(|(id, _)| (id , 0))
+    }
+    fn get_current_view(&mut self, load_next: bool) -> Result<Option<&mut RemoteD4ReaderView>> {
+        if let Some((chr, pos)) = self.find_next_read_pos() {
+            let chr = self.reader.chrom_list()[chr].clone();
+            if pos == 0 && chr.name != self.current_view.as_ref().map_or("", |x| x.chrom_name()) {
+                if load_next {
+                    self.current_view = Some(self.reader.get_view(&chr.name, 0, chr.size as u32)?);
+                } else {
+                    return Ok(None);
+                }
+            }
+            return Ok(self.current_view.as_mut());
+        }
+        Ok(None)
+    }
+}
+
+impl StreamReader for RemoteStreamReader {
+    fn tell(&self) -> Option<(&str, u32)> {
+        let chr_list = self.reader.chrom_list();
+        self.find_next_read_pos().map(|(id, pos)| (chr_list[id].name.as_str(), pos))
+    }
+
+    fn seek(&mut self, name: &str, pos: u32) -> bool {
+        let mut chr_idx = 0;
+        let chr_list = self.reader.chrom_list();
+        while chr_idx < chr_list.len() {
+            let chr = &chr_list[chr_idx];
+            if chr.name == name {
+                if pos >= chr.size as u32 {
+                    chr_idx += 1;
+                } 
+                break;
+            }
+        }
+        if let Some(chr) = chr_list.get(chr_idx).cloned() {
+            if let Ok(view) = self.reader.get_view(&chr.name, pos, chr.size as u32) {
+                self.current_view = Some(view);
+                return true;
+            }
+        }
+        false
+    }
+
+    fn next_interval(&mut self, same_chrom: bool) -> Option<(Range<u32>, i32)> {
+        if let Ok(Some(view)) = self.get_current_view(!same_chrom) {
+            if let Ok((begin, end, value)) = view.read_next_interval() {
+                return Some((begin..end, value));
+            } 
+        }
+        None
+    }
+
+    fn next(&mut self, this_chrom: bool) -> Option<i32> {
+        if let Ok(Some(view)) = self.get_current_view(!this_chrom) {
+            if let Some(Ok(next)) = view.next() {
+                return Some(next.1);
+            }
+        }
+        None
+    }
+}
+
+pub struct LocalStreamReader {
     _inner: D4Reader,
     parts: Vec<D4ReaderParts>,
     current_primary_decoder: Option<BitArrayDecoder>,
@@ -28,7 +134,7 @@ pub struct StreamReader {
     current_stab_iter_state: Option<(usize, usize)>,
 }
 
-impl StreamReader {
+impl LocalStreamReader {
     pub fn new(mut inner: D4Reader) -> Result<Self> {
         let parts = inner.split(None)?;
         Ok(Self {
@@ -41,8 +147,10 @@ impl StreamReader {
             current_stab_iter_state: None,
         })
     }
+}
 
-    pub fn tell(&self) -> Option<(&str, u32)> {
+impl StreamReader for LocalStreamReader {
+    fn tell(&self) -> Option<(&str, u32)> {
         if self.current_part_id >= self.parts.len() {
             return None;
         }
@@ -65,7 +173,7 @@ impl StreamReader {
         Some((self.current_chr.as_ref(), self.current_pos))
     }
 
-    pub fn seek(&mut self, name: &str, pos: u32) -> bool {
+    fn seek(&mut self, name: &str, pos: u32) -> bool {
         if let Some((idx, _)) = self.parts.iter().enumerate().find(|(_, (p, _))| {
             let (chr, _, end) = p.region();
             chr == name && pos < end
@@ -80,7 +188,7 @@ impl StreamReader {
         false
     }
 
-    pub fn next_interval(&mut self, same_chrom: bool) -> Option<(Range<u32>, i32)> {
+    fn next_interval(&mut self, same_chrom: bool) -> Option<(Range<u32>, i32)> {
         if self.current_part_id >= self.parts.len() {
             return None;
         }
@@ -156,7 +264,7 @@ impl StreamReader {
         }
     }
 
-    pub fn next(&mut self, this_chrom: bool) -> Option<i32> {
+    fn next(&mut self, this_chrom: bool) -> Option<i32> {
         if self.current_part_id >= self.parts.len() {
             return None;
         }

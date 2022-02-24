@@ -14,3 +14,4 @@ mod table;
 mod view;
 
 pub use reader::{D4MatrixReader, D4TrackReader};
+pub use view::D4TrackView;

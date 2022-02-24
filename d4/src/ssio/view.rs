@@ -119,6 +119,61 @@ impl<R: Read + Seek> D4TrackView<R> {
         self.current_record = None;
         Ok(None)
     }
+    pub fn tell(&self) -> Option<u32> {
+        if self.cursor >= self.end {
+            None
+        } else {
+            Some(self.cursor)
+        }
+    }
+
+    pub fn read_next_interval(&mut self) -> Result<(u32, u32, i32)> {
+        if self.dictionary.bit_width() > 0 {
+            let (pos, val) = self.read_next_value()?;
+            return Ok((pos, pos + 1, val));
+        }
+
+        let begin_pos = self.cursor;
+        
+        let fallback_value = self.dictionary.decode_value(0).unwrap_or(0);
+
+        self.update_current_secrec()?;
+
+        if let Some(current_rec) = self.current_record {
+            let (cur_rec_beg, cur_rec_end) = current_rec.effective_range();
+            if begin_pos < cur_rec_beg {
+                self.cursor = begin_pos;
+                return Ok((begin_pos, cur_rec_beg, current_rec.value()));
+            } else if begin_pos < cur_rec_end {
+                self.cursor = cur_rec_end;
+                return Ok((begin_pos, cur_rec_end, current_rec.value()));
+            } else {
+                unreachable!("Buggy update_current_secrec implementation!")
+            }
+        }
+
+        return Ok((begin_pos, begin_pos + 1, fallback_value));
+    }
+
+    fn update_current_secrec(&mut self) -> Result<()> {
+        let pos = self.cursor;
+
+        if self.current_record.is_none() {
+            self.load_next_secondary_record()?;
+        }
+        while let Some(record) = self.current_record.as_ref() {
+            let (begin, end) = record.effective_range();
+            if pos < end ||  pos <= begin {
+                break;
+            }
+            if self.load_next_secondary_record()?.is_none() {
+                break;
+            }
+        }
+
+        Ok(())
+    }
+
     pub fn read_next_value(&mut self) -> Result<(u32, i32)> {
         let pos = self.cursor;
         self.ensure_primary_table_buffer()?;
@@ -131,24 +186,17 @@ impl<R: Read + Seek> D4TrackView<R> {
         } else {
             0
         };
-        self.cursor += 1;
 
         if data != (1 << self.dictionary.bit_width()) - 1 {
+            self.cursor += 1;
             Ok((pos, self.dictionary.decode_value(data).unwrap_or(0)))
         } else {
+            self.update_current_secrec()?;
+            
+            self.cursor += 1;
+            
             let fallback_value = self.dictionary.decode_value(data).unwrap_or(0);
-            if self.current_record.is_none() {
-                self.load_next_secondary_record()?;
-            }
-            while let Some(record) = self.current_record.as_ref() {
-                let (begin, end) = record.effective_range();
-                if end > pos || begin >= pos {
-                    break;
-                }
-                if self.load_next_secondary_record()?.is_none() {
-                    break;
-                }
-            }
+
             if let Some(rec) = self.current_record {
                 let (begin, end) = rec.effective_range();
                 if begin <= pos && pos < end {
