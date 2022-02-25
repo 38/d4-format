@@ -6,5 +6,10 @@
 		"clus",
 		"framefile",
 		"ptab"
-	]
+	],
+	"files.associations": {
+		"*.pss": "pscript",
+		"d4.h": "c",
+		"stdlib.h": "c"
+	}
 }

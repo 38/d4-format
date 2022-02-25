@@ -3,7 +3,7 @@ DETECTED_SO_DIR=$(shell dirname $(DETECTED_SO) 2> /dev/null)
 DETECTED_CONFIG=$(shell basename $(DETECTED_SO_DIR) 2> /dev/null)
 CONFIG:=$(if $(DETECTED_CONFIG),$(DETECTED_CONFIG),debug)
 BIND_BIN_DIR=../../target/$(CONFIG)
-OBJS=read create read-interval error mean-depth
+OBJS=read create read-interval error mean-depth multithread-read
 
 all: print_config $(OBJS:%=bin/%) bin/libd4binding.so #bin/sample.d4
 
