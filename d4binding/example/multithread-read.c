@@ -45,8 +45,8 @@ int proc(d4_task_part_t* handle, void* task_context, void* extra_data)
 	size_t count;
 	for(count = 0; l < r && count < result->count; ) 
 	{
-		int count = d4_task_read_values(handle, l, result->buf + count, result->count - count);
-		l += count;
+		int actual_read = d4_task_read_values(handle, l, result->buf + count, result->count - count);
+		l += actual_read;
 	}
 	return 0;
 }
@@ -60,7 +60,7 @@ int clean(d4_task_part_result_t* tasks, size_t count, void* extra)
 	return 0;
 }
 
-int* parallel_load_chromosome(d4_file_t* fp, char const* chrom)
+ssize_t parallel_load_chromosome(d4_file_t* fp, char const* chrom, int** data_buf)
 {
     d4_file_metadata_t hdr = {};
     d4_file_load_metadata(fp, &hdr);
@@ -72,7 +72,7 @@ int* parallel_load_chromosome(d4_file_t* fp, char const* chrom)
             break;
     }
 
-    if(i == hdr.chrom_count) return NULL;
+    if(i == hdr.chrom_count) return -1;
 
     size_t chrom_size = hdr.chrom_size[i];
 
@@ -80,7 +80,7 @@ int* parallel_load_chromosome(d4_file_t* fp, char const* chrom)
         .chrom = chrom,
         .start = 0,
         .end = chrom_size,
-        .buffer = (int*)malloc(sizeof(int) * chrom_size)
+        .buffer = (int*)calloc(sizeof(int), chrom_size)
     };
 
     d4_task_desc_t task = {
@@ -95,7 +95,8 @@ int* parallel_load_chromosome(d4_file_t* fp, char const* chrom)
 
     d4_file_run_task(fp, &task);
 
-    return req.buffer;
+    *data_buf = req.buffer;
+    return chrom_size;
 }
 
 
@@ -109,10 +110,10 @@ int main(int argc, char** argv)
 
 	d4_file_t* fp = d4_open(argv[1], "r");
 
-    int* data = parallel_load_chromosome(fp, argv[2]);
-
+    int* data = NULL;
+    ssize_t chrom_size = parallel_load_chromosome(fp, argv[2], &data);
     free(data);
-
-	d4_close(fp);
+	
+    d4_close(fp);
 	return 0;
 }

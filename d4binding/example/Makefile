@@ -3,12 +3,13 @@ DETECTED_SO_DIR=$(shell dirname $(DETECTED_SO) 2> /dev/null)
 DETECTED_CONFIG=$(shell basename $(DETECTED_SO_DIR) 2> /dev/null)
 CONFIG:=$(if $(DETECTED_CONFIG),$(DETECTED_CONFIG),debug)
 BIND_BIN_DIR=../../target/$(CONFIG)
-OBJS=read create read-interval error mean-depth multithread-read
+OBJS=read create read-interval error mean-depth multithread-read read-index
 
-all: print_config $(OBJS:%=bin/%) bin/libd4binding.so #bin/sample.d4
+all: print_config $(OBJS:%=bin/%) bin/libd4binding.so
 
 print_config:
 	@if [ "$(CONFIG)" != "$(DETECTED_CONFIG)" ]; then rm -f bin/*; fi
+	@echo $(CONFIG)
 
 $(BIND_BIN_DIR)/libd4binding.so: 
 	@echo "[CARGO] build"
@@ -43,3 +44,5 @@ bin/sample.d4: data/genome.txt data/data.bedgraph
 
 clean: 
 	rm -f bin/*
+
+.PHONY: clean print_config

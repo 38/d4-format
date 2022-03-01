@@ -1,12 +1,16 @@
+use d4::index::{D4IndexCollection, Sum};
+use d4_framefile::Directory;
 use rayon::prelude::*;
 
 use std::ffi::{CStr, OsStr};
+use std::io::{Read, Seek};
 use std::os::raw::c_char;
 use std::path::Path;
 use std::ptr::{null, null_mut};
 
 use crate::c_api::*;
 use crate::handle::D4FileHandle;
+use crate::stream::RootContainer;
 use crate::task::TaskHandle;
 
 use d4::Chrom;
@@ -639,4 +643,88 @@ pub extern "C" fn d4_task_read_values(
     }
 
     ret as ssize_t
+}
+
+#[no_mangle]
+pub extern "C" fn d4_index_check(handle: *mut d4_file_t, kind: d4_index_kind_t) -> i32 {
+    if null_mut() == handle {
+        return set_einval(-1);
+    }
+    let handle : &mut D4FileHandle = handle.into();
+    #[allow(non_upper_case_globals)]
+    fn check_impl<R: Read + Seek>(root: &Directory<R>, kind: d4_index_kind_t) -> std::io::Result<bool> {
+        let ic = D4IndexCollection::from_root_container(root)?;
+        match kind {
+            d4_index_kind_t_D4_INDEX_KIND_SUM => Ok(ic.load_data_index::<Sum>().is_ok()),
+            _ => Err(std::io::Error::new(std::io::ErrorKind::InvalidInput, "Invalid index kind"))?
+        }
+    }
+    let result = if let Some(sr) = handle.as_stream_reader() {
+        match sr.root_container() {
+            RootContainer::Local(local) => check_impl(local, kind),
+            RootContainer::Remote(remote) => check_impl(remote, kind),
+        }
+    } else {
+        return 0;
+    };
+    match result {
+        Ok(ret) => return if ret { 1 } else { 0 },
+        Err(e) => {
+            set_last_error(e);
+            return -1;
+        }
+    }
+}
+
+#[no_mangle]
+pub fn d4_index_query(
+    handle: *mut d4_file_t,
+    kind: d4_index_kind_t,
+    chrom: *const ::std::os::raw::c_char,
+    start: u32,
+    end: u32,
+    buf: *mut d4_index_result_t,
+) -> i32 {
+    if null_mut() == handle || null_mut() == buf{
+        return set_einval(-1);
+    }
+    let handle : &mut D4FileHandle = handle.into();
+    #[allow(non_upper_case_globals)]
+    fn query_impl<R: Read + Seek>(root: &Directory<R>, kind: d4_index_kind_t, chrom: &str, start: u32, end: u32) -> std::io::Result<f64> {
+        let ic = D4IndexCollection::from_root_container(root)?;
+        let mut stream_reader = d4::ssio::D4TrackReader::from_track_root(root.clone())?;
+        match kind {
+            d4_index_kind_t_D4_INDEX_KIND_SUM => {
+                let index = ic.load_data_index::<Sum>()?;
+                let result = index.query(chrom, start, end).unwrap();
+                Ok(result.get_result(&mut stream_reader)?.sum())
+            },
+            _ => Err(std::io::Error::new(std::io::ErrorKind::InvalidInput, "Invalid index kind"))?
+        }
+    }
+    let chrom = unsafe { CStr::from_ptr(chrom) };
+    let chr_ref = if let Ok(chrom) = chrom.to_str() {
+        chrom
+    } else {
+        return set_einval(-1);
+    };
+    let buf = unsafe { &mut *buf };
+    let result = if let Some(sr) = handle.as_stream_reader() {
+        match sr.root_container() {
+            RootContainer::Local(local) => query_impl(local, kind, chr_ref, start, end),
+            RootContainer::Remote(remote) => query_impl(remote, kind, chr_ref, start, end),
+        }
+    } else {
+        return 0;
+    };
+    match result {
+        Ok(value) => { 
+            buf.sum = value;
+            return 0;
+        },
+        Err(e) => {
+            set_last_error(e);
+            return -1;
+        }
+    }
 }

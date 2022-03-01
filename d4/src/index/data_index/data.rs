@@ -65,6 +65,9 @@ impl Sum {
     pub fn mean(&self, base_count: u32) -> f64 {
         self.0 / base_count as f64
     }
+    pub fn sum(&self) -> f64 {
+        self.0
+    }
 }
 
 impl DataSummary for Sum {

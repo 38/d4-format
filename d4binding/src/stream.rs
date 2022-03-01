@@ -11,9 +11,12 @@ use d4::stab::{
 };
 use d4::{D4FileWriter, D4TrackReader};
 
+use d4_framefile::Directory;
+
 type RemoteD4Reader = d4::ssio::D4TrackReader<HttpReader>;
 type RemoteD4ReaderView = d4::ssio::D4TrackView<HttpReader>;
 
+use std::fs::File;
 use std::io::Result;
 use std::ops::Range;
 
@@ -23,11 +26,17 @@ type D4ReaderParts = (BitArrayPartReader, SparseArrayPartReader<RangeRecord>);
 
 type D4WriterParts = (BitArrayPartWriter, SparseArrayPartWriter<RangeRecord>);
 
+pub enum RootContainer<'a> {
+    Local(&'a Directory<File>),
+    Remote(&'a Directory<HttpReader>),
+}
+
 pub trait StreamReader {
     fn tell(&self) -> Option<(&str, u32)>;
     fn seek(&mut self, name: &str, pos: u32) -> bool;
     fn next_interval(&mut self, same_chrom: bool) -> Option<(Range<u32>, i32)>;
     fn next(&mut self, this_chrom: bool) -> Option<i32>;
+    fn root_container(&self) -> RootContainer;
 }
 
 pub struct RemoteStreamReader {
@@ -121,6 +130,10 @@ impl StreamReader for RemoteStreamReader {
             }
         }
         None
+    }
+
+    fn root_container(&self) -> RootContainer {
+        RootContainer::Remote(self.reader.as_root())
     }
 }
 
@@ -306,6 +319,10 @@ impl StreamReader for LocalStreamReader {
             self.current_pos += 1;
             return ret;
         }
+    }
+
+    fn root_container(&self) -> RootContainer {
+        RootContainer::Local(self._inner.as_root_container())
     }
 }
 

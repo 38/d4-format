@@ -74,8 +74,7 @@ int d4_file_update_metadata(d4_file_t* handle, const d4_file_metadata_t* metadat
 /*!<
     Cleanup the memory that is allocated to hold the metadata. Note this doesn't free the metadata object itself
 */
-static inline void d4_file_metadata_clear(d4_file_metadata_t* meta) 
-{
+static inline void d4_file_metadata_clear(d4_file_metadata_t* meta) {
 	if(NULL == meta) return;
 	int i;
 	for(i = 0; i < meta->chrom_count; i ++)
@@ -112,6 +111,18 @@ int d4_file_tell(const d4_file_t* handle, char* name_buf, size_t buf_size, uint3
 
 /*!< Perform random access in a opended D4 file */
 int d4_file_seek(d4_file_t* handle, const char* chrom, uint32_t pos);
+
+// Index accessing APIs
+typedef enum {
+    D4_INDEX_KIND_SUM,
+} d4_index_kind_t;
+
+typedef union {
+    double sum;
+} d4_index_result_t;
+
+int d4_index_check(d4_file_t* handle, d4_index_kind_t kind);
+int d4_index_query(d4_file_t* handle, d4_index_kind_t kind, const char* chrom, uint32_t start, uint32_t end, d4_index_result_t* buf);
 
 // The parallel API
 
@@ -168,6 +179,7 @@ int d4_task_chrom(const d4_task_part_t* task, char* name_buf, size_t name_buf_si
 int d4_task_range(const d4_task_part_t* task, uint32_t* left_buf, uint32_t* right_buf);
 
 // The highlevel API
+
 /*!< Create a depth profile from BAM/CRAM input */
 int d4_file_profile_depth_from_bam(const char* bam_path, const char* d4_path, const d4_file_metadata_t* header);
 

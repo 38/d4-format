@@ -66,6 +66,12 @@ impl<R: Read + Seek> D4MatrixReader<R> {
     }
 }
 
+impl <R:Read + Seek> D4TrackReader<R>{
+    pub fn as_root(&self) -> &Directory<R> {
+        &self.track_root
+    }
+}
+
 #[cfg(feature = "http_reader")]
 impl D4TrackReader<HttpReader> {
     pub fn from_url_and_track_name<U: IntoUrl>(url: U, track_name: Option<&str>) -> Result<Self> {

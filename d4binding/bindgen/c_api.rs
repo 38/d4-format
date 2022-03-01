@@ -2580,6 +2580,26 @@ extern "C" {
         pos: u32,
     ) -> ::std::os::raw::c_int;
 }
+pub const d4_index_kind_t_D4_INDEX_KIND_SUM: d4_index_kind_t = 0;
+pub type d4_index_kind_t = ::std::os::raw::c_uint;
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub union d4_index_result_t {
+    pub sum: f64,
+}
+extern "C" {
+    pub fn d4_index_check(handle: *mut d4_file_t, kind: d4_index_kind_t) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn d4_index_query(
+        handle: *mut d4_file_t,
+        kind: d4_index_kind_t,
+        chrom: *const ::std::os::raw::c_char,
+        start: u32,
+        end: u32,
+        buf: *mut d4_index_result_t,
+    ) -> ::std::os::raw::c_int;
+}
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct d4_task_part_t {

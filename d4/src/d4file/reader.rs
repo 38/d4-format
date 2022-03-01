@@ -21,6 +21,9 @@ pub struct D4TrackReader<
 }
 
 impl<P: PrimaryTableReader, S: SecondaryTableReader> D4TrackReader<P, S> {
+    pub fn as_root_container(&self) -> &Directory<File> {
+        &self._root
+    }
     /// Split the input D4 file into small chunks
     pub fn split(
         &mut self,
