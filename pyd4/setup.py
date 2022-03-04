@@ -33,7 +33,7 @@ install_requires = ["numpy"]
 
 setup(
     name="pyd4",
-    version="0.3.1",
+    version="0.3.5",
     classifiers=[
         "License :: OSI Approved :: MIT License",
         "Development Status :: 3 - Alpha",
@@ -43,6 +43,8 @@ setup(
         "Operating System :: POSIX",
         "Operating System :: MacOS :: MacOS X",
     ],
+    long_description=open("README.md").read(),
+    long_description_content_type='text/markdown',
     packages=["pyd4"],
     rust_extensions=[RustExtension("pyd4.pyd4", "Cargo.toml", debug="DEBUG" in os.environ)],
     install_requires=install_requires,

@@ -144,3 +144,10 @@ input_file = pyd4.D4File("input.d4")
 down_sampled_chr1 = input_file.resample("1", bin_size = 1000)
 print(down_sampled_chr1)
 ```
+
+## Changelog
+
+### 0.3.1.1
+
+- Added documentation to the pypi page
+- Fixed minor bugs
