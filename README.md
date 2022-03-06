@@ -296,16 +296,24 @@ cd d4tools && cargo rustc --bin d4tools --release -- -C relocation-model=static
 
 ### Installation (< 2 minutes)
 
-You can choose to install the d4tools binary by running
+- Install bioconda 
+
+Assuming you have bioconda environment installed and configured, you can simply install d4tools and d4binding from bioconda repository
+
+```bash
+conda install d4tools
+```
+
+- Install from crates.io: Assuming you have Rust compiler toolchain, you can install it from crate.io as well.
+
+```
+cargo install d4tools
+```
+
+- Install from source code: The following steps allows you to install d4tools from source code. You can choose to install the d4tools binary by running
 
 ```bash
 cargo install --path .
-```
-
-Or you can choose install from crates.io:
-
-```bash
-cargo install d4tools
 ```
 
 ### Using D4 in C/C++
@@ -313,7 +321,16 @@ cargo install d4tools
 D4 provides a C binding that allows the D4 library used in C and C++.
 Here's the steps to build D4 binding.
 
-1. Build the binding library
+1. Install or build the binding library
+
+- The easist way to install d4binding library is using bioconda. 
+
+```
+conda install d4binding
+```
+Then the header file will be installed under `<conda-dir>/include`. And `libd4binding.so` or `libd4binding.dylib` will be installed under `<conda-dir>/lib`.
+
+- Alternatively, you can choose install from the source code as well:
 
 ```bash
 # Build the D4 binding library, for debug build, remove "--release" argument
