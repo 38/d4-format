@@ -35,7 +35,7 @@ function is_musl() {
 is_musl && perl -i -pe 's/gcc/musl-gcc/g' Makefile
 
 
-curl 'https://github.com/madler/zlib/archive/refs/tags/v1.2.11.tar.gz' | tar xz
+curl -L 'https://github.com/madler/zlib/archive/refs/tags/v1.2.11.tar.gz' | tar xz
 cd zlib-1.2.11
 is_musl && CC=musl-gcc ./configure || ./configure
 make libz.a
