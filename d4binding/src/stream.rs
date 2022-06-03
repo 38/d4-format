@@ -49,7 +49,7 @@ impl RemoteStreamReader {
         let reader = RemoteD4Reader::from_url(url)?;
         Ok(Self {
             reader,
-            current_view: None
+            current_view: None,
         })
     }
 
@@ -57,9 +57,16 @@ impl RemoteStreamReader {
         let chr_list = self.reader.chrom_list();
         let begin_idx = if let Some(view) = self.current_view.as_ref() {
             let cur_name = view.chrom_name();
-            let mut cur_idx = chr_list.iter().enumerate().find(|(_, x)| x.name == cur_name).map(|(idx, _)| idx).unwrap_or(chr_list.len());
+            let mut cur_idx = chr_list
+                .iter()
+                .enumerate()
+                .find(|(_, x)| x.name == cur_name)
+                .map(|(idx, _)| idx)
+                .unwrap_or(chr_list.len());
 
-            if chr_list.get(cur_idx).map_or(false, |c| view.tell().unwrap_or(c.size as u32) < c.size as u32) {
+            if chr_list.get(cur_idx).map_or(false, |c| {
+                view.tell().unwrap_or(c.size as u32) < c.size as u32
+            }) {
                 cur_idx += 1;
             } else {
                 return Some((cur_idx, view.tell().unwrap()));
@@ -69,14 +76,19 @@ impl RemoteStreamReader {
         } else {
             0
         };
-        chr_list[begin_idx..].iter().enumerate().find(|(_,x)| x.size > 0).map(|(id, _)| (id , 0))
+        chr_list[begin_idx..]
+            .iter()
+            .enumerate()
+            .find(|(_, x)| x.size > 0)
+            .map(|(id, _)| (id, 0))
     }
     fn get_current_view(&mut self, load_next: bool) -> Result<Option<&mut RemoteD4ReaderView>> {
         if let Some((chr, pos)) = self.find_next_read_pos() {
             let chr = self.reader.chrom_list()[chr].clone();
             if pos == 0 && chr.name != self.current_view.as_ref().map_or("", |x| x.chrom_name()) {
                 if load_next {
-                    self.current_view = Some(self.reader.get_view(&chr.name, 0, chr.size as u32)?);
+                    self.current_view =
+                        Some(self.reader.get_view(&chr.name, 0, chr.size as u32)?);
                 } else {
                     return Ok(None);
                 }
@@ -90,7 +102,8 @@ impl RemoteStreamReader {
 impl StreamReader for RemoteStreamReader {
     fn tell(&self) -> Option<(&str, u32)> {
         let chr_list = self.reader.chrom_list();
-        self.find_next_read_pos().map(|(id, pos)| (chr_list[id].name.as_str(), pos))
+        self.find_next_read_pos()
+            .map(|(id, pos)| (chr_list[id].name.as_str(), pos))
     }
 
     fn seek(&mut self, name: &str, pos: u32) -> bool {
@@ -101,7 +114,7 @@ impl StreamReader for RemoteStreamReader {
             if chr.name == name {
                 if pos >= chr.size as u32 {
                     chr_idx += 1;
-                } 
+                }
                 break;
             }
         }
@@ -118,7 +131,7 @@ impl StreamReader for RemoteStreamReader {
         if let Ok(Some(view)) = self.get_current_view(!same_chrom) {
             if let Ok((begin, end, value)) = view.read_next_interval() {
                 return Some((begin..end, value));
-            } 
+            }
         }
         None
     }

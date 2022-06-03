@@ -6,7 +6,7 @@ use d4::Header;
 use d4::{D4FileBuilder, D4FileWriter, D4TrackReader};
 
 use crate::c_api::d4_file_t;
-use crate::stream::{StreamReader, LocalStreamReader, StreamWriter, RemoteStreamReader};
+use crate::stream::{LocalStreamReader, RemoteStreamReader, StreamReader, StreamWriter};
 
 type ReaderType = D4TrackReader;
 type WriterType = D4FileWriter;

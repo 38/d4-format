@@ -1,5 +1,6 @@
 use clap::ArgMatches;
 use d4::{Chrom, Dictionary};
+use log::warn;
 use rayon::ThreadPoolBuildError;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
@@ -53,7 +54,8 @@ pub fn parse_bed_file<P: AsRef<Path>>(
     file: P,
 ) -> std::io::Result<impl Iterator<Item = (String, u32, u32, f32)>> {
     let file = BufReader::new(File::open(file)?);
-    Ok(file.lines().filter_map(|line| {
+    let mut warned = false;
+    Ok(file.lines().filter_map(move |line| {
         if let Ok(line) = line {
             let tokenized: Vec<_> = line.split(|c| c == '\t').take(4).collect();
             if tokenized.len() == 3 {
@@ -69,6 +71,11 @@ pub fn parse_bed_file<P: AsRef<Path>>(
                             return Some((tokenized[0].to_owned(), begin, end, dep));
                         }
                     }
+                }
+            } else {
+                if !warned && !line.starts_with('#') {
+                    warn!("Invalid input line: {}", line.trim_end());
+                    warned = true;
                 }
             }
         }

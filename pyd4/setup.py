@@ -33,7 +33,7 @@ install_requires = ["numpy"]
 
 setup(
     name="pyd4",
-    version="0.3.5",
+    version="0.3.6",
     classifiers=[
         "License :: OSI Approved :: MIT License",
         "Development Status :: 3 - Alpha",

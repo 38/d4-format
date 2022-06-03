@@ -10,7 +10,9 @@ mod show;
 mod stat;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    env_logger::init();
+    env_logger::init_from_env(
+        env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, "warn"),
+    );
     let args: Vec<_> = std::env::args().skip(1).collect();
     let ret = match args.get(0).map(AsRef::as_ref) {
         Some("create") => create::entry_point(args),

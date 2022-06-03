@@ -66,7 +66,7 @@ impl<R: Read + Seek> D4MatrixReader<R> {
     }
 }
 
-impl <R:Read + Seek> D4TrackReader<R>{
+impl<R: Read + Seek> D4TrackReader<R> {
     pub fn as_root(&self) -> &Directory<R> {
         &self.track_root
     }

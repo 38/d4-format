@@ -134,7 +134,7 @@ impl<R: Read + Seek> D4TrackView<R> {
         }
 
         let begin_pos = self.cursor;
-        
+
         let fallback_value = self.dictionary.decode_value(0).unwrap_or(0);
 
         self.update_current_secrec()?;
@@ -163,7 +163,7 @@ impl<R: Read + Seek> D4TrackView<R> {
         }
         while let Some(record) = self.current_record.as_ref() {
             let (begin, end) = record.effective_range();
-            if pos < end ||  pos <= begin {
+            if pos < end || pos <= begin {
                 break;
             }
             if self.load_next_secondary_record()?.is_none() {
@@ -192,9 +192,9 @@ impl<R: Read + Seek> D4TrackView<R> {
             Ok((pos, self.dictionary.decode_value(data).unwrap_or(0)))
         } else {
             self.update_current_secrec()?;
-            
+
             self.cursor += 1;
-            
+
             let fallback_value = self.dictionary.decode_value(data).unwrap_or(0);
 
             if let Some(rec) = self.current_record {
