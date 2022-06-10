@@ -16,7 +16,8 @@
 			},
 			"program": "target/debug/d4tools",
 			"env": {"RUST_LOG": "info"},
-			"args": ["view", "http://localhost:8000/multi-track-sample.d4", "1:10000-20000"]
+			"args": ["create", "-g", "genome.size", "input.bedgraph", "./out.d4"],
+			"cwd": "/home/haohou/source/d4-projects/d4-format/d4tools/test/test-results/create/fractional-bedgraph"
 		},
 		{
 			"type": "lldb",

@@ -52,7 +52,7 @@ pub fn parse_genome_file<P: AsRef<Path>>(file: P) -> std::io::Result<Vec<Chrom>>
 }
 pub fn parse_bed_file<P: AsRef<Path>>(
     file: P,
-) -> std::io::Result<impl Iterator<Item = (String, u32, u32, f32)>> {
+) -> std::io::Result<impl Iterator<Item = (String, u32, u32, f64)>> {
     let file = BufReader::new(File::open(file)?);
     let mut warned = false;
     Ok(file.lines().filter_map(move |line| {

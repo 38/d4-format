@@ -159,13 +159,19 @@ impl CreateAppCtx {
             genome_size += chr_size;
             if let Some(result) = bw_file.query_range(&chr_name, 0, chr_size as u32) {
                 for bw_interval in result {
-                    let value = bw_interval.value;
+                    let value = bw_interval.value as f64;
                     if value.abs() < 1e-10 {
                         continue;
                     }
                     num_of_intervals += 1;
-                    let (_, exp, _) = value.decompose();
-                    purposed_denominator = purposed_denominator.max((-exp as f64).exp2());
+                    
+                    let mut denominator = 1.0;
+
+                    while ((value * denominator).round() - (value * denominator)).abs() > 1e-10 {
+                        denominator *= 10.0;
+                    }
+
+                    purposed_denominator = purposed_denominator.max(denominator);
                 }
             }
         }
@@ -189,8 +195,13 @@ impl CreateAppCtx {
             if value.abs() < 1e-10 {
                 continue;
             }
-            let (_, exp, _) = value.decompose();
-            purposed_denominator = purposed_denominator.max((-exp as f64).exp2());
+            let mut denominator = 1.0;
+
+            while ((value * denominator).round() - (value * denominator)).abs() > 1e-10 {
+                denominator *= 10.0;
+            }
+
+            purposed_denominator = purposed_denominator.max(denominator);
         }
 
         if purposed_denominator != 1.0 {
@@ -407,9 +418,7 @@ fn main_impl(matches: ArgMatches) -> Result<(), Box<dyn std::error::Error>> {
         InputType::Alignment => ctx.create_from_alignment(&matches)?,
         InputType::BiwWig => ctx.create_from_bigwig()?,
         InputType::BedGraph => ctx.create_from_bedgraph(&matches)?,
-        _ => {
-            panic!("Unsupported input file format");
-        }
+        _ => panic!("Unsupported input file format"),
     }
     Ok(())
 }

@@ -1,0 +1,82 @@
+#!/bin/bash
+
+realpath() {
+    [[ $1 = /* ]] && echo "$1" || echo "$PWD/${1#./}"
+}
+
+print-result() {
+	if [[ ${COLUMNS} -gt 80 ]]
+	then
+		WIDTH=80
+	else
+		WIDTH=${COLUMNS}
+	fi
+	printf "\e[1F\e[1E\e[$((${WIDTH} - 8))C[\e[0;${1}m${2}\e[0;0m]\n" > /dev/stdout
+}
+
+cargo build --package=d4tools || exit 1
+
+D4TOOLS=$(realpath ../../target/debug/d4tools)
+
+ROOT_DIR=$(realpath $(dirname $0))
+
+rm -rf ${ROOT_DIR}/test-results
+mkdir -p ${ROOT_DIR}/test-results
+
+PASS_COUNT=0
+FAIL_COUNT=0
+
+for TEST_CASE in $(find ${ROOT_DIR} -name cmdline -not -path ${ROOT_DIR}/test-results | sort)
+do
+	CASE_NAME=$(dirname ${TEST_CASE#${ROOT_DIR}/})
+	echo -n "Running test ${CASE_NAME}..." > /dev/stderr
+	OUTDIR=${ROOT_DIR}/test-temp-dir/
+	mkdir -p ${OUTDIR}
+	pushd $(dirname ${TEST_CASE}) >& /dev/null
+	D4TOOLS=${D4TOOLS} OUTDIR=${OUTDIR} bash cmdline > ${OUTDIR}/stdout
+	PASS=0
+	if [[ -e ${OUTDIR}/stdout ]] && [[ -e output.txt ]] && diff ${OUTDIR}/stdout output.txt &> ${OUTDIR}/output.diff
+	then
+		PASS=1	
+	fi
+	
+	if [[ ${PASS} = 0 ]]
+	then
+		if [[ ${UPDATE_CASE} = ${CASE_NAME} ]]
+		then
+			cp ${OUTDIR}/stdout output.txt
+			print-result 33 UPDATED
+			PASS_COUNT=$((${PASS_COUNT}+1))
+		else
+			print-result 31 FAILED
+			mkdir -p ${ROOT_DIR}/test-results/${CASE_NAME}
+			cp ${OUTDIR}/output.diff ${ROOT_DIR}/test-results/${CASE_NAME}
+			cat > ${ROOT_DIR}/test-results/${CASE_NAME}/run <<EOF
+#!/bin/bash
+set -x
+D4TOOLS=${D4TOOLS}
+OUTDIR=.
+$(cat cmdline)
+EOF
+			chmod +x ${ROOT_DIR}/test-results/${CASE_NAME}/run
+			cp ${ROOT_DIR}/${CASE_NAME}/* ${ROOT_DIR}/test-results/${CASE_NAME}
+			FAIL_COUNT=$((${FAIL_COUNT}+1))
+		fi
+	else
+		print-result 32 PASSED
+		PASS_COUNT=$((${PASS_COUNT}+1))
+	fi
+
+	popd >& /dev/null
+
+	rm ${OUTDIR} -rf
+done
+
+echo 
+echo "${PASS_COUNT} cases passed, ${FAIL_COUNT} cases failed." > /dev/stderr
+if [[ ${FAIL_COUNT} -gt 0 ]]
+then
+	echo
+	echo "Note: Use 'test-results' directory to reproduce the failed test cases" > /dev/stderr
+	exit 1
+fi

@@ -1,0 +1,1 @@
+${D4TOOLS} create --mapping-qual 0 small.bam ${OUTDIR}/small.d4 && ${D4TOOLS} view ${OUTDIR}/small.d4

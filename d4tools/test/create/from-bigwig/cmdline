@@ -1,0 +1,2 @@
+${D4TOOLS} create input.bw ${OUTDIR}/out.d4 && \
+		${D4TOOLS} view ${OUTDIR}/out.d4

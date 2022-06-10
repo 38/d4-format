@@ -1,0 +1,2 @@
+${D4TOOLS} create -g genome.size input.bedgraph ${OUTDIR}/out.d4 && \
+		${D4TOOLS} view ${OUTDIR}/out.d4
