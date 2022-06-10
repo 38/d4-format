@@ -66,7 +66,7 @@ ARGS:
   d4tools create -z input.bw output.d4
 ```
 
-- From a BedGraph file
+- From a BedGraph file (extension must be ".bedgraph")
 
 ```bash
   d4tools create -z -g hg19.genome input.bedgraph output.d4
