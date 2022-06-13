@@ -434,6 +434,13 @@ impl PrimaryTablePartReader for PartialPrimaryTable<Reader> {
     fn region(&self) -> (&str, u32, u32) {
         PartialPrimaryTable::region(self)
     }
+    fn default_value(&self) -> Option<i32> {
+        if self.dictionary.bit_width() == 0 {
+            Some(self.dictionary.first_value())
+        } else {
+            None
+        }
+    }
 }
 impl PrimaryTableReader for PrimaryTable<Reader> {
     type Partition = PartialPrimaryTable<Reader>;

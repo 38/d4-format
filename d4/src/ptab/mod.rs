@@ -72,6 +72,9 @@ pub trait PrimaryTablePartReader: Send {
     fn region(&self) -> (&str, u32, u32);
     /// Report the bit width
     fn bit_width(&self) -> usize;
+    /// The default value of the primary table. 
+    /// Return None if this is not a 0-sized primary table or the only value defined in this table
+    fn default_value(&self) -> Option<i32>;
 }
 
 /// Logically this is not needed, as it's just FnMut.

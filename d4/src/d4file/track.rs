@@ -173,11 +173,33 @@ impl<P: PrimaryTableReader, S: SecondaryTableReader> MultiTrackPartitionReader
     type RowType = Once<i32>;
 
     fn scan_partition<DS: DataScanner<Self::RowType>>(&mut self, handles: &mut [DS]) {
-        let per_base = self.primary.bit_width() > 0;
+        let default_primary_value = self.primary.default_value();
         let mut decoder = self.primary.make_decoder();
 
         scan_partition_impl(handles, |part_left, part_right, active_handles| {
-            if per_base {
+            if let Some(default_value) = default_primary_value {
+                let iter = self.secondary.seek_iter(part_left);
+                let mut last_right = part_left;
+                for (mut left, mut right, value) in iter {
+                    left = left.max(part_left);
+                    right = right.min(part_right).max(left);
+                    for handle in active_handles.iter_mut() {
+                        if last_right < left {
+                            handle.feed_rows(last_right, left, &mut std::iter::once(default_value));
+                        }
+                        handle.feed_rows(left, right, &mut std::iter::once(value));
+                    }
+                    last_right = right;
+                    if right == part_right {
+                        break;
+                    }
+                }
+                if last_right < part_right {
+                    for handle in active_handles.iter_mut() {
+                        handle.feed_rows(last_right, part_right, &mut std::iter::once(default_value));
+                    }
+                }
+            } else {
                 let block_handler = ScanPartitionBlockHandler::<S, DS> {
                     secondary: &mut self.secondary,
                     active_handles,
@@ -187,18 +209,6 @@ impl<P: PrimaryTableReader, S: SecondaryTableReader> MultiTrackPartitionReader
                     (part_right - part_left) as usize,
                     block_handler,
                 );
-            } else {
-                let iter = self.secondary.seek_iter(part_left);
-                for (mut left, mut right, value) in iter {
-                    left = left.max(part_left);
-                    right = right.min(part_right).max(left);
-                    for handle in active_handles.iter_mut() {
-                        handle.feed_rows(left, right, &mut std::iter::once(value));
-                    }
-                    if right == part_right {
-                        break;
-                    }
-                }
             }
         });
     }
