@@ -163,7 +163,7 @@ impl CreateAppCtx {
                         continue;
                     }
                     num_of_intervals += 1;
-                    
+
                     let mut denominator = 1.0;
 
                     while ((value * denominator).round() - (value * denominator)).abs() > 1e-10 {
@@ -357,6 +357,11 @@ impl CreateAppCtx {
             )?
             .into_iter(),
         );
+        let default_pt_value = if self.builder.dictionary().bit_width() == 0 {
+            Some(self.builder.dictionary().first_value())
+        } else {
+            None
+        };
         let mut d4_writer: D4FileWriter = self.builder.create()?;
         if self.compression {
             d4_writer.enable_secondary_table_compression(self.compression_level);
@@ -373,21 +378,50 @@ impl CreateAppCtx {
                 }
                 depth as i32
             };
-            for pos in from..to {
-                let region = partition[current].0.region();
-                if region.0 != chr || region.1 < pos || region.2 >= pos {
-                    if let Some((idx, _)) = (0..).zip(partition.iter()).find(|(_, part)| {
-                        let reg = part.0.region();
-                        reg.0 == chr && reg.1 <= pos && pos < reg.2
-                    }) {
-                        current = idx;
-                    } else {
-                        continue;
+
+            if let Some(default) = default_pt_value {
+                if default == depth {
+                    // In this case, we have a zero sized primary table and the vlaue we need to encode is just that value
+                    continue;
+                } else {
+                    let mut from = from;
+                    while from < to {
+                        let region = partition[current].0.region();
+                        if region.0 != chr || region.1 < from || region.2 >= from {
+                            if let Some((idx, _)) = (0..).zip(partition.iter()).find(|(_, part)| {
+                                let reg = part.0.region();
+                                reg.0 == chr && reg.1 <= from && from < reg.2
+                            }) {
+                                current = idx;
+                            } else {
+                                continue;
+                            }
+                        }
+                        let record_from = from;
+                        let record_to = region.2.min(to);
+                        partition[current]
+                            .1
+                            .encode_record(record_from, record_to, depth)?;
+                        from = record_to;
                     }
                 }
-                let mut encoder = partition[current].0.make_encoder();
-                if !encoder.encode(pos as usize, depth) {
-                    partition[current].1.encode(pos, depth)?;
+            } else {
+                for pos in from..to {
+                    let region = partition[current].0.region();
+                    if region.0 != chr || region.1 < pos || region.2 >= pos {
+                        if let Some((idx, _)) = (0..).zip(partition.iter()).find(|(_, part)| {
+                            let reg = part.0.region();
+                            reg.0 == chr && reg.1 <= pos && pos < reg.2
+                        }) {
+                            current = idx;
+                        } else {
+                            continue;
+                        }
+                    }
+                    let mut encoder = partition[current].0.make_encoder();
+                    if !encoder.encode(pos as usize, depth) {
+                        partition[current].1.encode(pos, depth)?;
+                    }
                 }
             }
             partition[current].1.flush()?;

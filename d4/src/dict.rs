@@ -216,7 +216,7 @@ impl Dictionary {
         }
     }
     #[inline(always)]
-    pub(crate) fn bit_width(&self) -> usize {
+    pub fn bit_width(&self) -> usize {
         let mut n_values = match self {
             Self::SimpleRange { low, high } => (high - low).max(0) as usize,
             Self::Dictionary { i2v_map, .. } => i2v_map.len(),
@@ -228,8 +228,9 @@ impl Dictionary {
         }
         ret
     }
+
     #[inline(always)]
-    pub(crate) fn first_value(&self) -> i32 {
+    pub fn first_value(&self) -> i32 {
         match self {
             Self::SimpleRange { low, .. } => *low,
             Self::Dictionary { i2v_map, .. } => i2v_map[0],

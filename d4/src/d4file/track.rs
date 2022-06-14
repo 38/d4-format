@@ -196,7 +196,11 @@ impl<P: PrimaryTableReader, S: SecondaryTableReader> MultiTrackPartitionReader
                 }
                 if last_right < part_right {
                     for handle in active_handles.iter_mut() {
-                        handle.feed_rows(last_right, part_right, &mut std::iter::once(default_value));
+                        handle.feed_rows(
+                            last_right,
+                            part_right,
+                            &mut std::iter::once(default_value),
+                        );
                     }
                 }
             } else {
