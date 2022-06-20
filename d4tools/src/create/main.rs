@@ -386,13 +386,14 @@ impl CreateAppCtx {
                 } else {
                     let mut from = from;
                     while from < to {
-                        let region = partition[current].0.region();
+                        let mut region = partition[current].0.region();
                         if region.0 != chr || region.1 < from || region.2 >= from {
                             if let Some((idx, _)) = (0..).zip(partition.iter()).find(|(_, part)| {
                                 let reg = part.0.region();
                                 reg.0 == chr && reg.1 <= from && from < reg.2
                             }) {
                                 current = idx;
+                                region = partition[current].0.region();
                             } else {
                                 continue;
                             }

@@ -134,12 +134,12 @@ impl Record for RangeRecord {
     ) -> Result<(), E> {
         while left < right {
             let size = (right - left).min(65536);
-            left += size;
             ops(Self {
                 left: (left + 1).to_le(),
                 size_enc: ((size - 1) as u16).to_le(),
                 value: value.to_le(),
             })?;
+            left += size;
         }
         Ok(())
     }
