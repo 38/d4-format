@@ -1,1 +1,1 @@
-${D4TOOLS} stat -r windows.bed input.d4
+${D4TOOLS} stat -r windows.bed ${DATADIR}/input.d4

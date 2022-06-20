@@ -16,9 +16,19 @@ print-result() {
 
 cargo build --package=d4tools || exit 1
 
+sfz --version >& /dev/null || cargo install sfz
+
+cd data
+
+sfz -p 54321 >& /dev/null &
+
+cd ..
+
 D4TOOLS=$(realpath ../../target/debug/d4tools)
 
 ROOT_DIR=$(realpath $(dirname $0))
+
+DATADIR=${ROOT_DIR}/data
 
 rm -rf ${ROOT_DIR}/test-results
 mkdir -p ${ROOT_DIR}/test-results
@@ -26,14 +36,14 @@ mkdir -p ${ROOT_DIR}/test-results
 PASS_COUNT=0
 FAIL_COUNT=0
 
-for TEST_CASE in $(find ${ROOT_DIR} -name cmdline -not -path ${ROOT_DIR}/test-results | sort)
+for TEST_CASE in $(find ${ROOT_DIR} -name cmdline -not -path ${ROOT_DIR}/test-results -not -path ${ROOT_DIR}/data | sort)
 do
 	CASE_NAME=$(dirname ${TEST_CASE#${ROOT_DIR}/})
 	echo -n "Running test ${CASE_NAME}..." > /dev/stderr
 	OUTDIR=${ROOT_DIR}/test-temp-dir/
 	mkdir -p ${OUTDIR}
 	pushd $(dirname ${TEST_CASE}) >& /dev/null
-	D4TOOLS=${D4TOOLS} OUTDIR=${OUTDIR} bash cmdline > ${OUTDIR}/stdout
+	D4TOOLS=${D4TOOLS} OUTDIR=${OUTDIR} DATADIR=${DATADIR} bash cmdline > ${OUTDIR}/stdout
 	PASS=0
 	if [[ -e ${OUTDIR}/stdout ]] && [[ -e output.txt ]] && diff ${OUTDIR}/stdout output.txt &> ${OUTDIR}/output.diff
 	then
@@ -56,6 +66,7 @@ do
 set -x
 D4TOOLS=${D4TOOLS}
 OUTDIR=.
+DATADIR=${DATADIR}
 $(cat cmdline)
 EOF
 			chmod +x ${ROOT_DIR}/test-results/${CASE_NAME}/run

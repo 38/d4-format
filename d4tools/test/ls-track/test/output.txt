@@ -1,0 +1,2 @@
+/home/haohou/source/d4-projects/d4-format/d4tools/test/./data/multitrack.d4:input
+/home/haohou/source/d4-projects/d4-format/d4tools/test/./data/multitrack.d4:input2

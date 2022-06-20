@@ -1,1 +1,1 @@
-${D4TOOLS} stat input.d4
+${D4TOOLS} stat ${DATADIR}/input.d4
