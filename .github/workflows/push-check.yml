@@ -20,3 +20,5 @@ jobs:
       with:
           command: build
           args: --verbose
+    - name: Run Integration Tests
+      run: cd d4tools/test && ./test-driver
