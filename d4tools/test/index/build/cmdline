@@ -1,0 +1,3 @@
+${D4TOOLS} create -g ${DATADIR}/index-test.genomesize ${DATADIR}/index-test.bedgraph ${OUTDIR}/index-test.d4 && \
+${D4TOOLS} index build -S ${OUTDIR}/index-test.d4 && \
+		${D4TOOLS} index show ${OUTDIR}/index-test.d4 sum

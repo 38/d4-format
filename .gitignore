@@ -27,8 +27,6 @@ test.d4
 
 .bak/
 
-data
-
 hts/htslib/**/*.o
 hts/htslib/**/lib*.a
 hts/htslib/**/lib*.so
