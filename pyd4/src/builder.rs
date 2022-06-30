@@ -27,6 +27,7 @@ impl WriterPartHandle {
                 self.inner.1.encode(pos, 0)?;
             }
         }
+        self.inner.1.finish()?;
         Ok(())
     }
     fn encode(&mut self, begin: u32, data: &[i32]) -> PyResult<()> {
@@ -41,6 +42,7 @@ impl WriterPartHandle {
                 self.inner.1.encode(pos, data)?;
             }
         }
+        self.inner.1.flush()?;
         self.frontier = begin + (data.len() as u32).min(self.end - begin);
         Ok(())
     }
@@ -150,7 +152,7 @@ impl D4Writer {
                     .and_then(|view| Some((part, view)))
             })
             .collect();
-        active_parts.into_par_iter().for_each(|(part, view)| {
+        active_parts.into_iter().for_each(|(part, view)| {
             let data = unsafe { std::slice::from_raw_parts(view.1 as *const i32, view.2) };
             part.encode(view.0, data).unwrap();
         });

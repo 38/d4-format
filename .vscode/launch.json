@@ -16,8 +16,8 @@
 			},
 			"program": "target/debug/d4tools",
 			"env": {"RUST_LOG": "info"},
-			"args": ["create", "-g", "genome.size", "input.bedgraph", "./out.d4"],
-			"cwd": "/home/haohou/source/d4-projects/d4-format/d4tools/test/test-results/create/fractional-bedgraph"
+			"args": ["create", "-g", "/tmp/1.g", "/tmp/1.bedgraph"],
+			"cwd": "/tmp"
 		},
 		{
 			"type": "lldb",
@@ -26,7 +26,7 @@
 			"cwd": "${workspaceFolder}/pyd4/build/lib",
 			"program": "python3",
 			"env": {"RUST_LOG": "info"},
-			"args": ["test2.py"]
+			"args": ["test3.py"]
 		},
 	]
 }
