@@ -61,10 +61,16 @@ fn parse_region_spec<T: Iterator<Item = String>>(
                     .map_or(0u32, |x| x.as_str().parse().unwrap_or(0));
                 let end: u32 = captures
                     .name("TO")
-                    .map_or(chrom_list[chr_map[chr]].size as u32, |x| {
+                    .map_or_else(|| {
+                        chr_map.get(chr).map_or(!0, |&id| chrom_list[id].size as u32)
+                    }, |x| {
                         x.as_str().parse().unwrap_or(!0)
                     });
-                ret.push((chr_map[chr], start, end));
+                if let Some(&chr) = chr_map.get(chr) {
+                    ret.push((chr, start, end));
+                } else {
+                    eprintln!("Warning: ignore chromosome {} which is not defined in d4 file", chr);
+                }
                 continue;
             } else {
                 return Err(Error::new(std::io::ErrorKind::Other, "Invalid region spec"));
