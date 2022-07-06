@@ -17,7 +17,7 @@ d4-server = ["warp", "tokio", "serde_derive", "serde", "serde_json"]
 #d4-hts = { path = "../d4-hts" }
 #d4-framefile = { path = "../d4-framefile", features = ["mapped_io"]}
 #d4-bigwig = { path = "../d4-bigwig" }
-d4 = "0.3.6"
+d4 = "0.3.7"
 d4-hts = "0.3.6"
 d4-framefile = "0.3.6"
 d4-bigwig = "0.3.6"
