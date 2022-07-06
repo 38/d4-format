@@ -5,7 +5,7 @@ args:
         short: s
         long: stat
         value_name: stat_type
-        help: "The type of statistics we want to perform, by default average. You can specify statistic methods: mean, median, hist, percentile=X% (If this is not specified d4utils will use mean by default)"
+        help: "The type of statistics we want to perform, by default average. You can specify statistic methods: mean, median, hist, percentile=X%, sum, count (If this is not specified d4utils will use mean by default)"
     - region:
         short: r
         long: region

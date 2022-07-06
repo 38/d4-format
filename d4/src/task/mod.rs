@@ -5,6 +5,7 @@ mod histogram;
 mod mean;
 mod value_range;
 mod vector;
+mod sum;
 
 use std::io::Result;
 
@@ -13,6 +14,7 @@ pub use histogram::Histogram;
 pub use mean::Mean;
 pub use value_range::ValueRange;
 pub use vector::VectorStat;
+pub use sum::Sum;
 
 use crate::d4file::{MultiTrackPartitionReader, MultiTrackReader};
 

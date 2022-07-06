@@ -234,6 +234,7 @@ fn mean_stat_index<'a, R: Read + Seek>(
     track: Option<&str>,
     print_header: bool,
     region_file: Option<&str>,
+    sum_only: bool,
 ) -> Result<bool, Box<dyn std::error::Error>> {
     let mut tracks = Vec::new();
 
@@ -291,8 +292,12 @@ fn mean_stat_index<'a, R: Read + Seek>(
         for (sum_index, ssio_reader) in index.iter().zip(ssio_reader.iter_mut()) {
             let index_res = sum_index.query(chr.as_str(), begin, end).unwrap();
             let sum_res = index_res.get_result(ssio_reader)?;
-            let mean = sum_res.mean(index_res.query_size());
-            print!("\t{}", mean / ssio_reader.get_denominator().unwrap_or(1.0));
+            let value = if sum_only {
+                sum_res.sum()
+            } else {
+                sum_res.mean(index_res.query_size())
+            };
+            print!("\t{}", value / ssio_reader.get_denominator().unwrap_or(1.0));
         }
         println!("");
     }
@@ -312,14 +317,39 @@ pub fn entry_point(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> 
             .build_global()?;
     }
 
+    if matches.value_of("stat") == Some("count") {
+        let path = matches.value_of("input").unwrap();
+        let chrom_list = if path.starts_with("http://") || path.starts_with("https://") {
+            d4::ssio::D4TrackReader::from_url(path)?.chrom_list().to_owned()
+        } else {
+            let reader: d4::D4TrackReader = d4::D4TrackReader::open(path)?;
+            reader.chrom_regions().iter().map(|(c, _s, e)| Chrom{
+                name: c.to_string(),
+                size: *e as usize,
+            }).collect()
+        };
+        let region_file = matches.value_of("region");
+        let region_spec = parse_region_spec(region_file, &chrom_list)?;
+        if matches.is_present("header") {
+            print!("#Chr\tBegin\tEnd");
+        }
+        for (chr, start, end) in region_spec {
+            println!("{}\t{}\t{}\t{}", chr, start, end, end - start);
+        }
+        return Ok(());
+    }
+
     if !matches.is_present("no-index")
         && (matches.value_of("stat") == Some("mean")
             || matches.value_of("stat") == Some("avg")
+            || matches.value_of("stat") == Some("sum")
+            || matches.value_of("stat") == Some("count")
             || !matches.is_present("stat"))
         && matches.values_of("input").unwrap().len() == 1
     {
         let path = matches.value_of("input").unwrap();
         let region_file = matches.value_of("region");
+        let sum_only = matches.value_of("stat")  == Some("sum");
         if path.starts_with("http://") || path.starts_with("https://") {
             let (url, track) = if let Some(pos) = path.rfind('#') {
                 (&path[..pos], Some(&path[pos + 1..]))
@@ -327,7 +357,7 @@ pub fn entry_point(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> 
                 (path, None)
             };
             let reader = HttpReader::new(url)?;
-            if mean_stat_index(reader, track, matches.is_present("header"), region_file)? {
+            if mean_stat_index(reader, track, matches.is_present("header"), region_file, sum_only)? {
                 return Ok(());
             }
         } else {
@@ -337,7 +367,7 @@ pub fn entry_point(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> 
                 (path, None)
             };
             let reader = File::open(path)?;
-            if mean_stat_index(reader, track, matches.is_present("header"), region_file)? {
+            if mean_stat_index(reader, track, matches.is_present("header"), region_file, sum_only)? {
                 return Ok(());
             }
         }
@@ -372,6 +402,27 @@ pub fn entry_point(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> 
                 print!("{}\t{}\t{}", result.chrom, result.begin, result.end);
                 for (value, denom) in result.output.into_iter().zip(denoms.iter()) {
                     print!("\t{}", value / denom.unwrap_or(1.0))
+                }
+                println!();
+            }
+        }
+        Some("sum") => {
+            if !header_printed {
+                print!("#Chr\tBegin\tEnd");
+            }
+            let mut tags = Vec::new();
+            let mut denoms = Vec::new();
+            for result in run_task::<d4::task::Sum>(matches, &mut tags, &mut denoms)? {
+                if !header_printed {
+                    for tag in tags.iter() {
+                        print!("\t{}", tag);
+                    }
+                    println!("");
+                    header_printed = true;
+                }
+                print!("{}\t{}\t{}", result.chrom, result.begin, result.end);
+                for (value, denom) in result.output.into_iter().zip(denoms.iter()) {
+                    print!("\t{}", value as f64 / denom.unwrap_or(1.0))
                 }
                 println!();
             }
