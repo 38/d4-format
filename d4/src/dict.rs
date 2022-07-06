@@ -6,7 +6,7 @@ use std::io::{BufRead, BufReader, Read, Result};
 use std::path::Path;
 
 #[cfg(feature = "depth_profiler")]
-use d4_hts::{BamFile, DepthIter};
+use d4_hts::{BamFile, DepthIter, Alignment};
 #[cfg(feature = "depth_profiler")]
 use rand::Rng;
 #[cfg(feature = "depth_profiler")]
@@ -43,12 +43,18 @@ impl Dictionary {
     /// Run the random sampling algorithm on an alignment file, determining the optimal
     /// dictionary configuration
     #[cfg(feature = "depth_profiler")]
-    pub fn from_sample_bam<P: AsRef<Path>, F: Fn(&str, usize) -> bool>(
+    pub fn from_sample_bam<P, F, RF>(
         path: P,
         filter: F,
         reference: Option<&str>,
-        min_mq: u8,
-    ) -> std::result::Result<Self, Box<dyn std::error::Error>> {
+        read_filter: RF,
+    ) -> std::result::Result<Self, Box<dyn std::error::Error>> 
+    where
+        P: AsRef<Path>, 
+        F: Fn(&str, usize) -> bool, 
+        RF: Fn(&Alignment) -> bool + Send + Sync + Copy
+    {
+
         let bam = BamFile::open(path.as_ref())?;
         let mut parts = vec![];
         let mut rng = rand::thread_rng();
@@ -84,7 +90,7 @@ impl Dictionary {
                 let mut previous_value = None;
                 let mut histogram = HashMap::new();
                 let mut range_count = HashMap::new();
-                for (_, _, dep) in DepthIter::with_filter(range, |r| r.map_qual() >= min_mq) {
+                for (_, _, dep) in DepthIter::with_filter(range, read_filter) {
                     match previous_value {
                         Some(d) if d == dep => continue,
                         Some(_) | None => {

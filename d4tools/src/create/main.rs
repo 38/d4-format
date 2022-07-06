@@ -2,7 +2,7 @@ use clap::{load_yaml, App, ArgMatches};
 use d4::ptab::PTablePartitionWriter;
 use d4::stab::SecondaryTablePartWriter;
 use d4::{Chrom, D4FileBuilder, D4FileWriter, Dictionary};
-use d4_hts::{BamFile, DepthIter};
+use d4_hts::{BamFile, DepthIter, Alignment};
 use d4tools::{make_dictionary, parse_bed_file, parse_genome_file, setup_thread_pool, InputType};
 use log::{info, warn};
 use rayon::prelude::*;
@@ -16,6 +16,8 @@ struct CreateAppCtx {
     input_type: InputType,
     min_mq: u8,
     bam_flags: Option<u16>,
+    inclusive_flag: u16,
+    exclusive_flag: u16,
     chr_filter: Regex,
     compression: bool,
     denominator: Option<f64>,
@@ -23,7 +25,29 @@ struct CreateAppCtx {
     builder: D4FileBuilder,
 }
 
+#[derive(Clone, Copy)]
+struct BamFilter {
+    min_mq: u8,
+    bam_flags: Option<u16>,
+    inclusive_flag: u16,
+    exclusive_flag: u16,
+}
+
+impl BamFilter {
+    fn filter_alignment(&self, read: &Alignment) -> bool {
+        let quality = read.map_qual() >= self.min_mq;
+        let flag = read.flag();
+        let exact_match = self.bam_flags.map_or(true, |expected| expected == flag);
+        let inclusive_match = (self.inclusive_flag & flag) == self.inclusive_flag;
+        let exclusive_match = (self.exclusive_flag & flag) == 0;
+        quality & exact_match && inclusive_match && exclusive_match
+    }
+}
+
 impl CreateAppCtx {
+    fn get_bam_filter(&self) -> BamFilter {
+        BamFilter { min_mq: self.min_mq, bam_flags: self.bam_flags, inclusive_flag: self.inclusive_flag, exclusive_flag: self.exclusive_flag }
+    }
     fn new(matches: &ArgMatches) -> Result<Self, DynErr> {
         let input_path: &Path = matches.value_of("input-file").unwrap().as_ref();
         let input_type = InputType::detect(input_path);
@@ -32,10 +56,27 @@ impl CreateAppCtx {
             v.parse().expect("Invalid minimal mapping quality option")
         });
 
-        let bam_flags = matches
-            .value_of("bam-flag")
-            .map(|v| v.parse::<u16>().expect("Invalid BAM flag"));
+        let mut bam_flags = None;
+        let mut inclusive_flag = 0;
+        let mut exclusive_flag = 0;
 
+        if let Some(bam_flag_expr) = matches.value_of("bam-flag") {
+            for fragment in bam_flag_expr.split(',') {
+                let (opcode, val_str) = match fragment.chars().next() {
+                    Some('+') => ('+', &fragment[1..]),
+                    Some('-') => ('-', &fragment[1..]),
+                    _ => ('=', fragment),
+                };
+                let value:u16 = val_str.parse().expect("Invalid BAM flag");
+                match opcode {
+                    '+' => inclusive_flag |= value,
+                    '-' | '~' => exclusive_flag |= value,
+                    '=' => bam_flags = Some(value),
+                    _ => unreachable!(),
+                }
+            }
+        }
+        
         let output_path = matches.value_of("output-file").map_or_else(
             || {
                 let mut ret = input_path.to_owned();
@@ -61,6 +102,8 @@ impl CreateAppCtx {
             input_type,
             min_mq,
             bam_flags,
+            inclusive_flag,
+            exclusive_flag,
             chr_filter: Regex::new(matches.value_of("filter").unwrap_or(".*"))?,
             compression,
             compression_level,
@@ -69,11 +112,12 @@ impl CreateAppCtx {
         })
     }
     fn auto_dict_for_bam(&mut self, matches: &ArgMatches) -> Result<(), DynErr> {
+        let filter = self.get_bam_filter();
         let dict = Dictionary::from_sample_bam(
             self.input_path.as_path(),
             |chr, _size| self.chr_filter.is_match(chr),
             matches.value_of("ref"),
-            self.min_mq,
+            move |r| filter.filter_alignment(r),
         )?;
         self.builder.set_dictionary(dict);
         Ok(())
@@ -223,7 +267,7 @@ impl CreateAppCtx {
 
         Ok(())
     }
-
+    
     fn create_from_alignment(mut self, matches: &ArgMatches) -> Result<(), DynErr> {
         let reference = matches.value_of("ref");
 
@@ -237,6 +281,8 @@ impl CreateAppCtx {
         let partitions = d4_writer.parallel_parts(Some(10_000_000))?;
 
         info!("Total number of parallel tasks: {}", partitions.len());
+        
+        let bam_filter = self.get_bam_filter();
 
         partitions
             .into_par_iter()
@@ -255,10 +301,7 @@ impl CreateAppCtx {
                     .unwrap();
                 let mut p_encoder = p_table.make_encoder();
                 let mut last_pos = 0;
-                for (_, pos, depth) in DepthIter::with_filter(range_iter, |r| {
-                    r.map_qual() >= self.min_mq
-                        && (self.bam_flags.is_none() || self.bam_flags.unwrap() == r.flag())
-                }) {
+                for (_, pos, depth) in DepthIter::with_filter(range_iter, |r| bam_filter.filter_alignment(r)) {
                     let depth = if let Some(denominator) = self.denominator {
                         (depth as f64 * denominator).round() as u32
                     } else {
