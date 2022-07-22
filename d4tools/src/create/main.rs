@@ -40,7 +40,7 @@ impl BamFilter {
         let exact_match = self.bam_flags.map_or(true, |expected| expected == flag);
         let inclusive_match = (self.inclusive_flag & flag) == self.inclusive_flag;
         let exclusive_match = (self.exclusive_flag & flag) == 0;
-        quality & exact_match && inclusive_match && exclusive_match
+        quality && exact_match && inclusive_match && exclusive_match
     }
 }
 

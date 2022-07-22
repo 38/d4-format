@@ -69,13 +69,7 @@ impl<'a, R: AlignmentReader<'a>> Iterator for DepthIter<'a, R> {
                 break;
             }
             self.heap.push(Reverse(right));
-            self.next_read = self.iter.next().map(|x| {
-                (
-                    x.as_ref().unwrap().ref_id(),
-                    x.as_ref().unwrap().ref_begin(),
-                    x.as_ref().unwrap().ref_end(),
-                )
-            });
+            self.load_next();
         }
 
         while self.heap.peek().map_or(false, |x| x.0 < self.cur_pos) {

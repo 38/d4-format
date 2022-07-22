@@ -26,11 +26,11 @@ default-features = false
 features = ["rustls-tls", "blocking"]
 
 [dependencies.d4-framefile]
-#path = "../d4-framefile"
+path = "../d4-framefile"
 version = "0.3"
 
 [dependencies.d4-hts]
-#path = "../d4-hts"
+path = "../d4-hts"
 version = "0.3"
 optional = true
 
