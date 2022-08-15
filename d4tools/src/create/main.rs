@@ -503,7 +503,7 @@ fn main_impl(matches: ArgMatches) -> Result<(), Box<dyn std::error::Error>> {
 pub fn entry_point(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
     let yaml = load_yaml!("cli.yml");
     let matches = App::from_yaml(yaml)
-        .version(d4::VERSION)
+        .version(d4tools::VERSION)
         .get_matches_from(args);
 
     main_impl(matches)

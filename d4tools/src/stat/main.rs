@@ -308,7 +308,7 @@ fn mean_stat_index<'a, R: Read + Seek>(
 pub fn entry_point(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
     let yaml = load_yaml!("cli.yml");
     let matches = App::from_yaml(yaml)
-        .version(d4::VERSION)
+        .version(d4tools::VERSION)
         .get_matches_from(&args);
     if let Some(threads) = matches.value_of("threads") {
         let threads = threads.parse().unwrap();

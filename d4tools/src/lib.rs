@@ -6,6 +6,8 @@ use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::Path;
 
+pub const VERSION: &str = env!("CARGO_PKG_VERSION");
+
 pub type AppResult<T> = Result<T, Box<dyn std::error::Error>>;
 
 pub enum InputType {

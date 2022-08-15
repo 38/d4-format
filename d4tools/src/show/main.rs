@@ -275,7 +275,7 @@ fn show_impl<R: Read + Seek, I: Iterator<Item = String>>(
 pub fn entry_point(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
     let yaml = load_yaml!("cli.yml");
     let matches = App::from_yaml(yaml)
-        .version(d4::VERSION)
+        .version(d4tools::VERSION)
         .get_matches_from(args);
     //let mut data_path = vec![];
     let mut input_filename = matches.value_of("input-file").unwrap();

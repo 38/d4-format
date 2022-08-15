@@ -21,7 +21,7 @@ struct D4ServerQuery {
 async fn main(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
     let yaml = load_yaml!("cli.yml");
     let matches = App::from_yaml(yaml)
-        .version(d4::VERSION)
+        .version(d4tools::VERSION)
         .get_matches_from(args);
     let path = matches.value_of("input-file").unwrap().to_string();
     let server_filter = warp::get()

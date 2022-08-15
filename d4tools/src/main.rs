@@ -26,7 +26,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Some("show") | Some("view") => show::entry_point(args),
         Some("stat") => stat::entry_point(args),
         _ => {
-            eprintln!("D4 Utilities Program {}", d4::VERSION);
+            eprintln!("D4 Utilities Program {}(D4 library version: {})", d4tools::VERSION, d4::VERSION);
             eprintln!("Usage: d4tools <subcommand> <args>");
             eprintln!("Possible subcommands are:");
             eprintln!("\tcreate   \tCreate a new D4 depth profile");

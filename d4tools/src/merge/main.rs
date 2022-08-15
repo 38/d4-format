@@ -4,7 +4,7 @@ use d4::D4FileMerger;
 fn main(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
     let yaml = load_yaml!("cli.yml");
     let matches = App::from_yaml(yaml)
-        .version(d4::VERSION)
+        .version(d4tools::VERSION)
         .get_matches_from(args);
     let inputs: Vec<_> = matches.values_of("input-files").unwrap().collect();
     let output = matches.value_of("output-file").unwrap();

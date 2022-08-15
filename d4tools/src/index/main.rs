@@ -52,7 +52,7 @@ fn main_impl(args: ArgMatches) -> AppResult<bool> {
 
 pub fn entry_point(args: Vec<String>) -> AppResult<()> {
     let yaml = load_yaml!("cli.yml");
-    let mut app = App::from_yaml(yaml).version(d4::VERSION);
+    let mut app = App::from_yaml(yaml).version(d4tools::VERSION);
 
     let matches = app.clone().get_matches_from(args);
 
