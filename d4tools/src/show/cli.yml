@@ -29,7 +29,7 @@ args:
         help: "Print the column header"
     - region-file:
         required: false
-        help: A bed file that defines the region to be viewd
+        help: A bed file that defines the region(s) to be viewed
         value_name: BED_FILE
         short: R
         long: region-file
