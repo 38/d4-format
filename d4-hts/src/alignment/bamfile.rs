@@ -99,7 +99,7 @@ impl BamFile {
         };
 
         for (size, raw_name) in sizes.iter().zip(raw_names) {
-            let raw_name = unsafe { CStr::from_ptr(*raw_name as *const i8) };
+            let raw_name = unsafe { CStr::from_ptr(*raw_name as *const u8) };
 
             ret.chrom_list
                 .push((raw_name.to_string_lossy().to_string(), *size as usize));
