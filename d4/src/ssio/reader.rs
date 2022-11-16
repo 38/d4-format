@@ -131,9 +131,8 @@ impl<R: Read + Seek> D4TrackReader<R> {
             if table_ref.chrom_id == chrom_id {
                 let overlap_begin = table_ref.begin.max(begin);
                 let overlap_end = table_ref.end.min(end);
-
                 if overlap_begin < overlap_end {
-                    if overlap_begin + 1 == table_ref.begin || self.sfi.is_none() {
+                    if overlap_begin == table_ref.begin || self.sfi.is_none() {
                         secondary_view.push(table_ref.clone());
                     } else {
                         let sfi = self.sfi.as_ref().unwrap();
