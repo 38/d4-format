@@ -65,6 +65,7 @@ impl CreateAppCtx {
                 let (opcode, val_str) = match fragment.chars().next() {
                     Some('+') => ('+', &fragment[1..]),
                     Some('-') => ('-', &fragment[1..]),
+                    Some('~') => ('~', &fragment[1..]),
                     _ => ('=', fragment),
                 };
                 let value:u16 = val_str.parse().expect("Invalid BAM flag");
