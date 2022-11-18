@@ -16,7 +16,7 @@
 			},
 			"program": "target/debug/d4tools",
 			"env": {"RUST_LOG": "info"},
-			"args": ["create", "-g", "/tmp/1.g", "/tmp/1.bedgraph"],
+			"args": ["view", "/tmp/repo.d4", "chr1:1-100000"],
 			"cwd": "/tmp"
 		},
 		{

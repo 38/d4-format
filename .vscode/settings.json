@@ -5,7 +5,8 @@
 		"chroms",
 		"clus",
 		"framefile",
-		"ptab"
+		"ptab",
+		"ssio"
 	],
 	"files.associations": {
 		"*.pss": "pscript",

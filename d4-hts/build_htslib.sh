@@ -13,7 +13,7 @@ HTSLIB_VERSION=${1}
 
 rm -rf ${OUT_DIR}/htslib
 
-git clone -b ${HTSLIB_VERSION} https://github.com/samtools/htslib.git
+git clone -b ${HTSLIB_VERSION} http://github.com/samtools/htslib.git
 
 cd htslib
 
@@ -35,7 +35,12 @@ function is_musl() {
 is_musl && perl -i -pe 's/gcc/musl-gcc/g' Makefile
 
 
-curl -L 'https://github.com/madler/zlib/archive/refs/tags/v1.2.11.tar.gz' | tar xz
+if [ "x${ZLIB_SRC}" != "x" ]
+then
+	tar xz ${ZLIB_SRC}
+else
+	curl -L 'http://github.com/madler/zlib/archive/refs/tags/v1.2.11.tar.gz' | tar xz
+fi
 cd zlib-1.2.11
 is_musl && CC=musl-gcc ./configure || ./configure
 make libz.a

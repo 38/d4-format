@@ -104,7 +104,11 @@ impl SecondaryFrameIndex {
                 Ok(idx) => RecordFrameAddress::from_frame_index_entry(&self.items[idx]),
                 Err(idx) if !self.items.is_empty() => {
                     let prev_idx = if idx > 0 { idx - 1 } else { 0 };
-                    RecordFrameAddress::from_frame_index_entry(&self.items[prev_idx])
+                    if  self.items[prev_idx].chrom_id == chr_id as u32 {
+                        RecordFrameAddress::from_frame_index_entry(&self.items[prev_idx])
+                    } else {
+                        return Ok(None);
+                    }
                 }
                 _ => {
                     return Ok(None);
