@@ -6,11 +6,11 @@ use std::sync::{Arc, Mutex};
 
 /// The file object that supports random access. Since in D4 file,
 /// we actually use a random access file mode, which means all the read
-/// and write should provide the address. And this is the object that provides
-/// the low level random access interface.
+/// and write needs to provide the address in file. 
+/// And this is the object that provides the low level random access interface.
 ///
 /// At the same time, this RandFile object is synchronized, which means we guarantee
-/// the thread safety that each block of data is written to file correctly.
+/// the thread safety that each block of data is written to file correctly (without overlaps).
 ///
 /// The rand file provides a offset-based file access API and data can be read and write from the
 /// specified address in blocks. But rand file itself doesn't tracking the block size and it's the

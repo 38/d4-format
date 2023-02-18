@@ -1,5 +1,5 @@
 use std::cell::Cell;
-use std::ffi::c_void;
+use std::ffi::{c_void, c_char};
 use std::ffi::{CStr, CString};
 use std::os::unix::ffi::OsStrExt;
 use std::path::{Path, PathBuf};
@@ -99,7 +99,7 @@ impl BamFile {
         };
 
         for (size, raw_name) in sizes.iter().zip(raw_names) {
-            let raw_name = unsafe { CStr::from_ptr(*raw_name as *const i8) };
+            let raw_name = unsafe { CStr::from_ptr(*raw_name as *const c_char) };
 
             ret.chrom_list
                 .push((raw_name.to_string_lossy().to_string(), *size as usize));
