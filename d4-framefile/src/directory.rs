@@ -460,14 +460,15 @@ impl<T: Read + Seek> Directory<T> {
     ) -> bool {
         for Entry { name, kind, .. } in self.entries() {
             prefix.push(&name);
-            if !handle(prefix.as_path(), kind) {
+            if handle(prefix.as_path(), kind) == false {
                 prefix.pop();
-                return false;
+                return true;
             }
 
             if kind == EntryKind::SubDir {
                 if let Ok(subdir) = self.open_directory(&name) {
-                    if subdir.recurse_impl(handle, prefix) {
+                    if subdir.recurse_impl(handle, prefix) == false {
+                        prefix.pop();
                         return true;
                     }
                 }

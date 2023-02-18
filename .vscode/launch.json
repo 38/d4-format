@@ -16,7 +16,7 @@
 			},
 			"program": "target/debug/d4tools",
 			"env": {"RUST_LOG": "info"},
-			"args": ["view", "/tmp/repo.d4", "chr1:1-100000"],
+			"args": ["view", "/tmp/d4-test-data/abc.d4"],
 			"cwd": "/tmp"
 		},
 		{
