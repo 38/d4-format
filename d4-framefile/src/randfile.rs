@@ -269,11 +269,15 @@ pub mod mapping {
     }
 
     #[derive(Clone)]
-    pub struct MappingHandle(Arc<Mmap>);
+    pub struct MappingHandle(Arc<Option<Mmap>>);
 
     impl AsRef<[u8]> for MappingHandle {
         fn as_ref(&self) -> &[u8] {
-            self.0.as_ref()
+            if let Some(ref mmap) = *self.0 {
+                mmap.as_ref()
+            } else {
+                &[]
+            }
         }
     }
 
@@ -283,7 +287,11 @@ pub mod mapping {
                 .inner
                 .lock()
                 .map_err(|_| Error::new(ErrorKind::Other, "Lock Error"))?;
-            let mapped = unsafe { MmapOptions::new().offset(offset).len(size).map(&*inner)? };
+            let mapped = if size > 0 {
+                Some(unsafe { MmapOptions::new().offset(offset).len(size).map(&*inner)? })
+            } else {
+                None
+            };
             drop(inner);
             Ok(MappingHandle(Arc::new(mapped)))
         }
