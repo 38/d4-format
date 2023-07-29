@@ -35,7 +35,7 @@ function publish-crate() {
 	mv Cargo.toml Cargo.toml.tmp
 	pushd $1
 	cargo update
-	cargo publish
+	cargo publish --registry crates-io
 	popd
 	mv Cargo.toml.tmp Cargo.toml
 	sleep 20
