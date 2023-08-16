@@ -56,9 +56,11 @@ fn parse_region_spec<T: Iterator<Item = String>>(
         for region_spec in regions {
             if let Some(captures) = region_pattern.captures(&region_spec) {
                 let chr = captures.name("CHR").unwrap().as_str();
-                let start: u32 = captures
+                // since we are reading a region like chr:start-end which is 1-based, we subtract 1 from the start.
+                let start: u32 = std::cmp::max(1, captures
                     .name("FROM")
-                    .map_or(0u32, |x| x.as_str().parse().unwrap_or(0));
+                    .map_or(0u32, |x| x.as_str().parse().unwrap_or(0))) - 1;
+
                 let end: u32 = captures
                     .name("TO")
                     .map_or_else(|| {
@@ -311,7 +313,8 @@ pub fn entry_point(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> 
             if raw_chr.is_some() && raw_beg.is_some() && raw_end.is_some() {
                 if let Ok(begin) = raw_beg.unwrap().parse::<u32>() {
                     if let Ok(end) = raw_end.unwrap().parse::<u32>() {
-                        region_list.push(format!("{}:{}-{}", raw_chr.unwrap(), begin, end));
+                        // region-file is bed format so we add 1 to start to get to chr:start-end
+                        region_list.push(format!("{}:{}-{}", raw_chr.unwrap(), begin + 1, end));
                     }
                 }
                 buf.clear();
