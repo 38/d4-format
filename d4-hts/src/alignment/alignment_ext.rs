@@ -17,7 +17,7 @@ impl<'a> Alignment<'a> {
     }
 
     pub fn ref_len(&self) -> usize {
-        self.cigar()
+        let length: usize = self.cigar()
             .filter_map(|x| {
                 if x.in_reference() {
                     Some(x.len as usize)
@@ -25,7 +25,8 @@ impl<'a> Alignment<'a> {
                     None
                 }
             })
-            .sum()
+            .sum();
+        length - 1
     }
 
     pub fn ref_end(&self) -> usize {
