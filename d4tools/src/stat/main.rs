@@ -238,6 +238,8 @@ fn mean_stat_index<'a, R: Read + Seek>(
 ) -> Result<bool, Box<dyn std::error::Error>> {
     let mut tracks = Vec::new();
 
+    println!("mean_stat_index\n");
+
     if let Some(name) = track {
         tracks.push(name.into());
     } else {
@@ -248,6 +250,8 @@ fn mean_stat_index<'a, R: Read + Seek>(
         panic!("At least one track should be present in the file");
     }
     let file_root = d4_framefile::Directory::open_root(reader, 8)?;
+
+    println!("Number tracks: {}\n", tracks.len());
 
     let root_dir: Vec<_> = tracks
         .iter()
@@ -288,6 +292,7 @@ fn mean_stat_index<'a, R: Read + Seek>(
     }
 
     for (chr, begin, end) in regions {
+        print!("Hitting before\n");
         print!("{}\t{}\t{}", chr, begin, end);
         for (sum_index, ssio_reader) in index.iter().zip(ssio_reader.iter_mut()) {
             let index_res = sum_index.query(chr.as_str(), begin, end).unwrap();
@@ -298,6 +303,8 @@ fn mean_stat_index<'a, R: Read + Seek>(
                 sum_res.mean(index_res.query_size())
             };
             print!("\t{}", value / ssio_reader.get_denominator().unwrap_or(1.0));
+            println!("");
+            println!("chr {} begin {} end {} sum_res {} value {} ssio_reader {}\n", chr.as_str(), begin, end, sum_res.sum(), value, ssio_reader.get_denominator().unwrap_or(1.0));
         }
         println!("");
     }
@@ -306,6 +313,9 @@ fn mean_stat_index<'a, R: Read + Seek>(
 }
 
 pub fn entry_point(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
+
+    print!("hitting the entry_point\n");
+
     let yaml = load_yaml!("cli.yml");
     let matches = App::from_yaml(yaml)
         .version(d4tools::VERSION)
@@ -347,6 +357,9 @@ pub fn entry_point(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> 
             || !matches.is_present("stat"))
         && matches.values_of("input").unwrap().len() == 1
     {
+
+        println!("!matches.is_present no-index\n");
+
         let path = matches.value_of("input").unwrap();
         let region_file = matches.value_of("region");
         let sum_only = matches.value_of("stat")  == Some("sum");
@@ -361,6 +374,7 @@ pub fn entry_point(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> 
                 return Ok(());
             }
         } else {
+            println!("non http reading");
             let (path, track) = if let Some(pos) = path.rfind(':') {
                 (&path[..pos], Some(&path[pos + 1..]))
             } else {
@@ -386,6 +400,7 @@ pub fn entry_point(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> 
 
     match matches.value_of("stat") {
         None | Some("mean") | Some("avg") => {
+            println!("Hitting the mean");
             if !header_printed {
                 print!("#Chr\tBegin\tEnd");
             }
