@@ -452,10 +452,6 @@ impl CreateAppCtx {
                 }
             } else {
                 for pos in from..to {
-                    // FIXME: Needed?
-                    // if partition.len() == 0 {
-                    //     continue;
-                    // }
                     let region = partition[current].0.region();
                     if region.0 != chr || region.1 < pos || region.2 >= pos {
                         if let Some((idx, _)) = (0..).zip(partition.iter()).find(|(_, part)| {
@@ -473,10 +469,7 @@ impl CreateAppCtx {
                     }
                 }
             }
-            // FIXME: Needed?
-            // if partition.len() > 0 {
             partition[current].1.flush()?;
-            // }
         }
         for (_, mut stab) in partition {
             stab.finish()?;

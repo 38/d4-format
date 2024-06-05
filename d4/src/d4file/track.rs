@@ -71,7 +71,6 @@ where
 
             if this_end != last_end {
                 let this_begin = top.get_range().0;
-                print!("this_end {} last_end {} this_begin {}\n", this_end, last_end, this_begin);
                 func(this_begin, this_end, &mut active_heap);
                 last_end = this_end;
             }
@@ -84,7 +83,6 @@ where
         if let Some(handle) = handle {
             handle.init();
             if !active_heap.is_empty() {
-                println!("!!! Hit in end part");
                 if let Some(top) = active_heap.get(0) {
                     let this_begin = top.get_range().0;
                     func(this_begin, pos, &mut active_heap);
@@ -437,8 +435,6 @@ impl<S: SecondaryTableReader> MultiTrackPartitionReader for D4MatrixReaderPartit
     fn scan_partition<DS: DataScanner<Self::RowType>>(&mut self, handles: &mut [DS]) {
         let mut decoder = MatrixDecoder::new(self.primary.as_mut_slice());
         let per_base = !decoder.is_zero_sized();
-
-        println!("Hitting the secondary table reader\n");
 
         scan_partition_impl(handles, |begin, end, active_handles| {
             if per_base {
