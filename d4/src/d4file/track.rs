@@ -82,12 +82,10 @@ where
         }
         if let Some(handle) = handle {
             handle.init();
-            if !active_heap.is_empty() {
-                if let Some(top) = active_heap.get(0) {
-                    let this_begin = top.get_range().0;
-                    func(this_begin, pos, &mut active_heap);
-                    last_end = pos;
-                }
+            if let Some(top) = active_heap.get(0) {
+                let this_begin = top.get_range().0;
+                func(this_begin, pos, &mut active_heap);
+                last_end = pos;
             }
             let idx = active_heap.len();
             active_heap.push(handle);
