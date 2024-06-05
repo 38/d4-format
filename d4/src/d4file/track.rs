@@ -48,13 +48,9 @@ where
     DS: DataScanner<RT>,
     F: FnMut(u32, u32, &mut [&mut DS]),
 {
-    print!("scan_partition_impl outer\n");
-
     if handles.is_empty() {
         return;
     }
-
-    print!("scan_partition_impl");
 
     handles.sort_unstable_by(|a, b| a.get_range().cmp(&b.get_range()));
 

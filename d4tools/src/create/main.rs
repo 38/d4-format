@@ -414,7 +414,6 @@ impl CreateAppCtx {
         let input = parse_bed_file(&self.input_path)?;
         let mut current = 0;
         for (chr, from, to, depth) in input {
-            println!("Parsing {} {} {} {}", chr, from, to, depth);
             let depth = if let Some(denominator) = self.denominator {
                 ((depth as f64) * denominator).round() as i32
             } else {
