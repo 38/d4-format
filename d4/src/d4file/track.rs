@@ -70,7 +70,8 @@ where
             }
 
             if this_end != last_end {
-                func(last_end, this_end, &mut active_heap);
+                let this_begin = top.get_range().0;
+                func(this_begin, this_end, &mut active_heap);
                 last_end = this_end;
             }
 
@@ -81,8 +82,9 @@ where
         }
         if let Some(handle) = handle {
             handle.init();
-            if !active_heap.is_empty() {
-                func(last_end, pos, &mut active_heap);
+            if let Some(top) = active_heap.get(0) {
+                let this_begin = top.get_range().0;
+                func(this_begin, pos, &mut active_heap);
                 last_end = pos;
             }
             let idx = active_heap.len();
