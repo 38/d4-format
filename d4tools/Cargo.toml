@@ -1,6 +1,6 @@
 [package]
 name = "d4tools"
-version = "0.3.9"
+version = "0.3.10"
 authors = ["Hao Hou <haohou302@gmail.com>"]
 edition = "2021"
 license = "MIT"
