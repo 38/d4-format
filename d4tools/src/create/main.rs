@@ -361,7 +361,7 @@ impl CreateAppCtx {
 
             let mut write_value = |pos: u32, value: i32| {
                 if !p_encoder.encode(pos as usize, value) {
-                    st.encode(pos as u32, value).unwrap();
+                    st.encode(pos, value).unwrap();
                 }
             };
             if let Some(iter) = bw_file.query_range(&chrom, left, right) {
@@ -415,7 +415,7 @@ impl CreateAppCtx {
         let mut current = 0;
         for (chr, from, to, depth) in input {
             let depth = if let Some(denominator) = self.denominator {
-                ((depth as f64) * denominator).round() as i32
+                (depth * denominator).round() as i32
             } else {
                 if depth - depth.floor() > 1e-10 {
                     warn!("Encoding a decimal valued input to a integer D4, fix-point mode is recommended");

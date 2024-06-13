@@ -37,14 +37,13 @@ fn parse_bed_file<P: AsRef<Path>>(
     }))
 }
 
+#[allow(clippy::type_complexity)]
 fn parse_region_spec(
     region_file: Option<&str>,
     chrom_list: &[Chrom],
 ) -> Result<Vec<(String, u32, u32)>, Box<dyn std::error::Error>> {
     Ok(if let Some(path) = region_file {
-        parse_bed_file(path)?
-            .map(|(chr, left, right)| (chr, left, right))
-            .collect()
+        parse_bed_file(path)?.collect()
     } else {
         chrom_list
             .iter()
@@ -171,7 +170,7 @@ fn percentile_stat(
             for tag in tags.iter() {
                 print!("\t{}", tag);
             }
-            println!("");
+            println!();
             print_header = false;
         }
         print!("{}\t{}\t{}", chr, begin, end);
@@ -180,7 +179,7 @@ fn percentile_stat(
             let below_count = (count as f64 * percentile.min(1.0).max(0.0)).round() as u32;
             let mut current = below;
             let mut idx = 0;
-            while current < below_count && (idx as usize) < hist.len() {
+            while current < below_count && idx < hist.len() {
                 current += hist[idx];
                 idx += 1;
             }
@@ -229,7 +228,7 @@ fn hist_stat(matches: ArgMatches) -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-fn mean_stat_index<'a, R: Read + Seek>(
+fn mean_stat_index<R: Read + Seek>(
     mut reader: R,
     track: Option<&str>,
     print_header: bool,
@@ -244,14 +243,14 @@ fn mean_stat_index<'a, R: Read + Seek>(
         find_tracks(&mut reader, |_| true, &mut tracks)?;
     }
 
-    if tracks.len() == 0 {
+    if tracks.is_empty() {
         panic!("At least one track should be present in the file");
     }
     let file_root = d4_framefile::Directory::open_root(reader, 8)?;
 
     let root_dir: Vec<_> = tracks
         .iter()
-        .map(|name| match file_root.open(&name).unwrap() {
+        .map(|name| match file_root.open(name).unwrap() {
             d4_framefile::OpenResult::SubDir(dir) => dir,
             _ => panic!("Invalid track root"),
         })
@@ -284,7 +283,7 @@ fn mean_stat_index<'a, R: Read + Seek>(
                 print!("\t<default>");
             }
         }
-        println!("");
+        println!();
     }
 
     for (chr, begin, end) in regions {
@@ -299,7 +298,7 @@ fn mean_stat_index<'a, R: Read + Seek>(
             };
             print!("\t{}", value / ssio_reader.get_denominator().unwrap_or(1.0));
         }
-        println!("");
+        println!();
     }
 
     Ok(true)
@@ -320,13 +319,19 @@ pub fn entry_point(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> 
     if matches.value_of("stat") == Some("count") {
         let path = matches.value_of("input").unwrap();
         let chrom_list = if path.starts_with("http://") || path.starts_with("https://") {
-            d4::ssio::D4TrackReader::from_url(path)?.chrom_list().to_owned()
+            d4::ssio::D4TrackReader::from_url(path)?
+                .chrom_list()
+                .to_owned()
         } else {
             let reader: d4::D4TrackReader = d4::D4TrackReader::open(path)?;
-            reader.chrom_regions().iter().map(|(c, _s, e)| Chrom{
-                name: c.to_string(),
-                size: *e as usize,
-            }).collect()
+            reader
+                .chrom_regions()
+                .iter()
+                .map(|(c, _s, e)| Chrom {
+                    name: c.to_string(),
+                    size: *e as usize,
+                })
+                .collect()
         };
         let region_file = matches.value_of("region");
         let region_spec = parse_region_spec(region_file, &chrom_list)?;
@@ -349,7 +354,7 @@ pub fn entry_point(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> 
     {
         let path = matches.value_of("input").unwrap();
         let region_file = matches.value_of("region");
-        let sum_only = matches.value_of("stat")  == Some("sum");
+        let sum_only = matches.value_of("stat") == Some("sum");
         if path.starts_with("http://") || path.starts_with("https://") {
             let (url, track) = if let Some(pos) = path.rfind('#') {
                 (&path[..pos], Some(&path[pos + 1..]))
@@ -357,7 +362,13 @@ pub fn entry_point(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> 
                 (path, None)
             };
             let reader = HttpReader::new(url)?;
-            if mean_stat_index(reader, track, matches.is_present("header"), region_file, sum_only)? {
+            if mean_stat_index(
+                reader,
+                track,
+                matches.is_present("header"),
+                region_file,
+                sum_only,
+            )? {
                 return Ok(());
             }
         } else {
@@ -367,7 +378,13 @@ pub fn entry_point(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> 
                 (path, None)
             };
             let reader = File::open(path)?;
-            if mean_stat_index(reader, track, matches.is_present("header"), region_file, sum_only)? {
+            if mean_stat_index(
+                reader,
+                track,
+                matches.is_present("header"),
+                region_file,
+                sum_only,
+            )? {
                 return Ok(());
             }
         }
@@ -396,7 +413,7 @@ pub fn entry_point(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> 
                     for tag in tags.iter() {
                         print!("\t{}", tag);
                     }
-                    println!("");
+                    println!();
                     header_printed = true;
                 }
                 print!("{}\t{}\t{}", result.chrom, result.begin, result.end);
@@ -417,7 +434,7 @@ pub fn entry_point(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> 
                     for tag in tags.iter() {
                         print!("\t{}", tag);
                     }
-                    println!("");
+                    println!();
                     header_printed = true;
                 }
                 print!("{}\t{}\t{}", result.chrom, result.begin, result.end);

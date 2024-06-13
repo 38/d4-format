@@ -3,24 +3,29 @@ use std::iter::Once;
 use super::{SimpleTask, Task, TaskPartition};
 
 #[derive(Clone)]
-pub struct Sum{
-    chr: String, 
-    start: u32, 
+pub struct Sum {
+    chr: String,
+    start: u32,
     end: u32,
 }
 
 impl Sum {
+    #[allow(clippy::self_named_constructors)]
     pub fn sum(chr: &str, start: u32, end: u32) -> Self {
-        Self{
-            chr: chr.to_string(), start, end,
+        Self {
+            chr: chr.to_string(),
+            start,
+            end,
         }
     }
 }
 
 impl SimpleTask for Sum {
     fn new(chr: &str, start: u32, end: u32) -> Self {
-        Self{
-            chr: chr.to_string(), start, end,
+        Self {
+            chr: chr.to_string(),
+            start,
+            end,
         }
     }
 }
@@ -33,9 +38,7 @@ impl TaskPartition<Once<i32>> for SumPartition {
     type ParentType = Sum;
     type ResultType = i64;
     fn new(_: u32, _: u32, _: &Self::ParentType) -> Self {
-        Self {
-            sum: 0,
-        }
+        Self { sum: 0 }
     }
     #[inline(always)]
     fn feed(&mut self, _: u32, value: &mut Once<i32>) -> bool {

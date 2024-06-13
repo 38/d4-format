@@ -69,13 +69,13 @@ impl<M: PrimaryTableMode> PartialPrimaryTable<M> {
 }
 
 impl<M: PrimaryTableMode> PartialPrimaryTable<M> {
+    #[allow(clippy::wrong_self_convention)]
     pub fn to_codec(&mut self) -> PrimaryTableCodec<M> {
         let base_offset = self.start as usize;
         let bit_width = self.bit_width;
         let dict = self.dictionary.clone();
-        let slice = unsafe {
-            std::slice::from_raw_parts_mut(std::mem::transmute(self.addr_start), self.chunk_size)
-        };
+        let slice =
+            unsafe { std::slice::from_raw_parts_mut(self.addr_start as *mut u8, self.chunk_size) };
         PrimaryTableCodec {
             memory: slice,
             base_offset,
@@ -182,7 +182,7 @@ impl DecoderParameter {
     #[inline(always)]
     fn read_value(&mut self, idx: usize) -> u32 {
         let shift = self.shift[self.rule_base + idx];
-        let data: &u32 = unsafe { std::mem::transmute(*self.pointers.get_unchecked(idx)) };
+        let data: &u32 = unsafe { &*(*self.pointers.get_unchecked(idx) as *const u32) };
         data >> shift
     }
 

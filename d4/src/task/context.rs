@@ -117,7 +117,7 @@ where
             regions: tasks,
             partitions: file_partition
                 .into_iter()
-                .zip(task_assignment.into_iter())
+                .zip(task_assignment)
                 .map(|(f_part, scanner)| PartitionContext {
                     reader: f_part,
                     tasks: scanner,

@@ -94,7 +94,7 @@ impl SecondaryFrameIndex {
             .chrom_list()
             .iter()
             .enumerate()
-            .find(|(_, c)| &c.name == chr)
+            .find(|(_, c)| c.name == chr)
         {
             let ret = match self
                 .items
@@ -104,7 +104,7 @@ impl SecondaryFrameIndex {
                 Ok(idx) => RecordFrameAddress::from_frame_index_entry(&self.items[idx]),
                 Err(idx) if !self.items.is_empty() => {
                     let prev_idx = if idx > 0 { idx - 1 } else { 0 };
-                    if  self.items[prev_idx].chrom_id == chr_id as u32 {
+                    if self.items[prev_idx].chrom_id == chr_id as u32 {
                         RecordFrameAddress::from_frame_index_entry(&self.items[prev_idx])
                     } else {
                         return Ok(None);

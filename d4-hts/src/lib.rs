@@ -1,9 +1,9 @@
-pub mod alignment;
-
-pub use alignment::*;
-
 use std::cmp::Reverse;
 use std::collections::BinaryHeap;
+
+#[allow(clippy::all)]
+pub mod alignment;
+pub use alignment::*;
 
 pub struct DepthIter<'a, R: AlignmentReader<'a>> {
     iter: AlignmentIter<'a, R>,
@@ -11,6 +11,7 @@ pub struct DepthIter<'a, R: AlignmentReader<'a>> {
     cur_pos: usize,
     heap: BinaryHeap<Reverse<usize>>,
     next_read: Option<(i32, usize, usize)>,
+    #[allow(clippy::type_complexity)]
     filter: Option<Box<dyn Fn(&Alignment<'_>) -> bool + 'a>>,
 }
 

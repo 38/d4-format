@@ -35,7 +35,7 @@ pub trait DataSummary: Sized + Send + Sync + Clone {
         let chrom_list = reader.header().chrom_list().to_owned();
         let task_array: Vec<_> = chrom_list
             .iter()
-            .map(|seq| {
+            .flat_map(|seq| {
                 let chrom = seq.name.as_str();
                 (0..(seq.size as u32 + bin_size - 1) / bin_size).map(move |idx| {
                     (
@@ -45,7 +45,6 @@ pub trait DataSummary: Sized + Send + Sync + Clone {
                     )
                 })
             })
-            .flatten()
             .map(|(chrom, begin, end)| DataSummaryTask::<Self> {
                 chrom,
                 begin,
@@ -120,7 +119,7 @@ impl<'a, T: DataSummary> TaskPartition<Once<i32>> for DataSummaryTaskPart<'a, T>
     fn new(_left: u32, _right: u32, _parent: &Self::ParentType) -> Self {
         Self {
             sum: T::identity(),
-            _phantom_data: PhantomData::default(),
+            _phantom_data: PhantomData,
         }
     }
 

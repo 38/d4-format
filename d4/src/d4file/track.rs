@@ -52,7 +52,7 @@ where
         return;
     }
 
-    handles.sort_unstable_by(|a, b| a.get_range().cmp(&b.get_range()));
+    handles.sort_unstable_by_key(|a| a.get_range());
 
     let mut active_heap: Vec<&mut DS> = vec![];
     let cmp = |a: &&mut DS, b: &&mut DS| a.get_range().1.cmp(&b.get_range().1);
@@ -63,7 +63,7 @@ where
         let handle = handle_iter.next();
         let pos = handle.as_ref().map_or(u32::MAX, |h| h.get_range().0);
         // First, we need to pop all the previously active handles that will be deactivaited
-        while let Some(top) = active_heap.get(0) {
+        while let Some(top) = active_heap.first() {
             let this_end = top.get_range().1;
             if pos < this_end {
                 break;
@@ -82,7 +82,7 @@ where
         }
         if let Some(handle) = handle {
             handle.init();
-            if let Some(top) = active_heap.get(0) {
+            if let Some(top) = active_heap.first() {
                 let this_begin = top.get_range().0;
                 func(this_begin, pos, &mut active_heap);
                 last_end = pos;

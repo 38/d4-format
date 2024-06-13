@@ -171,7 +171,7 @@ impl<T: DataSummary> DataIndex<T> {
         let mut ret = DataIndexRef {
             raw_data: data_buffer,
             offset_table: HashMap::new(),
-            phantom: PhantomData::default(),
+            phantom: PhantomData,
         };
         let mut offset = 0;
         for Chrom { name, size } in chrom {

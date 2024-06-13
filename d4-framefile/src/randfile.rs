@@ -6,7 +6,7 @@ use std::sync::{Arc, Mutex};
 
 /// The file object that supports random access. Since in D4 file,
 /// we actually use a random access file mode, which means all the read
-/// and write needs to provide the address in file. 
+/// and write needs to provide the address in file.
 /// And this is the object that provides the low level random access interface.
 ///
 /// At the same time, this RandFile object is synchronized, which means we guarantee
@@ -288,7 +288,7 @@ pub mod mapping {
                 .lock()
                 .map_err(|_| Error::new(ErrorKind::Other, "Lock Error"))?;
             let mapped = if size > 0 {
-                Some(unsafe { MmapOptions::new().offset(offset).len(size).map(&*inner)? })
+                Some(unsafe { MmapOptions::new().offset(offset).len(size).map(&inner)? })
             } else {
                 None
             };
@@ -328,7 +328,7 @@ pub mod mapping {
                 MmapOptions::new()
                     .offset(offset)
                     .len(size)
-                    .map_mut(&*inner)?
+                    .map_mut(&inner)?
             };
             drop(inner);
             let base_addr = mapped.as_mut().as_mut_ptr();

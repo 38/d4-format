@@ -23,7 +23,7 @@ fn create_bindings(lib_root: &Path) -> Result<(), ()> {
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let lib_root = PathBuf::from(env::var("OUT_DIR").unwrap());
     assert!(Command::new("bash")
-        .args(&["build-lib.sh", lib_root.to_str().unwrap(), "0.4.4"])
+        .args(["build-lib.sh", lib_root.to_str().unwrap(), "0.4.4"])
         .spawn()
         .expect("Unable to build libBigWig")
         .wait()

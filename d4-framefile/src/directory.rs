@@ -419,7 +419,7 @@ impl<T: Read + Seek> Directory<T> {
         }
         for (idx, comp) in path.components().enumerate() {
             let comp = match comp {
-                Component::Normal(name) => name.to_string_lossy().to_owned(),
+                Component::Normal(name) => name.to_string_lossy().clone(),
                 _ => continue,
             };
             if idx < n_comp - 1 {
@@ -460,14 +460,14 @@ impl<T: Read + Seek> Directory<T> {
     ) -> bool {
         for Entry { name, kind, .. } in self.entries() {
             prefix.push(&name);
-            if handle(prefix.as_path(), kind) == false {
+            if !handle(prefix.as_path(), kind) {
                 prefix.pop();
                 return true;
             }
 
             if kind == EntryKind::SubDir {
                 if let Ok(subdir) = self.open_directory(&name) {
-                    if subdir.recurse_impl(handle, prefix) == false {
+                    if !subdir.recurse_impl(handle, prefix) {
                         prefix.pop();
                         return true;
                     }

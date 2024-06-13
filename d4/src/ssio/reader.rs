@@ -207,20 +207,18 @@ impl<R: Read + Seek> D4TrackReader<R> {
                     ));
                 }
             }
-        } else {
-            if let Some(mut track_metadata_path) = file_root.find_first_object(".metadata") {
-                track_metadata_path.pop();
-                let track_root_path = track_metadata_path;
-                match file_root.open(&track_root_path)? {
-                    OpenResult::SubDir(root) => root,
-                    _ => unreachable!(),
-                }
-            } else {
-                return Err(std::io::Error::new(
-                    std::io::ErrorKind::Other,
-                    "Empty container",
-                ));
+        } else if let Some(mut track_metadata_path) = file_root.find_first_object(".metadata") {
+            track_metadata_path.pop();
+            let track_root_path = track_metadata_path;
+            match file_root.open(track_root_path)? {
+                OpenResult::SubDir(root) => root,
+                _ => unreachable!(),
             }
+        } else {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                "Empty container",
+            ));
         };
         Self::from_track_root(track_root)
     }

@@ -220,7 +220,7 @@ impl<'a> AlignmentReader<'a> for &'a BamFile {
         (0, 0)
     }
     fn get_file(&self) -> &'a BamFile {
-        *self
+        self
     }
 
     #[allow(clippy::not_unsafe_ptr_arg_deref)]

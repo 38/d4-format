@@ -50,6 +50,7 @@ impl<'a> MappedStream<'a> {
 }
 
 impl MappedStreamFrame {
+    #[allow(clippy::missing_safety_doc)]
     pub unsafe fn offset_from(&self, base: *const u8) -> isize {
         (self as *const _ as *const u8).offset_from(base)
     }

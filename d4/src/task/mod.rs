@@ -3,18 +3,18 @@
 mod context;
 mod histogram;
 mod mean;
+mod sum;
 mod value_range;
 mod vector;
-mod sum;
 
 use std::io::Result;
 
 pub use context::TaskContext;
 pub use histogram::Histogram;
 pub use mean::Mean;
+pub use sum::Sum;
 pub use value_range::ValueRange;
 pub use vector::VectorStat;
-pub use sum::Sum;
 
 use crate::d4file::{MultiTrackPartitionReader, MultiTrackReader};
 
@@ -71,6 +71,7 @@ pub struct TaskOutputIter<'a, T> {
 }
 
 impl<T> TaskOutputVec<T> {
+    #[allow(clippy::len_without_is_empty)]
     pub fn len(&self) -> usize {
         self.results.len()
     }

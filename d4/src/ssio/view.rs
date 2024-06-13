@@ -47,6 +47,7 @@ impl<R: Read + Seek> D4TrackView<R> {
         if self.dictionary.bit_width() == 0 {
             return Ok(());
         }
+        #[allow(clippy::blocks_in_conditions)]
         if self
             .primary_table_buffer
             .as_ref()
@@ -63,7 +64,7 @@ impl<R: Read + Seek> D4TrackView<R> {
                     .min((self.end - start_pos) as usize);
             self.fetch_size = (self.fetch_size * 2)
                 .min(self.primary_table.size())
-                .min(1 * 1024 * 1024);
+                .min(1024 * 1024);
             let end_byte = (end_pos * self.dictionary.bit_width() + 7) / 8;
             let size = end_byte - start_byte;
             let mut buf = vec![0; size + 4];
@@ -152,7 +153,7 @@ impl<R: Read + Seek> D4TrackView<R> {
             }
         }
 
-        return Ok((begin_pos, begin_pos + 1, fallback_value));
+        Ok((begin_pos, begin_pos + 1, fallback_value))
     }
 
     fn update_current_secrec(&mut self) -> Result<()> {

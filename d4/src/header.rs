@@ -98,7 +98,7 @@ impl Header {
         self.chrom_list
             .iter()
             .take_while(|chr| chr.name != chrom)
-            .map(|chr| (chr.size as usize * bw + 7) / 8)
+            .map(|chr| (chr.size * bw + 7) / 8)
             .sum()
     }
 
@@ -115,7 +115,7 @@ impl Header {
         self.chrom_list
             .iter()
             .find(|chr| chr.name == chrom)
-            .map(|chr| (chr.size as usize * bw + 7) / 8)
+            .map(|chr| (chr.size * bw + 7) / 8)
             .unwrap_or(0)
     }
 
@@ -123,7 +123,7 @@ impl Header {
         let bit_width = self.dictionary.bit_width();
         self.chrom_list
             .iter()
-            .map(|chr| (chr.size as usize * bit_width + 7) / 8)
+            .map(|chr| (chr.size * bit_width + 7) / 8)
             .sum()
     }
 }

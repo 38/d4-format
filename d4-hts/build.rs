@@ -32,7 +32,7 @@ fn build_own_htslib() -> (Vec<PathBuf>, String, bool) {
     let version = env::var("HTSLIB").map_or_else(|_| "1.11".to_string(), |v| v);
 
     assert!(Command::new("bash")
-        .args(&["build_htslib.sh", &version])
+        .args(["build_htslib.sh", &version])
         .stdout(std::process::Stdio::null())
         .spawn()
         .expect("Unable to build htslib")

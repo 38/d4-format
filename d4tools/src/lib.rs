@@ -21,8 +21,7 @@ impl InputType {
     pub fn detect(path: &Path) -> InputType {
         let ext = path
             .extension()
-            .map(|e| e.to_str())
-            .flatten()
+            .and_then(|e| e.to_str())
             .unwrap_or("")
             .to_lowercase();
         match ext.as_str() {
@@ -74,11 +73,9 @@ pub fn parse_bed_file<P: AsRef<Path>>(
                         }
                     }
                 }
-            } else {
-                if !warned && !line.starts_with('#') {
-                    warn!("Invalid input line: {}", line.trim_end());
-                    warned = true;
-                }
+            } else if !warned && !line.starts_with('#') {
+                warn!("Invalid input line: {}", line.trim_end());
+                warned = true;
             }
         }
         None
@@ -120,6 +117,7 @@ pub fn check_reference_consistency<'a, I: Iterator<Item = &'a [Chrom]>>(iter: I)
 
     if chrom_matrix.len() > 1 {
         for (i, chrom) in chrom_matrix[0].iter().enumerate() {
+            #[allow(clippy::needless_range_loop)]
             for j in 1..chrom_matrix.len() {
                 if &chrom_matrix[j][i] != chrom {
                     return false;

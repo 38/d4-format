@@ -59,17 +59,21 @@ fn parse_region_spec<T: Iterator<Item = String>>(
                 let start: u32 = captures
                     .name("FROM")
                     .map_or(0u32, |x| x.as_str().parse().unwrap_or(0));
-                let end: u32 = captures
-                    .name("TO")
-                    .map_or_else(|| {
-                        chr_map.get(chr).map_or(!0, |&id| chrom_list[id].size as u32)
-                    }, |x| {
-                        x.as_str().parse().unwrap_or(!0)
-                    });
+                let end: u32 = captures.name("TO").map_or_else(
+                    || {
+                        chr_map
+                            .get(chr)
+                            .map_or(!0, |&id| chrom_list[id].size as u32)
+                    },
+                    |x| x.as_str().parse().unwrap_or(!0),
+                );
                 if let Some(&chr) = chr_map.get(chr) {
                     ret.push((chr, start, end));
                 } else {
-                    eprintln!("Warning: ignore chromosome {} which is not defined in d4 file", chr);
+                    eprintln!(
+                        "Warning: ignore chromosome {} which is not defined in d4 file",
+                        chr
+                    );
                 }
                 continue;
             } else {
@@ -148,7 +152,7 @@ fn show_region<R: Read + Seek>(
                     last_pos,
                     pos,
                     prev_values.as_slice(),
-                    &denominators.as_slice(),
+                    denominators.as_slice(),
                     print_all_zero,
                 )?;
                 last_pos = pos;
@@ -163,7 +167,7 @@ fn show_region<R: Read + Seek>(
                 last_pos,
                 end,
                 values.as_slice(),
-                &denominators.as_slice(),
+                denominators.as_slice(),
                 print_all_zero,
             )?;
         }
@@ -174,6 +178,7 @@ fn show_region<R: Read + Seek>(
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 fn show_impl<R: Read + Seek, I: Iterator<Item = String>>(
     mut reader: R,
     pattern: Regex,
@@ -248,7 +253,7 @@ fn show_impl<R: Read + Seek, I: Iterator<Item = String>>(
     }
 
     if print_header {
-        println!("");
+        println!();
     }
 
     if !d4tools::check_reference_consistency(readers.iter().map(|r| r.chrom_list())) {

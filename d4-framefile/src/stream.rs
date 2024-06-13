@@ -19,7 +19,7 @@ impl FrameHeader {
     }
     fn from_bytes(data: &[u8]) -> FrameHeader {
         assert!(data.len() >= std::mem::size_of::<Self>());
-        let data = *unsafe { std::mem::transmute::<_, &FrameHeader>(data.as_ptr()) };
+        let data = *unsafe { &*data.as_ptr().cast::<FrameHeader>() };
         let offset = data.linked_frame.map_or(0, |x| x.get().to_le());
         let size = data.linked_frame_size;
         Self::new(offset, size)
@@ -236,7 +236,7 @@ impl<T> Stream<T> {
         }
         self.frame_size *= 2;
     }
-    pub(crate) fn clone_underlying_file<'b>(&'b self) -> RandFile<T> {
+    pub(crate) fn clone_underlying_file(&self) -> RandFile<T> {
         self.file.clone()
     }
 
@@ -256,7 +256,7 @@ impl<T> Stream<T> {
 }
 impl<T: Read + Write + Seek> Stream<T> {
     pub fn flush(&mut self) -> Result<()> {
-        let current_frame = std::mem::replace(&mut self.current_frame, None);
+        let current_frame = self.current_frame.take();
         self.current_frame = Some(Frame::alloc_new_frame(current_frame, &mut self.file, 0)?);
         self.cursor = 0;
         Ok(())
@@ -403,7 +403,7 @@ impl<T: Read + Seek> Stream<T> {
                     .max(self.cursor)
                     - self.cursor;
                 if can_read == 0 {
-                    let this_frame = std::mem::replace(&mut self.current_frame, None);
+                    let this_frame = self.current_frame.take();
                     self.current_frame =
                         this_frame.unwrap().load_next_frame(&mut self.file, true)?;
                     self.cursor = 0;
@@ -463,17 +463,14 @@ impl<T: Read + Seek> Stream<T> {
     }
 }
 
-impl<'a, T: Read + Write + Seek> Stream<T> {
+impl<T: Read + Write + Seek> Stream<T> {
     pub fn update_current_byte(&mut self, byte: u8) -> Result<usize> {
         if let Some(current_frame) = &self.current_frame {
             if self.cursor > 0 {
                 self.cursor -= 1;
-            } else {
-                if current_frame.parent_frame.is_some() {
-                    let this_frame = self.current_frame.take().unwrap();
-                    this_frame.load_previous_frame(&mut self.file, true)?;
-                }
-                // Otherwise this is the begining of the stream, thus no need to go back
+            } else if current_frame.parent_frame.is_some() {
+                let this_frame = self.current_frame.take().unwrap();
+                this_frame.load_previous_frame(&mut self.file, true)?;
             }
             self.write(&[byte])?;
             return Ok(1);

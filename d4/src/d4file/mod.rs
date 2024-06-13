@@ -24,7 +24,7 @@ mod mapped {
     pub use merger::D4FileMerger;
     pub use reader::D4TrackReader;
     pub use track::{
-        D4FilePartition, D4MatrixReader, DataScanner, MultiTrackPartitionReader, MultiTrackReader,
+        D4MatrixReader, DataScanner, MultiTrackPartitionReader, MultiTrackReader,
     };
 
     pub use writer::{D4FileBuilder, D4FileWriter, D4FileWriterExt};

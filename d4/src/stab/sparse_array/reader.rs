@@ -26,7 +26,6 @@ pub(crate) fn load_compressed_frame<'a, R: Record>(
     first: bool,
     buffer: &mut Vec<RecordBlock<'a, R>>,
 ) {
-    let frame = frame;
     let (is_compressed, first_pos, last_pos, block_count, data) = if first {
         (
             frame[0] == 0,
@@ -64,7 +63,6 @@ pub(crate) fn load_frame<'a, R: Record>(
     mut excess: Vec<u8>,
     buffer: &mut Vec<RecordBlock<'a, R>>,
 ) -> Vec<u8> {
-    let frame = frame;
     let data = assemble_incomplete_records(&mut excess, frame, buffer);
     let rem = data.len() % R::SIZE;
     if data.len() > R::SIZE {
@@ -441,17 +439,13 @@ mod mapped_io {
             let mut current_part_id = 0;
 
             // For each block, we need figure out how we can split it.
-            for (chrom, mut block) in chroms
-                .into_iter()
-                .map(move |chrom| {
-                    record_blocks
-                        .remove(&chrom)
-                        .unwrap()
-                        .into_iter()
-                        .map(move |block| (chrom.clone(), block))
-                })
-                .flatten()
-            {
+            for (chrom, mut block) in chroms.into_iter().flat_map(move |chrom| {
+                record_blocks
+                    .remove(&chrom)
+                    .unwrap()
+                    .into_iter()
+                    .map(move |block| (chrom.clone(), block))
+            }) {
                 let (block_min, block_max) = block.range();
                 while current_part_id < partitions.len()
                     && (partitions[current_part_id].chrom < chrom.as_str()

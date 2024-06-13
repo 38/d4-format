@@ -50,7 +50,7 @@ pub trait Record: Sized + Copy + Send + 'static {
     /// Serialize the record into bytes
     #[inline(always)]
     fn as_bytes(&self) -> &[u8] {
-        unsafe { std::slice::from_raw_parts(std::mem::transmute(self), Self::SIZE) }
+        unsafe { std::slice::from_raw_parts(self as *const Self as *const u8, Self::SIZE) }
     }
 
     /// Check if this record is a valid one

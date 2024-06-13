@@ -9,7 +9,7 @@ pub struct Sequence<'a> {
 
 impl<'a> Sequence<'a> {
     pub fn len(&self) -> usize {
-        self.alignment.seq_len() as usize
+        self.alignment.seq_len()
     }
     fn read_numeric(&self, offset: usize) -> u32 {
         let hts_obj = self.alignment.hts_obj();

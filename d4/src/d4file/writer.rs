@@ -45,10 +45,7 @@ impl<PT: PrimaryTableWriter, ST: SecondaryTableWriter> D4FileWriter<PT, ST> {
         let p_table_parts = self.p_table.split(&self.header, size_limit)?;
         let partitions: Vec<_> = p_table_parts.iter().map(|part| part.region()).collect();
         let s_table_parts = self.s_table.as_mut().unwrap().split(&partitions)?;
-        let ret = p_table_parts
-            .into_iter()
-            .zip(s_table_parts.into_iter())
-            .collect();
+        let ret = p_table_parts.into_iter().zip(s_table_parts).collect();
         Ok(ret)
     }
 
@@ -63,10 +60,11 @@ impl<PT: PrimaryTableWriter, ST: SecondaryTableWriter> D4FileWriter<PT, ST> {
 
 impl<PT: PrimaryTableWriter, ST: SecondaryTableWriter> Drop for D4FileWriter<PT, ST> {
     fn drop(&mut self) {
-        drop(std::mem::replace(&mut self.s_table, None));
+        drop(self.s_table.take());
     }
 }
 
+#[allow(clippy::type_complexity)]
 /// The builder that is used to build a D4 file
 pub struct D4FileBuilder {
     path: PathBuf,
