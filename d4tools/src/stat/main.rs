@@ -4,7 +4,7 @@ use d4::{
     find_tracks,
     index::{D4IndexCollection, Sum},
     ssio::http::HttpReader,
-    task::{Histogram, Mean, SimpleTask, Task, TaskOutput},
+    task::{PercentCov, Histogram, Mean, SimpleTask, Task, TaskOutput},
     Chrom, D4TrackReader,
 };
 
@@ -225,6 +225,62 @@ fn hist_stat(matches: ArgMatches) -> Result<(), Box<dyn std::error::Error>> {
     }
     println!(">{}\t{}", max_bin, above);
 
+    Ok(())
+}
+fn parse_stat_thresholds(stat: &str) -> Result<Vec<u32>, Box<dyn Error>> {
+    
+    let perc_cov_part = stat.split(',').find(|part| part.starts_with("perc_cov="));
+    match perc_cov_part {
+        Some(part) => {
+            
+            let thresholds_str = &part["perc_cov=".len()..];
+            let mut thresholds: Vec<u32> = thresholds_str
+                .split(',')
+                .map(|s| s.trim().parse())
+                .collect::<Result<Vec<u32>, _>>()?;
+            thresholds.sort_unstable();
+            Ok(thresholds)
+        },
+        None => {
+            
+            Ok(vec![10, 20, 30])
+        }
+    }
+}
+
+fn perc_cov_stat(matches: ArgMatches, mut print_header: bool,) -> Result<(), Box<dyn std::error::Error>> {
+    let stat = matches.value_of("stat").unwrap_or("perc_cov=10,20,30");
+
+    let thresholds = parse_stat_thresholds(stat)?;
+    let mut unused = Vec::new();
+    let results =
+        open_file_parse_region_and_then(matches, &mut unused, |mut input, regions| {
+            let tasks: Vec<_> = regions
+                .into_iter()
+                .map(|(chr, begin, end)| PercentCov::new(&chr, begin, end, thresholds.clone()))
+                .collect();
+            
+            Ok((
+                PercentCov::create_task(&mut tracks[0], tasks)
+            ))
+        })?;
+    
+    if print_header {
+        print!("#Chr\tStart\tEnd");
+        for t in thresholds.iter() {
+            print!("\t{}x", t);
+        }
+        println!();
+        print_header = false;
+    }
+    for r in results.into_iter() {
+        
+        print!("{}\t{}\t{}", r.chr, r.start, r.end);
+        for value in r.output.iter() {
+            print!("\t{:.3}", value);
+        }
+        println!();
+    }
     Ok(())
 }
 
@@ -449,6 +505,9 @@ pub fn entry_point(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> 
         }
         Some("hist") => {
             hist_stat(matches)?;
+        }
+        Some(whatever) if whatever.starts_with("perc_cov=") => {
+            perc_cov_stat(matches, !header_printed)?;
         }
         Some(whatever) if whatever.starts_with("percentile=") => {
             let prefix_len = "percentile=".len();
