@@ -59,11 +59,17 @@ impl Task<std::iter::Once<i32>> for PercentCov {
     }
     fn combine(&self, parts: &[Vec<u32>]) -> Self::Output {
         let divisor = (self.2 - self.1) as f32;
-        let result: Vec<f32> = parts
-            .iter()
-            .cloned()
-            .flat_map(|v| v.into_iter().map(move |x| x as f32 / divisor))
-            .collect();
+        let mut sums: Vec<u32> = vec![0; self.3.len()];
+
+        // Sum the vectors index-wise
+        for part in parts {
+            for (i, &value) in part.iter().enumerate() {
+                sums[i] += value;
+            }
+        }
+
+        let result: Vec<f32> = sums.into_iter().map(|x| x as f32 / divisor).collect();
+
         result
     }
 }
