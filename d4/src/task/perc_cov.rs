@@ -68,7 +68,15 @@ impl Task<std::iter::Once<i32>> for PercentCov {
             }
         }
 
-        let result: Vec<f32> = sums.into_iter().map(|x| x as f32 / divisor).collect();
+        let result: Vec<f32> = sums.into_iter()
+        .map(|x| {
+            if x != 0 {
+                (x - 1) as f32 / divisor
+            } else {
+                x as f32 / divisor
+            }
+        })
+        .collect();
 
         result
     }
