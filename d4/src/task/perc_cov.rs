@@ -3,7 +3,7 @@ use std::iter::Once;
 
 #[derive(Clone)]
 pub struct PercentCovPart {
-    //thresholds should be sorted 
+    //thresholds should be sorted
     thresholds: Vec<u32>,
     counts: Vec<u32>,
 }
@@ -59,24 +59,18 @@ impl Task<std::iter::Once<i32>> for PercentCov {
     }
     fn combine(&self, parts: &[Vec<u32>]) -> Self::Output {
         let divisor = (self.2 - self.1) as f32;
+
         let mut sums: Vec<u32> = vec![0; self.3.len()];
 
         // Sum the vectors index-wise
+
         for part in parts {
             for (i, &value) in part.iter().enumerate() {
                 sums[i] += value;
             }
         }
 
-        let result: Vec<f32> = sums.into_iter()
-        .map(|x| {
-            if x != 0 {
-                (x - 1) as f32 / divisor
-            } else {
-                x as f32 / divisor
-            }
-        })
-        .collect();
+        let result: Vec<f32> = sums.into_iter().map(|x| x as f32 / divisor).collect();
 
         result
     }
