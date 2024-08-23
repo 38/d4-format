@@ -70,7 +70,12 @@ where
             }
 
             if this_end != last_end {
-                let this_begin = top.get_range().0;
+                let this_begin;
+                if top.get_range().0 > last_end {
+                    this_begin = top.get_range().0;
+                } else {
+                    this_begin = last_end;
+                }
                 func(this_begin, this_end, &mut active_heap);
                 last_end = this_end;
             }
@@ -83,7 +88,12 @@ where
         if let Some(handle) = handle {
             handle.init();
             if let Some(top) = active_heap.first() {
-                let this_begin = top.get_range().0;
+                let this_begin;
+                if top.get_range().0 > last_end {
+                    this_begin = top.get_range().0;
+                } else {
+                    this_begin = last_end;
+                }
                 func(this_begin, pos, &mut active_heap);
                 last_end = pos;
             }
