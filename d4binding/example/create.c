@@ -9,6 +9,7 @@ int main()
 		.chrom_name = chrom_list,
 		.chrom_size = size_list,
 		.dict_type = D4_DICT_SIMPLE_RANGE,
+        .denominator = 1,
 		.dict_data = {
 			.simple_range = {
 				.low= 0,
