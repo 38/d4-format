@@ -155,7 +155,7 @@ FLAGS:
 OPTIONS:
     -r, --region <bed_file_path>      A bed file that describes the region we want to run the stat
     -s, --stat <stat_type>            The type of statistics we want to perform, by default average. You can specify
-                                      statistic methods: mean, median, hist, percentile=X% (If this is not speficied
+                                      statistic methods: perc_cov, mean, median, hist, percentile=X% (If this is not speficied
                                       d4tools will use mean by default)
     -t, --threads <num_of_threads>    Number of threads
 
@@ -202,6 +202,19 @@ $ d4tools stat -s median hg002.d4 | head -n 10
 $ d4tools stat -s percentile=95 -r region.bed hg002.d4
 1       2000000 3000000 33
 2       0       150000000       38
+```
+
+- Percent of bases at or above coverage levels (perc_cov)
+```text
+$ d4tools stat -H -s perc_cov=1,2 -r data/input_10nt.multiple_ranges.bed data/input_10nt.d4 
+#Chr    Start   End     1x      2x
+chr     0       2       0.000   0.000
+chr     0       8       0.625   0.375
+chr     0       10      0.600   0.300
+chr     1       6       0.600   0.400
+chr     3       9       1.000   0.500
+chr     4       5       1.000   1.000
+chr     5       10      0.800   0.400
 ```
 
 ### Reading D4 File Served by static HTTP Server
