@@ -266,7 +266,11 @@ fn perc_cov_stat(
     for r in results.into_iter() {
         print!("{}\t{}\t{}", r.chrom, r.begin, r.end);
         for value in r.output.iter() {
-            print!("\t{:.3}", value);
+            if value.abs() >= 0.001 {
+                print!("\t{:.3}", value);
+            } else {
+                print!("\t{:.3e}", value);
+            }
         }
         println!();
     }
