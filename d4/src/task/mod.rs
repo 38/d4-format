@@ -6,6 +6,7 @@ mod mean;
 mod sum;
 mod value_range;
 mod vector;
+mod perc_cov;
 
 use std::io::Result;
 
@@ -15,6 +16,7 @@ pub use mean::Mean;
 pub use sum::Sum;
 pub use value_range::ValueRange;
 pub use vector::VectorStat;
+pub use perc_cov::PercentCov;
 
 use crate::d4file::{MultiTrackPartitionReader, MultiTrackReader};
 

@@ -80,7 +80,7 @@ EOF
 
 	popd >& /dev/null
 
-	rm ${OUTDIR} -rf
+	rm -rf ${OUTDIR}
 done
 
 echo 

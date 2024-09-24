@@ -4,7 +4,7 @@ use d4::{
     find_tracks,
     index::{D4IndexCollection, Sum},
     ssio::http::HttpReader,
-    task::{Histogram, Mean, SimpleTask, Task, TaskOutput},
+    task::{Histogram, Mean, PercentCov, SimpleTask, Task, TaskOutput},
     Chrom, D4TrackReader,
 };
 
@@ -225,6 +225,55 @@ fn hist_stat(matches: ArgMatches) -> Result<(), Box<dyn std::error::Error>> {
     }
     println!(">{}\t{}", max_bin, above);
 
+    Ok(())
+}
+fn parse_stat_thresholds(stat: &str) -> Result<Vec<u32>, Box<dyn std::error::Error>> {
+    let thresholds_str = &stat["perc_cov=".len()..];
+
+    let mut thresholds: Vec<u32> = thresholds_str
+        .split(',')
+        .map(|s| s.trim().parse())
+        .collect::<Result<Vec<u32>, _>>()?;
+    thresholds.sort_unstable();
+    Ok(thresholds)
+}
+
+fn perc_cov_stat(
+    matches: ArgMatches,
+    mut print_header: bool,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let stat = matches.value_of("stat").unwrap_or("perc_cov=10,20,30");
+
+    let thresholds = parse_stat_thresholds(stat)?;
+    let mut unused = Vec::new();
+    let results = open_file_parse_region_and_then(matches, &mut unused, |mut input, regions| {
+        let tasks: Vec<_> = regions
+            .into_iter()
+            .map(|(chr, begin, end)| PercentCov::new(&chr, begin, end, thresholds.clone()))
+            .collect();
+
+        Ok(PercentCov::create_task(&mut input[0], tasks)?.run())
+    })?;
+
+    if print_header {
+        print!("#Chr\tStart\tEnd");
+        for t in thresholds.iter() {
+            print!("\t{}x", t);
+        }
+        println!();
+        print_header = false;
+    }
+    for r in results.into_iter() {
+        print!("{}\t{}\t{}", r.chrom, r.begin, r.end);
+        for value in r.output.iter() {
+            if value.abs() >= 0.001 {
+                print!("\t{:.3}", value);
+            } else {
+                print!("\t{:.3e}", value);
+            }
+        }
+        println!();
+    }
     Ok(())
 }
 
@@ -450,12 +499,15 @@ pub fn entry_point(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> 
         Some("hist") => {
             hist_stat(matches)?;
         }
+        Some(whatever) if whatever.starts_with("perc_cov") => {
+            perc_cov_stat(matches, !header_printed)?;
+        }
         Some(whatever) if whatever.starts_with("percentile=") => {
             let prefix_len = "percentile=".len();
             let percentile: f64 = whatever[prefix_len..].parse()?;
             percentile_stat(matches, percentile / 100.0, !header_printed)?;
         }
-        _ => panic!("Unsupported stat type"),
+        _ => panic!("Unsupported stat type: {:?}", matches.value_of("stat")),
     }
     Ok(())
 }

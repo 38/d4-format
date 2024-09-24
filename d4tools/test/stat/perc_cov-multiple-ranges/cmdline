@@ -1,0 +1,1 @@
+${D4TOOLS} stat -s perc_cov=1,2 -r ${DATADIR}/input_10nt.multiple_ranges.bed ${DATADIR}/input_10nt.d4
