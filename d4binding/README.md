@@ -6,7 +6,7 @@ To build the binding library, you can simple run the following command:
 
 ```shell
 # For release build
-cargo build --release --pakcage=d4binding
+cargo build --release --package=d4binding
 
 # For debug build
 cargo build --package=d4binding
