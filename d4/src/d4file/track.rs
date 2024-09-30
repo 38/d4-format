@@ -36,9 +36,9 @@ fn adjust_down<T, Cmp: Fn(&T, &T) -> Ordering>(heap: &mut [T], mut idx: usize, c
 }
 
 fn adjust_up<T, Cmp: Fn(&T, &T) -> Ordering>(heap: &mut [T], mut idx: usize, cmp: Cmp) {
-    while idx > 0 && cmp(&heap[idx / 2], &heap[idx]).is_gt() {
-        heap.swap(idx / 2, idx);
-        idx /= 2;
+    while idx > 0 && cmp(&heap[(idx - 1) / 2], &heap[idx]).is_gt() {
+        heap.swap((idx - 1) / 2, idx);
+        idx = (idx - 1) / 2;
     }
 }
 
