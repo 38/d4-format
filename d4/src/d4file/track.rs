@@ -179,11 +179,9 @@ impl<P: PrimaryTableReader, S: SecondaryTableReader> MultiTrackPartitionReader
         let mut decoder = self.primary.make_decoder();
 
         scan_partition_impl(handles, |part_left, part_right, active_handles| {
-
             if let Some(default_value) = default_primary_value {
                 let iter = self.secondary.seek_iter(part_left);
                 let mut last_right = part_left;
-
                 for (mut left, mut right, value) in iter {
                     left = left.max(part_left);
                     right = right.min(part_right).max(left);
