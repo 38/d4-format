@@ -179,12 +179,16 @@ impl<P: PrimaryTableReader, S: SecondaryTableReader> MultiTrackPartitionReader
         let mut decoder = self.primary.make_decoder();
 
         scan_partition_impl(handles, |part_left, part_right, active_handles| {
+
             if let Some(default_value) = default_primary_value {
                 let iter = self.secondary.seek_iter(part_left);
                 let mut last_right = part_left;
+
                 for (mut left, mut right, value) in iter {
                     left = left.max(part_left);
                     right = right.min(part_right).max(left);
+
+
                     for handle in active_handles.iter_mut() {
                         if last_right < left {
                             handle.feed_rows(last_right, left, &mut std::iter::once(default_value));
@@ -210,6 +214,11 @@ impl<P: PrimaryTableReader, S: SecondaryTableReader> MultiTrackPartitionReader
                     secondary: &mut self.secondary,
                     active_handles,
                 };
+
+                if part_left >= part_right {
+                    return;
+                }    
+
                 decoder.decode_block(
                     part_left as usize,
                     (part_right - part_left) as usize,
@@ -217,6 +226,7 @@ impl<P: PrimaryTableReader, S: SecondaryTableReader> MultiTrackPartitionReader
                 );
             }
         });
+
     }
 
     fn chrom(&self) -> &str {
