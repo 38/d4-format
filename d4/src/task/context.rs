@@ -96,6 +96,14 @@ where
                 if c != chr || fpr < l {
                     break;
                 }
+                // As ranges are sorted on their left position, the idx approach
+                // above can let through ranges with lower left positions which still
+                // does not reach into the next segment
+                // See https://github.com/38/d4-format/pull/91
+                if fpl > r {
+                    overlapping_idx += 1;
+                    continue;
+                }
                 let actual_left = fpl.max(l);
                 let actual_right = fpr.min(r);
 
