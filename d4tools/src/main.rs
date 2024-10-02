@@ -4,7 +4,7 @@ mod index;
 mod ls_track;
 mod merge;
 mod plot;
-#[cfg(feature = "server")]
+#[cfg(feature = "d4-server")]
 mod server;
 mod show;
 mod stat;
@@ -21,7 +21,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Some("ls-track") => ls_track::entry_point(args),
         Some("merge") => merge::entry_point(args),
         Some("plot") => plot::entry_point(args),
-        #[cfg(feature = "server")]
+        #[cfg(feature = "d4-server")]
         Some("serve") => server::entry_point(args),
         Some("show") | Some("view") => show::entry_point(args),
         Some("stat") => stat::entry_point(args),
@@ -35,7 +35,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             eprintln!("\tls-track \tList all available tracks in the D4 file");
             eprintln!("\tmerge    \tMerge existing D4 file as a multi-track D4 file");
             eprintln!("\tplot     \tPlot the specified region");
-            #[cfg(feature = "server")]
+            #[cfg(feature = "d4-server")]
             eprintln!("\tserve    \tStart a D4 server");
             eprintln!("\tshow     \tPrint the underlying depth profile");
             eprintln!("\tstat     \tRun statistics on the given file");

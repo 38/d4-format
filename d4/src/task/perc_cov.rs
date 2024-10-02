@@ -32,7 +32,7 @@ impl TaskPartition<Once<i32>> for PercentCovPart {
         let value = value.next().unwrap();
         for (i, thresh) in self.thresholds.iter().enumerate() {
             if value as u32 >= *thresh {
-                self.counts[i] += right - left as u32
+                self.counts[i] += right - left
             }
         }
         true

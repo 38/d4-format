@@ -176,7 +176,7 @@ fn percentile_stat(
         print!("{}\t{}\t{}", chr, begin, end);
         for ((below, hist, above), &denominator) in results.into_iter().zip(denominators.iter()) {
             let count: u32 = below + hist.iter().sum::<u32>() + above;
-            let below_count = (count as f64 * percentile.min(1.0).max(0.0)).round() as u32;
+            let below_count = (count as f64 * percentile.clamp(0.0, 1.0)).round() as u32;
             let mut current = below;
             let mut idx = 0;
             while current < below_count && idx < hist.len() {

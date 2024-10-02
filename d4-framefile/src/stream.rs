@@ -152,11 +152,7 @@ impl Frame {
             size
         };
 
-        let mut ret = if let Some(buf) = buf {
-            buf
-        } else {
-            Self::default()
-        };
+        let mut ret = buf.unwrap_or_default();
 
         ret.data.resize(bytes_to_read, 0);
         if ret.data.len() != file.read_block(offset, &mut ret.data[..])? {
@@ -366,11 +362,7 @@ impl<T: Read + Write + Seek> Write for Stream<T> {
 }
 impl<T: Read + Seek> AsRef<[u8]> for Stream<T> {
     fn as_ref(&self) -> &[u8] {
-        if let Some(r) = self.read_current_frame() {
-            r
-        } else {
-            &[]
-        }
+        self.read_current_frame().unwrap_or_default()
     }
 }
 impl<T: Read + Seek> Stream<T> {
