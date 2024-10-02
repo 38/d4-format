@@ -11,7 +11,7 @@ pub struct PercentCovPart {
 impl TaskPartition<Once<i32>> for PercentCovPart {
     type ParentType = PercentCov;
     type ResultType = Vec<u32>;
-    fn new(left: u32, right: u32, parent: &Self::ParentType) -> Self {
+    fn new(_left: u32, _right: u32, parent: &Self::ParentType) -> Self {
         Self {
             thresholds: parent.3.clone(),
             counts: vec![0; parent.3.len()],

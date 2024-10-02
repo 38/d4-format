@@ -36,9 +36,9 @@ fn adjust_down<T, Cmp: Fn(&T, &T) -> Ordering>(heap: &mut [T], mut idx: usize, c
 }
 
 fn adjust_up<T, Cmp: Fn(&T, &T) -> Ordering>(heap: &mut [T], mut idx: usize, cmp: Cmp) {
-    while idx > 0 && cmp(&heap[idx / 2], &heap[idx]).is_gt() {
-        heap.swap(idx / 2, idx);
-        idx /= 2;
+    while idx > 0 && cmp(&heap[(idx - 1) / 2], &heap[idx]).is_gt() {
+        heap.swap((idx - 1) / 2, idx);
+        idx = (idx - 1) / 2;
     }
 }
 
@@ -517,5 +517,76 @@ impl<S: SecondaryTableReader> MultiTrackReader for D4MatrixReader<S> {
                 D4MatrixReaderPartition::<S> { primary, secondary }
             })
             .collect())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    struct TestScanner {
+        range: (u32, u32),
+    }
+
+    impl<RT> DataScanner<RT> for TestScanner
+    where
+        RT: Iterator<Item = i32> + ExactSizeIterator,
+     {
+        fn get_range(&self) -> (u32, u32) {
+            self.range
+        }
+
+        fn init(&mut self) {}
+
+        fn feed_row(&mut self, _pos: u32, _row: &mut RT) -> bool {
+            true
+        }
+
+        fn feed_rows(&mut self, _begin: u32, _end: u32, _row: &mut RT) -> bool {
+            true            
+        }
+    }
+
+    #[test]
+    fn fail_adjust_up() {
+
+        // This set of ranges will crash if parent in adjust_up is selected as "x" instead of "x-1"
+        // It is used as is simply as it was hard to boil this down further to a smaller test case
+        let ranges = vec![
+            (686509, 763194),
+            (686606, 764595),
+            (686639, 764595),
+            (686659, 762714),
+            (686674, 764595),
+            (686675, 764595),
+            (686682, 764595),
+            (686689, 763120),
+            (686731, 762597),
+            (706399, 764595),
+            (718904, 737202),
+            (747700, 748140),
+        ];
+
+        let mut handles: Vec<TestScanner> = ranges
+            .into_iter()
+            .map(|range| TestScanner {
+                range
+            })
+            .collect();
+
+        let mut results = Vec::new();
+        
+        let func = |begin: u32, end: u32, active: &mut [&mut TestScanner]| {
+            results.push((begin, end, active.len()));
+        };
+
+        scan_partition_impl::<std::vec::IntoIter<i32>, TestScanner, _>(&mut handles, func);
+
+        assert!(!results.is_empty());
+
+        // The bug led to one interval being in the reversed order
+        for (begin, end, _active_count) in results {
+            assert!(end > begin);
+        }
     }
 }
