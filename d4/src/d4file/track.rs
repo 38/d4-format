@@ -584,6 +584,7 @@ mod tests {
 
         assert!(!results.is_empty());
 
+        // The bug led to one interval being in the reversed order
         for (begin, end, _active_count) in results {
             assert!(end > begin);
         }
