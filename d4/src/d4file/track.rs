@@ -35,11 +35,106 @@ fn adjust_down<T, Cmp: Fn(&T, &T) -> Ordering>(heap: &mut [T], mut idx: usize, c
     }
 }
 
-fn adjust_up<T, Cmp: Fn(&T, &T) -> Ordering>(heap: &mut [T], mut idx: usize, cmp: Cmp) {
-    while idx > 0 && cmp(&heap[(idx - 1) / 2], &heap[idx]).is_gt() {
-        heap.swap((idx - 1) / 2, idx);
-        idx = (idx - 1) / 2;
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    struct TestScanner {
+        range: (u32, u32),
+        initialized: bool,
     }
+
+    // pub trait DataScanner<RT>
+    // where
+    //     RT: Iterator<Item = i32> + ExactSizeIterator,
+    //     {
+    //         fn get_range(&self) -> (u32, u32);
+    //         fn init(&mut self);
+    //         fn feed_row(&mut self, pos: u32, row: &mut RT) -> bool;
+    //         fn feed_rows(&mut self, begin: u32, end: u32, row: &mut RT) -> bool;
+    //     }
+
+    impl<RT> DataScanner<RT> for TestScanner
+    where
+        RT: Iterator<Item = i32> + ExactSizeIterator,
+     {
+        fn get_range(&self) -> (u32, u32) {
+            self.range
+        }
+
+        fn init(&mut self) {
+            self.initialized = true;
+        }
+
+        fn feed_row(&mut self, pos: u32, row: &mut RT) -> bool {
+            true
+        }
+
+        fn feed_rows(&mut self, begin: u32, end: u32, row: &mut RT) -> bool {
+            true            
+        }
+    }
+
+    // #[test]
+    // fn it_works() {
+    //     let mut heap = [0,1,2,3,4];
+    //     let cmp= |a: &i32, b: &i32| a.cmp(b);
+    //     let idx = 0;
+    //     adjust_down(&mut heap, idx, cmp);
+    //     assert_eq!(1, 1);
+    // }
+
+    #[test]
+    fn fail_adjust_up() {
+
+        let ranges = vec![
+            (686509, 763194),
+            (686606, 764595),
+            (686639, 764595),
+            (686659, 762714),
+            (686674, 764595),
+            (686675, 764595),
+            (686682, 764595),
+            (686689, 763120),
+            (686731, 762597),
+            (706399, 764595),
+            (718904, 737202),
+            (747700, 748140),
+        ];
+
+        let mut handles: Vec<TestScanner> = ranges
+            .into_iter()
+            .map(|range| TestScanner {
+                range, initialized: false
+            })
+            .collect();
+
+        let mut results = Vec::new();
+        
+        let func = |begin: u32, end: u32, active: &mut [&mut TestScanner]| {
+            results.push((begin, end, active.len()));
+        };
+
+        type ConcreteIterator = std::vec::IntoIter<i32>;
+        scan_partition_impl::<ConcreteIterator, TestScanner, _>(&mut handles, func);
+
+        assert!(!results.is_empty());
+
+        for (begin, end, _active_count) in results {
+            assert!(end > begin);
+        }
+    }
+}
+
+fn adjust_up<T, Cmp: Fn(&T, &T) -> Ordering>(heap: &mut [T], mut idx: usize, cmp: Cmp) {
+    while idx > 0 && cmp(&heap[(idx) / 2], &heap[idx]).is_gt() {
+        heap.swap((idx) / 2, idx);
+        idx = (idx) / 2;
+    }
+    // while idx > 0 && cmp(&heap[(idx - 1) / 2], &heap[idx]).is_gt() {
+    //     heap.swap((idx - 1) / 2, idx);
+    //     idx = (idx - 1) / 2;
+    // }
 }
 
 fn scan_partition_impl<RT, DS, F>(handles: &mut [DS], mut func: F)
