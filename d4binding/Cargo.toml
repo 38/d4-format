@@ -15,4 +15,4 @@ rayon = "1.3.0"
 bindgen = "0.60.1"
 
 [lib]
-crate_type = ["cdylib", "staticlib"]
+crate-type = ["cdylib", "staticlib"]

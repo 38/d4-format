@@ -1,6 +1,6 @@
 [package]
 name = "d4-hts"
-version = "0.3.9"
+version = "0.3.11"
 authors = ["Hao Hou <haohou302@gmail.com>"]
 edition = "2021"
 license = "MIT"
