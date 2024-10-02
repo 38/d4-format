@@ -51,64 +51,12 @@ where
     partitions: Vec<PartitionContext<R::PartitionType, T>>,
 }
 
-
-
-
 impl<R: MultiTrackReader, T: Task<<R::PartitionType as MultiTrackPartitionReader>::RowType>>
     TaskContext<R, T>
 where
     T::Partition: Send,
     R::PartitionType: Send,
 {
-    
-    fn assign_tasks_to_partitions(
-        partitions: &[R::PartitionType],
-        tasks: &[T],
-    ) -> Vec<Vec<TaskScanner<T::Partition>>>
-    {
-        let mut task_assignment: Vec<Vec<TaskScanner<T::Partition>>> =
-            partitions.iter().map(|_| Vec::new()).collect();
-    
-        let mut idx = 0;
-        for (fpid, part) in partitions.iter().enumerate() {
-            let chr = part.chrom();
-            let fpl = part.begin();
-            let fpr = part.end();
-    
-            while idx < tasks.len() {
-                let (task_chr, _, task_right) = tasks[idx].region();
-                if task_chr < chr || (task_chr == chr && task_right < fpl) {
-                    idx += 1;
-                } else {
-                    break;
-                }
-            }
-    
-            let mut overlapping_idx = idx;
-    
-            while overlapping_idx < tasks.len() {
-                let this = &tasks[overlapping_idx];
-                let (c, l, r) = this.region();
-                if c != chr || fpr < l {
-                    break;
-                }
-    
-                let actual_left = fpl.max(l);
-                let actual_right = fpr.min(r);
-    
-                task_assignment[fpid].push(TaskScanner {
-                    task_id: overlapping_idx,
-                    range: (actual_left, actual_right),
-                    partition: T::Partition::new(actual_left, actual_right, this),
-                });
-    
-                overlapping_idx += 1;
-            }
-        }
-    
-        task_assignment
-    }
-
     /// Create a new task that processing the given file
     pub fn new(reader: &mut R, mut tasks: Vec<T>) -> Result<Self> {
         let mut file_partition = MultiTrackReader::split(reader, Some(10_000_000))?;
@@ -119,7 +67,59 @@ where
 
         tasks.sort_unstable_by(|a, b| a.region().cmp(&b.region()));
 
-        let task_assignment = Self::assign_tasks_to_partitions(&file_partition, &tasks);        
+        let mut task_assignment: Vec<Vec<_>> = (0..file_partition.len())
+            .map(|_| Default::default())
+            .collect();
+
+        // Now assign the d4 file partition to each task assignments
+        let mut idx = 0;
+        for (fpid, part) in file_partition.iter().enumerate() {
+            let chr = part.chrom();
+            let fpl = part.begin();
+            let fpr = part.end();
+
+            // first, skip all the regions that *before* this partition
+            while idx < tasks.len() {
+                let (task_chr, _, task_right) = tasks[idx].region();
+                if task_chr < chr || (task_chr == chr && task_right < fpl) {
+                    idx += 1;
+                } else {
+                    break;
+                }
+            }
+
+            let mut overlapping_idx = idx;
+
+            while overlapping_idx < tasks.len() {
+                let this = &tasks[overlapping_idx];
+                let (c, l, r) = this.region();
+                if c != chr || fpr < l {
+                    break;
+                }
+                // // As ranges are sorted on their left position, the idx approach
+                // // above can let through ranges with lower left positions which still
+                // // does not reach into the next segment
+                // // See https://github.com/38/d4-format/pull/91
+                if fpl > r {
+                    overlapping_idx += 1;
+                    continue;
+                }
+                let actual_left = fpl.max(l);
+                let actual_right = fpr.min(r);
+
+                task_assignment[fpid].push(TaskScanner {
+                    task_id: overlapping_idx,
+                    range: (actual_left, actual_right),
+                    partition: <<T as Task<_>>::Partition as TaskPartition<_>>::new(
+                        actual_left,
+                        actual_right,
+                        this,
+                    ),
+                });
+
+                overlapping_idx += 1;
+            }
+        }
 
         Ok(Self {
             regions: tasks,
