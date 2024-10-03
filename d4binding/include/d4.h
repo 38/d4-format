@@ -71,9 +71,8 @@ int d4_file_load_metadata(const d4_file_t* handle, d4_file_metadata_t* buf);
      Note: this requires the D4 file is opened in write mode. */
 int d4_file_update_metadata(d4_file_t* handle, const d4_file_metadata_t* metadata);
 
-/*!<
-    Cleanup the memory that is allocated to hold the metadata. Note this doesn't free the metadata object itself
-*/
+/*!< Cleanup the memory that is allocated to hold the metadata. 
+     Note this doesn't free the metadata object itself. */
 static inline void d4_file_metadata_clear(d4_file_metadata_t* meta) {
 	if(NULL == meta) return;
 	int i;
