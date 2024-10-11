@@ -1,11 +1,18 @@
-FROM rust:1.50 as builder
-WORKDIR /usr/src/d4format
-COPY . .
+###########
+# BUILDER #
+###########
 
-RUN cargo build --release
+FROM rust:latest AS builder
 
-FROM debian:buster-slim
-RUN rm -rf /var/lib/apt/lists/*
-COPY --from=builder /usr/src/d4format/target/release/d4tools /usr/local/bin/d4tools
+RUN cargo install --git https://github.com/38/d4-format.git d4tools --branch master
+
+#########
+# FINAL #
+#########
+
+FROM debian:bookworm-slim
+
+# Import lib from builder
+COPY --from=builder /usr/local/cargo/bin/d4tools /usr/local/bin/d4tools
 
 CMD ["d4tools"]
