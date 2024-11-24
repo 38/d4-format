@@ -646,6 +646,34 @@ pub extern "C" fn d4_task_read_values(
 }
 
 #[no_mangle]
+pub extern "C" fn d4_index_build_sfi(path: *const c_char) -> i32 {
+    if path.is_null() {
+        return set_einval(-1);
+    }
+
+    let path = unsafe { CStr::from_ptr(path) };
+    #[cfg(unix)]
+    let path: &std::path::Path = {
+        use std::os::unix::ffi::OsStrExt;
+        std::ffi::OsStr::from_bytes(path.to_bytes()).as_ref()
+    };
+
+    match D4IndexCollection::open_for_write(path) {
+        Ok(mut ic) => match ic.create_secondary_frame_index() {
+            Ok(_) => 0,
+            Err(e) => {
+                set_last_error(e);
+                -2
+            }
+        },
+        Err(e) => {
+            set_last_error(e);
+            -3
+        }
+    }
+}
+
+#[no_mangle]
 pub extern "C" fn d4_index_check(handle: *mut d4_file_t, kind: d4_index_kind_t) -> i32 {
     if null_mut() == handle {
         return set_einval(-1);
