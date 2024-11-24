@@ -119,7 +119,7 @@ typedef enum {
 typedef union {
     double sum;
 } d4_index_result_t;
-
+int d4_index_build_sfi(const char *path);
 int d4_index_check(d4_file_t* handle, d4_index_kind_t kind);
 int d4_index_query(d4_file_t* handle, d4_index_kind_t kind, const char* chrom, uint32_t start, uint32_t end, d4_index_result_t* buf);
 
