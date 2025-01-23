@@ -1,0 +1,2 @@
+${D4TOOLS} create --mapping-qual 0 single_read.bam ${OUTDIR}/single_read.d4 && ${D4TOOLS} view ${OUTDIR}/single_read.d4
+`

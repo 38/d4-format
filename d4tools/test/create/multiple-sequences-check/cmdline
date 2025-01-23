@@ -1,0 +1,1 @@
+${D4TOOLS} create --mapping-qual 0 multi_reads_multi_chr.bam ${OUTDIR}/multi_reads_multi_chr.d4 && ${D4TOOLS} view ${OUTDIR}/multi_reads_multi_chr.d4
