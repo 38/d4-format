@@ -1,0 +1,42 @@
+name: Build pyd4
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+
+      - name: Install UV
+        uses: astral-sh/setup-uv@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: "pyd4/pyproject.toml"
+
+      - name: Install project
+        run: |
+          cd pyd4
+          uv sync --all-extras --dev
+
+      - name: Build
+        run: |
+          cd pyd4
+          uv build
+
+      - name: Test
+        run: |
+          cd pyd4
+          uv run pytest
