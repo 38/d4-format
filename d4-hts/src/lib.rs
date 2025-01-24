@@ -54,9 +54,6 @@ impl<'a, R: AlignmentReader<'a>> Iterator for DepthIter<'a, R> {
             return None;
         }
 
-        let ret = (self.cur_chrom, self.cur_pos, self.heap.len() as u32);
-
-        self.cur_pos += 1;
 
         while let Some((tid, left, right)) = self.next_read {
             if tid != self.cur_chrom {
@@ -76,6 +73,10 @@ impl<'a, R: AlignmentReader<'a>> Iterator for DepthIter<'a, R> {
         while self.heap.peek().map_or(false, |x| x.0 < self.cur_pos) {
             self.heap.pop();
         }
+
+        let ret = (self.cur_chrom, self.cur_pos, self.heap.len() as u32);
+
+        self.cur_pos += 1;
 
         Some(ret)
     }

@@ -29,7 +29,8 @@ impl<'a> Alignment<'a> {
     }
 
     pub fn ref_end(&self) -> usize {
-        self.ref_begin() + self.ref_len()
+        // d4 uses 0-based closed interval end coordinate.
+        self.ref_begin() + self.ref_len() - 1
     }
 
     pub fn ref_id(&self) -> i32 {
