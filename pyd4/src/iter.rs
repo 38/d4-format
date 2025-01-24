@@ -3,7 +3,7 @@ use d4::ssio::{http::HttpReader, D4TrackReader as RemoteReader};
 use d4::stab::SecondaryTablePartReader;
 use d4::D4TrackReader;
 use pyo3::iter::IterNextOutput;
-use pyo3::{prelude::*, PyIterProtocol};
+use pyo3::prelude::*;
 use std::io::Result;
 
 /// Value iterator for D4 file
@@ -69,10 +69,6 @@ impl D4Iter {
             iter: Box::new(iter),
         })
     }
-}
-
-#[pyproto]
-impl PyIterProtocol for D4Iter {
     fn __iter__(slf: PyRefMut<Self>) -> Result<PyRefMut<Self>> {
         Ok(slf)
     }

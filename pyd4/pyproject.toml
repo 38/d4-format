@@ -1,3 +1,33 @@
 [build-system]
-requires = ["setuptools>=41.0.0", "wheel", "setuptools_rust>=0.10.2", "toml"]
+requires = ["setuptools", "setuptools-rust", "wheel"]
 build-backend = "setuptools.build_meta"
+
+[project]
+name = "pyd4"
+version = "0.3.6.2"
+requires-python = ">=3.12"
+description = "Python binding for D4 file format"
+dependencies = ["numpy>=2.2.2"]
+readme = "README.md"
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python",
+    "Programming Language :: Rust",
+    "Operating System :: POSIX",
+    "Operating System :: MacOS :: MacOS X",
+]
+
+[tool.setuptools.packages]
+find = { where = ["pyd4"] }
+
+[[tool.setuptools-rust.ext-modules]]
+target = "pyd4"
+path = "Cargo.toml"
+binding = "PyO3"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3.4",
+]
