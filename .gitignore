@@ -44,3 +44,4 @@ pyd4/*.egg-info/**
 pyd4/build/**
 pyd4/**/__pycache__/**
 .ipynb*
+dist
