@@ -86,7 +86,40 @@ pub fn entry_point(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> 
         })
         .unwrap();
 
-    let data = downsample_data(input, &chr, (left, right), 256)?;
+    let range_length = right as u64 - left as u64 + 1;
+
+    let nbins = matches.value_of("nbins").map(|v| v.parse::<u64>().unwrap());
+    let bin_width = matches
+        .value_of("bin-width")
+        .map(|v| v.parse::<u64>().unwrap());
+
+    let nbins = match (nbins, bin_width) {
+        (Some(n), None) => n,
+        (None, Some(width)) => {
+            if width == 0 {
+                panic!("Invalid bin-width: cannot be zero");
+            }
+            (range_length / width).max(1)
+        }
+        (Some(n), Some(width)) => {
+            if width == 0 {
+                panic!("Invalid bin-width: cannot be zero");
+            }
+            let calculated_nbins = (range_length / width).max(1);
+            if n != calculated_nbins {
+                panic!(
+                    "Conflicting options: --nbins ({}) and --bin-width ({}) do not match.",
+                    n, width
+                );
+            }
+            n
+        }
+        (None, None) => 256,
+    };
+
+    let nbins = nbins as usize;
+
+    let data = downsample_data(input, &chr, (left, right), nbins)?;
 
     let pos_range = plotters::data::fitting_range(data.iter().map(|x| &x.0));
     let mut data_range = plotters::data::fitting_range(data.iter().map(|x| &x.1));
