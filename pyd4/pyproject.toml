@@ -1,13 +1,13 @@
 [build-system]
-requires = ["setuptools", "setuptools-rust", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = ["maturin>=1,<2"]
+build-backend = "maturin"
 
 [project]
 name = "pyd4"
-version = "0.3.6.2"
-requires-python = ">=3.12"
+version = "0.3.10"
+requires-python = ">=3.10"
 description = "Python binding for D4 file format"
-dependencies = ["numpy>=2.2.2"]
+dependencies = ["numpy>1.24.4"]
 readme = "README.md"
 classifiers = [
     "License :: OSI Approved :: MIT License",
@@ -19,15 +19,10 @@ classifiers = [
     "Operating System :: MacOS :: MacOS X",
 ]
 
-[tool.setuptools.packages]
-find = { where = ["pyd4"] }
+[tool.maturin]
+python-source = "python"
+module-name = "pyd4._pyd4" # Points to Rust
 
-[[tool.setuptools-rust.ext-modules]]
-target = "pyd4"
-path = "Cargo.toml"
-binding = "PyO3"
 
 [dependency-groups]
-dev = [
-    "pytest>=8.3.4",
-]
+dev = ["pytest>=8.3.4", "maturin>=1,<2"]

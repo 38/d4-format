@@ -77,7 +77,7 @@ impl ReaderWrapper {
 }
 
 #[pymodule]
-pub fn pyd4(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
+pub fn _pyd4(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     env_logger::init();
     m.add_class::<D4File>()?;
     m.add_class::<D4Iter>()?;
