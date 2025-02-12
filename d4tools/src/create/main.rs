@@ -199,6 +199,7 @@ impl CreateAppCtx {
         let mut purposed_denominator = 1.0f64;
         let mut num_of_intervals = 0;
         let mut genome_size = 0;
+        let mut max_value = 0.0f64;
         for (chr_name, chr_size) in bw_file.chroms() {
             genome_size += chr_size;
             if let Some(result) = bw_file.query_range(&chr_name, 0, chr_size as u32) {
@@ -216,9 +217,16 @@ impl CreateAppCtx {
                     }
 
                     purposed_denominator = purposed_denominator.max(denominator);
+                    max_value = max_value.max(value.abs());
                 }
             }
         }
+
+        // Reduce the denominator if the max value is too large to fit in i32
+        while max_value * purposed_denominator > i32::MAX as f64 {
+            purposed_denominator /= 10.0;
+        }
+
         if auto_dict_detection && num_of_intervals * 10 < genome_size * 6 {
             self.builder
                 .set_dictionary(Dictionary::new_simple_range_dict(0, 1)?);
@@ -234,6 +242,7 @@ impl CreateAppCtx {
     fn detect_default_denominator_for_bedgraph(&mut self) -> Result<(), DynErr> {
         let input = parse_bed_file(self.input_path.as_path())?;
         let mut purposed_denominator = 1.0f64;
+        let mut max_value = 0.0f64;
 
         for (_, _, _, value) in input {
             if value.abs() < 1e-10 {
@@ -246,6 +255,12 @@ impl CreateAppCtx {
             }
 
             purposed_denominator = purposed_denominator.max(denominator);
+            max_value = max_value.max(value.abs());
+        }
+
+        // Reduce the denominator if the max value is too large to fit in i32
+        while max_value * purposed_denominator > i32::MAX as f64 {
+            purposed_denominator /= 10.0;
         }
 
         if purposed_denominator != 1.0 {
