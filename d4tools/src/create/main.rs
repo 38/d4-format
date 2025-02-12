@@ -272,6 +272,7 @@ impl CreateAppCtx {
 
     fn determine_default_denominator(&mut self, matches: &ArgMatches) -> Result<(), DynErr> {
         if self.denominator.is_some() {
+            self.builder.set_denominator(self.denominator.unwrap());
             return Ok(());
         }
 

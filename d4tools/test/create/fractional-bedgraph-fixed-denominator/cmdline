@@ -1,0 +1,2 @@
+${D4TOOLS} create --denominator 100 -g genome.size input.bedgraph ${OUTDIR}/out.d4 && \
+		${D4TOOLS} view ${OUTDIR}/out.d4
