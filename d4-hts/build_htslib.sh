@@ -48,6 +48,7 @@ cp libz.a ..
 cd ..
 
 curl -L https://github.com/libarchive/bzip2/archive/refs/tags/bzip2-1.0.8.tar.gz | tar xz
+mv bzip2-bzip2-1.0.8 bzip2-1.0.8
 cd bzip2-1.0.8
 is_musl && perl -i -pe 's/gcc/musl-gcc/g' Makefile
 is_musl || perl -i -pe 's/CFLAGS=/CFLAGS=-fPIC /g' Makefile
