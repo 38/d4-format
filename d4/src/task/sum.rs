@@ -67,10 +67,6 @@ impl Task<std::iter::Once<i32>> for Sum {
     }
 
     fn combine(&self, parts: &[i64]) -> i64 {
-        let mut values = 0;
-        for v in parts {
-            values += v;
-        }
-        values
+        parts.iter().sum()
     }
 }

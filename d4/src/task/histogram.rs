@@ -50,15 +50,16 @@ impl TaskPartition<Once<i32>> for Partition {
         let value = value.next().unwrap();
         let offset = value - self.base;
         let histogram = self.histogram.as_mut().unwrap();
+        let count = right - left;
         if offset < 0 {
-            self.below += 1;
+            self.below += count;
             return true;
         }
         if offset >= histogram.len() as i32 {
-            self.above += right - left;
+            self.above += count;
             return true;
         }
-        histogram[offset as usize] += right - left;
+        histogram[offset as usize] += count;
         true
     }
 
@@ -84,7 +85,7 @@ impl Task<std::iter::Once<i32>> for Histogram {
         let mut below = 0;
         let mut above = 0;
         for (b, v, a) in parts {
-            for (idx, value) in v.iter().enumerate() {
+            for (idx, &value) in v.iter().enumerate() {
                 histogram[idx] += value;
             }
             below += b;

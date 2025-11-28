@@ -66,12 +66,9 @@ impl Task<std::iter::Once<i32>> for Mean {
     }
 
     fn combine(&self, parts: &[(i64, usize)]) -> f64 {
-        let mut values = 0;
-        let mut counts = 0;
-        for (v, c) in parts {
-            values += v;
-            counts += c;
-        }
+        let (values, counts) = parts
+            .iter()
+            .fold((0i64, 0usize), |(acc_v, acc_c), (v, c)| (acc_v + v, acc_c + c));
 
         if counts == 0 {
             return 0.0;

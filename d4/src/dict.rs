@@ -223,16 +223,17 @@ impl Dictionary {
     }
     #[inline(always)]
     pub fn bit_width(&self) -> usize {
-        let mut n_values = match self {
+        let n_values = match self {
             Self::SimpleRange { low, high } => (high - low).max(0) as usize,
             Self::Dictionary { i2v_map, .. } => i2v_map.len(),
         };
-        let mut ret = 0;
-        while n_values > 1 {
-            n_values >>= 1;
-            ret += 1;
+        if n_values <= 1 {
+            0
+        } else {
+            // Calculate the number of bits needed to represent n_values - 1
+            // This is equivalent to: floor(log2(n_values - 1)) + 1
+            usize::BITS as usize - (n_values - 1).leading_zeros() as usize
         }
-        ret
     }
 
     #[inline(always)]

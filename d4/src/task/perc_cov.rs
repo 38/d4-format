@@ -17,22 +17,31 @@ impl TaskPartition<Once<i32>> for PercentCovPart {
             counts: vec![0; parent.3.len()],
         }
     }
-    // #[inline(always)]
+    #[inline(always)]
     fn feed(&mut self, _: u32, value: &mut Once<i32>) -> bool {
-        let value = value.next().unwrap();
-        for (i, thresh) in self.thresholds.iter().enumerate() {
-            if value as u32 >= *thresh {
-                self.counts[i] += 1
+        let value = value.next().unwrap() as u32;
+        // Since thresholds are sorted in ascending order, we can use early termination
+        for (i, &thresh) in self.thresholds.iter().enumerate() {
+            if value >= thresh {
+                self.counts[i] += 1;
+            } else {
+                // All subsequent thresholds will be higher, so we can stop
+                break;
             }
         }
         true
     }
-    // #[inline(always)]
+    #[inline(always)]
     fn feed_range(&mut self, left: u32, right: u32, value: &mut Once<i32>) -> bool {
-        let value = value.next().unwrap();
-        for (i, thresh) in self.thresholds.iter().enumerate() {
-            if value as u32 >= *thresh {
-                self.counts[i] += right - left
+        let value = value.next().unwrap() as u32;
+        let count = right - left;
+        // Since thresholds are sorted in ascending order, we can use early termination
+        for (i, &thresh) in self.thresholds.iter().enumerate() {
+            if value >= thresh {
+                self.counts[i] += count;
+            } else {
+                // All subsequent thresholds will be higher, so we can stop
+                break;
             }
         }
         true
@@ -63,15 +72,12 @@ impl Task<std::iter::Once<i32>> for PercentCov {
         let mut sums: Vec<u32> = vec![0; self.3.len()];
 
         // Sum the vectors index-wise
-
         for part in parts {
             for (i, &value) in part.iter().enumerate() {
                 sums[i] += value;
             }
         }
 
-        let result: Vec<f32> = sums.into_iter().map(|x| x as f32 / divisor).collect();
-
-        result
+        sums.into_iter().map(|x| x as f32 / divisor).collect()
     }
 }
