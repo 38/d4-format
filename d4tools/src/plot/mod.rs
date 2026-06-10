@@ -54,6 +54,25 @@ fn downsample_data(
         .collect())
 }
 
+fn actual_range_length(
+    path: &str,
+    chr: &str,
+    mut range: (u32, u32),
+) -> Result<u64, Box<dyn std::error::Error>> {
+    let input: d4::D4TrackReader = d4::D4TrackReader::open(path)?;
+    let target = input
+        .header()
+        .chrom_list()
+        .iter()
+        .find(|this| this.name == chr)
+        .unwrap();
+
+    range.0 = range.0.min(target.size as u32);
+    range.1 = range.1.max(range.0).min(target.size as u32);
+
+    Ok(range.1 as u64 - range.0 as u64 + 1)
+}
+
 pub fn entry_point(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
     let yaml = load_yaml!("cli.yml");
     let matches = App::from_yaml(yaml)
@@ -86,7 +105,48 @@ pub fn entry_point(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> 
         })
         .unwrap();
 
-    let data = downsample_data(input, &chr, (left, right), 256)?;
+    let range_length = actual_range_length(input, &chr, (left, right))?;
+
+    let nbins = matches.value_of("nbins").map(|v| v.parse::<u64>().unwrap());
+    let bin_width = matches
+        .value_of("bin-width")
+        .map(|v| v.parse::<u64>().unwrap());
+
+    let nbins = match (nbins, bin_width) {
+        (Some(n), None) => {
+            if n == 0 {
+                panic!("Invalid nbins: cannot be zero");
+            }
+            n
+        }
+        (None, Some(width)) => {
+            if width == 0 {
+                panic!("Invalid bin-width: cannot be zero");
+            }
+            (range_length - 1) / width + 1
+        }
+        (Some(n), Some(width)) => {
+            if n == 0 {
+                panic!("Invalid nbins: cannot be zero");
+            }
+            if width == 0 {
+                panic!("Invalid bin-width: cannot be zero");
+            }
+            let calculated_nbins = (range_length - 1) / width + 1;
+            if n != calculated_nbins {
+                panic!(
+                    "Conflicting options: --nbins ({}) and --bin-width ({}) do not match.",
+                    n, width
+                );
+            }
+            n
+        }
+        (None, None) => 256,
+    };
+
+    let nbins = nbins as usize;
+
+    let data = downsample_data(input, &chr, (left, right), nbins)?;
 
     let pos_range = plotters::data::fitting_range(data.iter().map(|x| &x.0));
     let mut data_range = plotters::data::fitting_range(data.iter().map(|x| &x.1));

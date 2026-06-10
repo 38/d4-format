@@ -14,9 +14,20 @@ args:
         short: R
         long: resolution
         help: Specify the resolution of the output image
+        value_name: widthxheight
     - region:
         required: true
         short: r
         long: region
         help: Regions to be plotted
         value_name: chr[:start[-end]]
+    - nbins:
+        short: n
+        long: nbins
+        help: Number of bins for data downsampling
+        value_name: n
+    - bin-width:
+        short: w
+        long: bin-width
+        help: Width of each bin in base pairs
+        value_name: width
