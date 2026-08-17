@@ -8,7 +8,13 @@ use std::process::Command;
 fn create_hts_bindings(includes: &[PathBuf], version: &str, system: bool) -> Result<(), ()> {
     let mut include_params: Vec<_> = includes
         .iter()
-        .map(|x| format!("-I{}/htslib", x.to_str().unwrap()))
+        .map(|x| {
+            if system {
+                format!("-I{}", x.to_str().unwrap())
+            } else {
+                format!("-I{}/htslib", x.to_str().unwrap())
+            }
+        })
         .collect();
     if system {
         include_params.push("-DUSE_SYSTEM_HTSLIB".to_string());

@@ -17,6 +17,8 @@ git clone -b ${HTSLIB_VERSION} http://github.com/samtools/htslib.git
 
 cd htslib
 
+git submodule update --init --recursive
+
 cat > config.h << CONFIG_H
 #define HAVE_LIBBZ2 1
 #define HAVE_DRAND48 1
