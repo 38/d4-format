@@ -26,7 +26,8 @@ fn create_hts_bindings(includes: &[PathBuf], version: &str, system: bool) -> Res
             .layout_tests(false)
             .generate_comments(false)
             .generate_inline_functions(false)
-            .generate()?
+            .generate()
+            .map_err(|_| ())?
             .write_to_file("generated/hts.rs")
             .expect("Unable to write the generated file");
     }
@@ -61,13 +62,11 @@ fn main() -> Result<(), std::io::Error> {
     let link_system_lib = env::var("HTSLIB").map_or(false, |htslib| htslib == "system");
 
     let (htslib_includes, lib_version, system) = if link_system_lib {
-        pkg_config::Config::new()
+        let lib = pkg_config::Config::new()
             .atleast_version("1.6")
             .probe("htslib")
-            .map_or_else(
-                |_| build_own_htslib(),
-                |lib| (lib.include_paths, lib.version, true),
-            )
+            .expect("HTSLIB=system requested but htslib was not found via pkg-config");
+        (lib.include_paths, lib.version, true)
     } else {
         build_own_htslib()
     };
